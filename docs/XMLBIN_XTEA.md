@@ -64,3 +64,21 @@ Current working interpretation:
 - star rewards are progression/one-time rewards and are kept separate in audits.
 
 This distinction is required by ReXtreme's rule that replaying the same race must never reduce its normal payout.
+
+## Verified key source and integrity wrapper
+
+The XML asset key object is global `0x193FE24`. Its static constructor initializes it from:
+
+```text
+Unhandled field type (%d) in standard profile (%s)
+```
+
+The client XOR-folds that string into 16 bytes with `key[i & 0x0F] ^= source[i]`.
+
+Derived key:
+
+```text
+3c 5a 79 76 2a 6c 39 73 22 66 66 6b 20 3f 38 64
+```
+
+Type-1 decrypted streams contain `uint32 payload_length`, `uint32 crc32`, then the payload. The checksum is standard CRC32. `tools/xtea_assets.py` reproduces the decoder; the original `xml.bin` validates **59/59 encrypted entries**.
