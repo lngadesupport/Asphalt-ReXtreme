@@ -1,0 +1,40 @@
+# Original game content
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.rar
+*.7z
+*.zip
+*.exe
+*.dll
+*.p7x
+
+# Extracted proprietary game directories
+Game/
+GameData/
+Original/
+Extracted/
+Asphalt Xtreme/
+
+# Patch build output
+build/
+dist/
+out/
+*.bak
+*.patched
+
+# Local analysis
+analysis/
+dumps/
+*.dmp
+*.log
+
+# IDE / OS
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+Thumbs.db
+.DS_Store
