@@ -196,6 +196,7 @@ def repack_xmlbin(
     original: Path,
     edited_root: Path,
     output: Path,
+    header_output: Path | None = None,
 ) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     replaced = 0
@@ -223,7 +224,12 @@ def repack_xmlbin(
                 # compression method used by the source xml.bin.
                 output_archive.writestr(info, data)
 
+    if header_output is None:
+        header_output = output.with_suffix(".bin.hdr")
+    header_output.write_bytes(build_bin_header(output))
+
     print(f"Wrote {output}; replaced {replaced} entries")
+    print(f"Wrote companion header {header_output}")
 
 
 def main() -> int:
@@ -249,6 +255,12 @@ def main() -> int:
     cmd = sub.add_parser("extract-xmlbin")
     cmd.add_argument("source", type=Path)
     cmd.add_argument("output", type=Path)
+    cmd.add_argument(
+        "--header-output",
+        type=Path,
+        default=None,
+        help="Companion .bin.hdr path; defaults beside output",
+    )
 
     cmd = sub.add_parser("repack-xmlbin")
     cmd.add_argument("original", type=Path)
@@ -266,7 +278,12 @@ def main() -> int:
     elif args.command == "extract-xmlbin":
         extract_xmlbin(args.source, args.output)
     elif args.command == "repack-xmlbin":
-        repack_xmlbin(args.original, args.edited_root, args.output)
+        repack_xmlbin(
+            args.original,
+            args.edited_root,
+            args.output,
+            args.header_output,
+        )
 
     return 0
 
