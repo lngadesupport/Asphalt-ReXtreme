@@ -79,6 +79,30 @@ Design targets:
 
 ### Cars
 
+Baseline Premium-mode vehicle pricing target:
+
+```
+ReXtreme car price = original car price × 0.80
+```
+
+That is a default **20% reduction** from the original 1.7.3.8 price.
+
+Examples:
+
+```
+Original 10,000  -> ReXtreme 8,000
+Original 50,000  -> ReXtreme 40,000
+Original 125,000 -> ReXtreme 100,000
+```
+
+Rules:
+- apply the 20% reduction before final balancing;
+- preserve meaningful progression between vehicle classes/tiers;
+- retain career/event unlock conditions where they improve progression;
+- cars that originally require premium currency must be converted to normal offline progression or normal credits;
+- if a specific car remains a progression bottleneck after the 20% reduction, it may receive an additional targeted adjustment;
+- if the reduction makes a very cheap starter car meaningless, that individual price may be rounded sensibly rather than following the multiplier mechanically.
+
 Cars should be unlocked through one or more of:
 - career progression;
 - event completion;
@@ -131,12 +155,13 @@ Premium and Sandbox should use separate profile/save identifiers so that switchi
 
 Before setting final values:
 1. extract vehicle prices, upgrade costs, event payouts and unlock conditions from build 1.7.3.8;
-2. map the complete career progression;
-3. identify any original first-win, repeat-reward, cooldown, daily-cap or server-validation logic;
-4. calculate expected income versus required spending per tier;
-5. simulate a fresh save from the first event through career completion;
-6. rebalance progression bottlenecks and price outliers;
-7. verify repeated events always retain their full intended payout;
-8. play-test fresh saves with conservative, average and completionist spending patterns.
+2. apply the initial 0.80 vehicle-price multiplier;
+3. map the complete career progression;
+4. identify any original first-win, repeat-reward, cooldown, daily-cap or server-validation logic;
+5. calculate expected income versus required spending per tier;
+6. simulate a fresh save from the first event through career completion;
+7. rebalance progression bottlenecks and price outliers;
+8. verify repeated events always retain their full intended payout;
+9. play-test fresh saves with conservative, average and completionist spending patterns.
 
 The goal is a complete paid-game progression curve, not simply multiplying rewards or setting every value to zero.
