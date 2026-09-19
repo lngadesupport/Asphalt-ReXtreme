@@ -17,6 +17,20 @@ Goals:
 
 The later online/community edition is a **separate project phase** and will not be required for the Offline Edition.
 
+
+## Master Collector
+
+For development and reverse-engineering data collection, use **`REXTREME_COLETOR_MASTER.bat`**.
+
+This is the project's definitive one-click collector and supersedes the earlier staged analysis scripts. It generates a timestamped ZIP containing build hashes, file inventory, PE metadata, key binaries/configuration candidates, economy/network/graphics strings, URL/domain findings, AppX information and save-state metadata.
+
+Two modes are available:
+
+- **Complete Safe** — default; does not copy save/profile contents.
+- **Deep** — also snapshots package save/profile files when save-format analysis is required.
+
+The collector is read-only with respect to the game directory and can be reused throughout the entire Offline Edition development cycle.
+
 ## Current target build
 
 - Package: `A278AB0D.AsphaltXtreme`
