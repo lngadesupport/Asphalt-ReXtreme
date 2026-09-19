@@ -2,13 +2,20 @@
 
 Fan-made preservation and modernization project for the Windows build of **Asphalt Xtreme**.
 
-## Goals
+## Primary release: Offline Edition
 
-- Preserve the original Windows PC build and keep the campaign playable offline.
-- Remove dependencies on discontinued online services where they are not required for local gameplay.
-- Provide a local/offline economy mode for preservation and testing.
+The first release target is a **plug-and-play offline edition** focused on preservation and reliability.
+
+Goals:
+- Launch directly into a usable offline game flow with no dead service dependency.
+- Keep campaign/career, races, garage and local progression available.
+- Provide an optional preservation economy with unlimited local currency and no upgrade grind.
+- Remove local content gates that only exist because ads or discontinued services are unavailable.
+- Store progress locally.
 - Add modern PC options such as configurable FOV, frame-rate limit/unlock, modern resolutions, borderless/windowed modes and controller improvements.
-- Research a community multiplayer replacement separately after the offline client is stable.
+- Avoid requiring users to run development tools, edit files manually, configure servers or install Python.
+
+The later online/community edition is a **separate project phase** and will not be required for the Offline Edition.
 
 ## Current target build
 
@@ -17,13 +24,22 @@ Fan-made preservation and modernization project for the Windows build of **Aspha
 - Architecture: `x86`
 - Platform: Windows / Microsoft Store APPX
 
-## Repository policy
+## Distribution model
 
-This repository is intended to contain only original project code, documentation, patch metadata and tools.
+The public repository contains original project code, documentation, patch metadata and tools only.
 
-**Do not commit original game executables, assets, APPX packages, DLLs, archives, keys, signatures or other proprietary Gameloft/Netflix content.**
+Original executables, APPX packages, DLLs, game assets and other proprietary content are not committed here. A release builder/patcher will verify and transform a legitimate local copy into the ReXtreme Offline Edition.
 
-Users must provide their own legitimate copy of the game files when a future patcher requires them.
+The end-user goal is a one-click result:
+
+```
+Asphalt ReXtreme Offline/
+├── AsphaltReXtreme.exe
+├── ReXtreme.ini
+└── GameData/
+```
+
+After the user's legitimate game files have been imported once, normal play should require only launching `AsphaltReXtreme.exe`.
 
 ## Planned structure
 
@@ -39,4 +55,4 @@ Asphalt-ReXtreme/
 
 ## Status
 
-Early reverse-engineering / preservation research. No public binary patch is ready yet.
+Early reverse-engineering / preservation research against build `1.7.3.8 x86`.
