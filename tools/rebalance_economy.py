@@ -14,17 +14,10 @@ from pathlib import Path
 
 
 def rounded_price(value: int, multiplier: float) -> int:
-    raw = max(0, int(round(value * multiplier)))
-    # Paid-game friendly rounding while preserving relative scale.
-    if raw >= 100000:
-        step = 5000
-    elif raw >= 10000:
-        step = 1000
-    elif raw >= 1000:
-        step = 100
-    else:
-        step = 10
-    return max(step, int(round(raw / step) * step))
+    # ReXtreme Premium requirement: apply the multiplier exactly and only
+    # round to a whole credit. Do not add price-tier rounding that would
+    # change the agreed percentage reduction.
+    return max(0, int(round(value * multiplier)))
 
 
 def main() -> int:
