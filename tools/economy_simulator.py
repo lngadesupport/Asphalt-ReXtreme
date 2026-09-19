@@ -16,13 +16,14 @@ def repeat_payout(e): return int(e.get("money_for_playing",0) or 0)+int(e.get("p
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument("career_data",type=Path); ap.add_argument("car_catalog",type=Path)
     ap.add_argument("--reward-multiplier",type=float,default=1.0); ap.add_argument("--vehicle-multiplier",type=float,default=.80)
+    ap.add_argument("--premium-currency-race-multiplier",type=float,default=.50)
     ap.add_argument("--upgrade-reserve-fraction",type=float,default=0.0)
     ap.add_argument("--out",type=Path)
     a=ap.parse_args(); career=load(a.career_data); cars=load(a.car_catalog); byid={int(c["car_id"]):c for c in cars}
     ratios={cls:statistics.median([c["credit_price"]/c["hardcurrency_price"] for c in cars
             if c.get("class")==cls and c.get("credit_price",0)>0 and c.get("hardcurrency_price",0)>0]) for cls in "DCBAS"}
     seasons=sorted([s for s in career["seasons"] if int(s.get("serieid",0) or 0)==1],key=lambda s:int(s.get("index",0) or 0))
-    wallet=0.0; owned=set(); prior=[]; gates=[]; total_farm=0; max_farm=0
+    wallet=0.0; premium_wallet=0.0; owned=set(); prior=[]; gates=[]; total_farm=0; max_farm=0
     for s in seasons:
         sid=int(s.get("seasonid",s.get("id",0)) or 0)
         evs=sorted([e for e in career["events"] if int(e.get("season",0) or 0)==sid and not e.get("masteries",False)],
@@ -46,14 +47,19 @@ def main():
                     "upgrade_reserve":reserve,"required_total":need,"price_source":source,
                     "wallet_before":round(before),"best_prior_repeat_payout":round(best),
                     "extra_repeats_needed":farm,"unfunded_shortfall":round(short),"wallet_after_purchase":round(wallet)})
-            wallet+=event_credits(e)*a.reward_multiplier; prior.append(repeat_payout(e))
+            normal_repeat=repeat_payout(e)
+            wallet+=event_credits(e)*a.reward_multiplier
+            premium_wallet+=math.floor(normal_repeat*a.premium_currency_race_multiplier)
+            prior.append(normal_repeat)
         for r in s.get("rewards",[]) or []:
             if str(r.get("completionrewardtype","")).lower()=="credits":
                 wallet+=int(r.get("completionrewardamount",0) or 0)*a.reward_multiplier
     result={"reward_multiplier":a.reward_multiplier,"vehicle_multiplier":a.vehicle_multiplier,
             "upgrade_reserve_fraction":a.upgrade_reserve_fraction,"mandatory_cars":len(owned),
             "total_extra_repeats":total_farm,"max_extra_repeats_at_one_gate":max_farm,
-            "final_wallet":round(wallet),"gates":gates,"class_credit_per_hardcurrency_median":ratios}
+            "final_wallet":round(wallet),"final_premium_currency":round(premium_wallet),
+            "premium_currency_race_multiplier":a.premium_currency_race_multiplier,
+            "gates":gates,"class_credit_per_hardcurrency_median":ratios}
     print(json.dumps({k:v for k,v in result.items() if k not in ("gates","class_credit_per_hardcurrency_median")},indent=2))
     if a.out: a.out.write_text(json.dumps(result,indent=2,ensure_ascii=False),encoding="utf-8")
     return 0
