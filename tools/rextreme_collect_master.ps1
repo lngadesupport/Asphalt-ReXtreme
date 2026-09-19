@@ -71,6 +71,8 @@ function Get-PEBasicInfo {
         Characteristics = ""
     }
     try {
+        $fs = $null
+        $br = $null
         $fs = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
         try {
             $br = New-Object System.IO.BinaryReader($fs)
@@ -119,7 +121,7 @@ function Get-PEBasicInfo {
             $result.Characteristics = ("0x{0:X4}" -f $characteristics)
         } finally {
             if ($br) { $br.Close() }
-            $fs.Close()
+            if ($fs) { $fs.Close() }
         }
     } catch {
         Write-Log ("PE parse failed: {0} :: {1}" -f $Path, $_.Exception.Message) "WARN"
