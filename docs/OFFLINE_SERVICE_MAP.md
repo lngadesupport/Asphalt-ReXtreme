@@ -89,3 +89,33 @@ The client contains explicit `localprofile` / `/localprofile` strings and WCP lo
 7. Only after behavior is verified, remove manifest capabilities/components that are proven unnecessary.
 
 This conservative order avoids breaking unrelated Windows functionality while removing the service dependency.
+
+## Central connectivity flag / Offline Alpha
+
+The verified client singleton contains a connectivity byte at `+0x4B0`. Getter VA `0xFAD9D0` is:
+
+```asm
+mov al, byte ptr [ecx+0x4B0]
+ret
+```
+
+It has **211 direct call sites**. Static tracing shows a false value skips OnlinePush initialization and selects the offline branch in connection update logic.
+
+Experimental target for build 1.7.3.8 x86:
+
+```text
+AMS.exe SHA-256:
+3d48800d37cb799e424abe5e33e07bab3235d11dbfbe2fbf50214cecab3e75c8
+
+file offset: 0xBACDD0
+before: 8A 81 B0 04 00 00 C3
+after:  31 C0 C3 90 90 90 90
+```
+
+The replacement becomes `xor eax,eax; ret` plus padding. Re-disassembly is valid and the patched Alpha binary hashes to:
+
+```text
+a446fec5ad65bf26fefede70453b302be81fd3d7024e655183bf810c3618176f
+```
+
+Status: **Offline Alpha / runtime test required**.
