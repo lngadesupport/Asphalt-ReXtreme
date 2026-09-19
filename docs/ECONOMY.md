@@ -165,3 +165,38 @@ Before setting final values:
 9. play-test fresh saves with conservative, average and completionist spending patterns.
 
 The goal is a complete paid-game progression curve, not simply multiplying rewards or setting every value to zero.
+
+
+### Premium currency from races
+
+Premium currency becomes a normal offline race reward instead of a real-money resource.
+
+Baseline rule:
+
+```
+premium_currency_reward = floor(repeatable_credit_payout × 0.50)
+```
+
+Where `repeatable_credit_payout` is the normal repeatable race payout, currently modeled as:
+
+```
+money_for_playing + finishing-position reward
+```
+
+Examples:
+
+```
+Repeatable credits = 345  -> premium currency = 172
+Repeatable credits = 800  -> premium currency = 400
+Repeatable credits = 2,000 -> premium currency = 1,000
+```
+
+Rules:
+- the premium-currency reward is granted on every valid race completion;
+- replaying the same event never reduces it;
+- star rewards and other one-time progression bonuses are excluded from the 50% calculation;
+- position/performance may legitimately change both rewards because they change the underlying repeatable payout;
+- no daily cap, cooldown, ad, store purchase or server validation is required;
+- Sandbox mode may still use unlimited currency separately.
+
+This preserves premium currency as a meaningful resource while making it fully earnable through normal offline play.
