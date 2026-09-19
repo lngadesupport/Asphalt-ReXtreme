@@ -3,7 +3,39 @@
     "package": "A278AB0D.AsphaltXtreme",
     "version": "1.7.3.8",
     "architecture": "x86",
-    "status": "hashes-and-offsets-pending-verification"
+    "entry_point": "AMS.exe",
+    "status": "build-hashes-verified-patches-pending"
   },
-  "files": []
+  "files": [
+    {
+      "path": "AMS.exe",
+      "sha256": "3d48800d37cb799e424abe5e33e07bab3235d11dbfbe2fbf50214cecab3e75c8",
+      "patches": []
+    },
+    {
+      "path": "Facebook.dll",
+      "sha256": "271a2199abc52783aea3104765cb87ace7e4fde9a9654b91be70bace0e630191",
+      "patches": []
+    },
+    {
+      "path": "IGPLib_x86.dll",
+      "sha256": "a17bc02a6b799bc5bcb219a04ba1bfa4501efe7b9b47adeb4b0a1ab89580f2b5",
+      "patches": []
+    },
+    {
+      "path": "InAppPurchaseComponentW8.dll",
+      "sha256": "1699bf0d42e336c738785a2985db20e72205478a14df569e75ff4eea49a08e77",
+      "patches": []
+    },
+    {
+      "path": "Microsoft.Live.dll",
+      "sha256": "ca8ae5a3226394c3ca84a671d5e90f7d5f972d4aecbbbaa6bcf451f4bff5e320",
+      "patches": []
+    },
+    {
+      "path": "WCPToolkit.dll",
+      "sha256": "ca67dd62c599d00868b230e4e536bb1ad4ad3c19f3e62293e42cd297b44b60a5",
+      "patches": []
+    }
+  ]
 }
