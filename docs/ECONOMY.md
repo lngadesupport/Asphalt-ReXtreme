@@ -12,6 +12,8 @@ The default Asphalt ReXtreme Offline Edition economy should behave like a tradit
 - No login streaks or server-dependent daily rewards required for progression.
 - Every car, upgrade and event that exists in the target build should be obtainable through offline play.
 - Progression should reward racing skill and career completion rather than repetitive grinding.
+- A fresh Premium save must be able to reach and complete the end of the offline career without needing exploits, purchases, advertisements or unreasonable grinding.
+- **Race rewards never diminish because a race has already been completed or repeated.** The same performance in the same event must always produce the same base payout.
 
 ## Default mode: Premium
 
@@ -27,6 +29,53 @@ If the original build uses multiple currencies:
 - no currency should require a store purchase or advertisement.
 
 Exact conversion values must be derived from the real 1.7.3.8 data rather than guessed.
+
+### Repeatable race rewards
+
+All normal offline races remain repeatable sources of currency.
+
+Rules:
+- no first-win-only reduction to the normal race payout;
+- no diminishing returns after repeated completions;
+- no daily payout cap;
+- no cooldown before a race can pay again;
+- no hidden penalty for farming the same event;
+- no server-side reward validation required;
+- the player's position, difficulty/performance bonuses and other legitimate race modifiers may affect the payout, but **repeat count may not**.
+
+Example target behavior:
+
+```
+Race A — 1st place = 4,000 credits
+1st completion  -> 4,000
+2nd completion  -> 4,000
+10th completion -> 4,000
+50th completion -> 4,000
+```
+
+This gives the player freedom to replay a favorite race whenever extra money is needed without the game progressively punishing them.
+
+### Career completion guarantee
+
+The economy must be balanced around a complete fresh-save playthrough.
+
+For each career tier/chapter we will calculate:
+
+```
+guaranteed normal earnings
++ reasonable optional replay earnings
+>= required car purchases
++ required upgrade costs
++ progression expenses
+```
+
+Design targets:
+- normal career completion should fund the majority of required progression;
+- a player making sensible purchases should never reach a mandatory event with no realistic way to continue;
+- optional replaying can accelerate progression or correct poor spending choices;
+- repeating races must always remain a reliable recovery path;
+- no single mandatory car or upgrade should require excessive repetition of one event;
+- 100% completion should be achievable entirely offline.
 
 ### Cars
 
@@ -48,7 +97,8 @@ Targets:
 - later upgrades may require additional races, but not free-to-play-style grinding;
 - no upgrade timer;
 - no premium-currency skip;
-- no ad requirement.
+- no ad requirement;
+- mandatory performance-rating gates must always be financially reachable from offline play.
 
 ### Events and gates
 
@@ -82,8 +132,11 @@ Premium and Sandbox should use separate profile/save identifiers so that switchi
 Before setting final values:
 1. extract vehicle prices, upgrade costs, event payouts and unlock conditions from build 1.7.3.8;
 2. map the complete career progression;
-3. calculate expected income versus required spending per tier;
-4. rebalance outliers;
-5. play-test a fresh save from start to finish.
+3. identify any original first-win, repeat-reward, cooldown, daily-cap or server-validation logic;
+4. calculate expected income versus required spending per tier;
+5. simulate a fresh save from the first event through career completion;
+6. rebalance progression bottlenecks and price outliers;
+7. verify repeated events always retain their full intended payout;
+8. play-test fresh saves with conservative, average and completionist spending patterns.
 
 The goal is a complete paid-game progression curve, not simply multiplying rewards or setting every value to zero.
