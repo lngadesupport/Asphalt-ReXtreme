@@ -24,6 +24,13 @@ out/
 *.bak
 *.patched
 
+# Collector output / local state
+collector-output/
+collector-last-path.txt
+analysis-output/
+stage2/
+ReXtreme-stage2.zip
+
 # Local analysis
 analysis/
 dumps/
