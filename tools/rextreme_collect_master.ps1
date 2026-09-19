@@ -11,7 +11,7 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version 2.0
 
-$CollectorVersion = "1.0.0"
+$CollectorVersion = "1.1.0"
 $TargetPackage = "A278AB0D.AsphaltXtreme"
 $TargetVersion = "1.7.3.8"
 $TargetArch = "x86"
@@ -367,6 +367,32 @@ foreach ($f in $allFiles) {
 $candidateRows | Export-Csv -NoTypeInformation -Encoding UTF8 (Join-Path $reportsDir "collected-candidates.csv")
 
 # ---------------------------------------------------------------------------
+# Core data archives required by the ReXtreme asset/economy pipeline
+# ---------------------------------------------------------------------------
+Write-Log "Collecting core ReXtreme data archives"
+$coreDataDir = Join-Path $collectedDir "data-core"
+New-Item -ItemType Directory -Force -Path $coreDataDir | Out-Null
+$coreDataPaths = @(
+    "data\xml.bin",
+    "data\xml.bin.hdr",
+    "data\text.bin",
+    "data\text.bin.hdr",
+    "data\InitialFeed.dat"
+)
+$coreDataCopied = 0
+foreach ($relativeCorePath in $coreDataPaths) {
+    $sourceCorePath = Join-Path $root $relativeCorePath
+    if (Test-Path -LiteralPath $sourceCorePath) {
+        $sourceCoreFile = Get-Item -LiteralPath $sourceCorePath
+        if (Safe-CopyFile -File $sourceCoreFile -Root $root -DestRoot $coreDataDir) {
+            $coreDataCopied++
+        }
+    } else {
+        Write-Log ("Core data file not found: " + $relativeCorePath) "WARN"
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Keyword scan in text/config files
 # ---------------------------------------------------------------------------
 Write-Log "Scanning text/config files for project keywords"
@@ -491,10 +517,11 @@ $summary.Add("ExpectedTarget: $TargetPackage $TargetVersion $TargetArch")
 $summary.Add("FilesFound: $($allFiles.Count)")
 $summary.Add("BinaryCount: $($binaries.Count)")
 $summary.Add("CandidateFilesCopied: $($candidateRows.Count)")
+$summary.Add("CoreDataFilesCopied: $coreDataCopied")
 $summary.Add("SaveFilesInventoried: $($saveInventory.Count)")
 $summary.Add("")
 $summary.Add("Key files:")
-foreach ($name in @("AMS.exe","AppxManifest.xml","Gameoptions_W8.json","in-app-purchase_w8.1.xml","InAppPurchaseComponentW8.dll","IGPLib_x86.dll","Microsoft.Live.dll","Facebook.dll","WCPToolkit.dll")) {
+foreach ($name in @("AMS.exe","AppxManifest.xml","Gameoptions_W8.json","in-app-purchase_w8.1.xml","xml.bin","xml.bin.hdr","text.bin","text.bin.hdr","InitialFeed.dat","InAppPurchaseComponentW8.dll","IGPLib_x86.dll","Microsoft.Live.dll","Facebook.dll","WCPToolkit.dll")) {
     $match = $allFiles | Where-Object { $_.Name -ieq $name } | Select-Object -First 1
     if ($match) {
         $rel = Get-RelativePathCompat -Base $root -Full $match.FullName
