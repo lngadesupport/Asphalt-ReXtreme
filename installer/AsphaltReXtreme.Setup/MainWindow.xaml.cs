@@ -12,6 +12,7 @@ public partial class MainWindow : Window
 {
     private readonly InstallerEngine _engine = new();
     private bool _installed;
+    private bool _repairRequired;
     private bool _busy;
 
     public MainWindow()
@@ -26,6 +27,37 @@ public partial class MainWindow : Window
         FadeIn(TrailerPanel, 1.20, 0.42);
         FadeIn(InstallPanel, 0.68, 0.78);
         FadeIn(ActionPanel, 0.58, 1.02);
+        RefreshInstalledState();
+    }
+
+    private void RefreshInstalledState()
+    {
+        var state = _engine.GetInstalledState();
+        _installed = state.IsInstalled && state.IsHealthy;
+        _repairRequired = state.IsInstalled && !state.IsHealthy;
+
+        if (_installed)
+        {
+            StatusText.Text = "Asphalt ReXtreme já está instalado.";
+            DetailText.Text = $"Versão {state.Version} • instalação verificada pelo Windows.";
+            InstallButton.Content = "JOGAR AGORA";
+            RepairButton.Visibility = Visibility.Visible;
+            AnimateProgress(1.0);
+        }
+        else if (_repairRequired)
+        {
+            StatusText.Text = "A instalação precisa de reparo.";
+            DetailText.Text = "O Windows detectou arquivos ausentes, modificados ou indisponíveis.";
+            InstallButton.Content = "REPARAR";
+            RepairButton.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            StatusText.Text = "Pronto para instalar.";
+            DetailText.Text = "O instalador verificará o pacote antes de alterar o sistema.";
+            InstallButton.Content = "INSTALAR";
+            RepairButton.Visibility = Visibility.Collapsed;
+        }
     }
 
     private void LoadAssets()
@@ -36,7 +68,8 @@ public partial class MainWindow : Window
 
         if (File.Exists(logoPath))
         {
-            LogoImage.Source = new BitmapImage(new Uri(logoPath, UriKind.Absolute));
+            LogoImage.Source = new BitmapImage(
+                new System.Uri(logoPath, System.UriKind.Absolute));
         }
         else
         {
@@ -45,13 +78,18 @@ public partial class MainWindow : Window
 
         if (File.Exists(trailerPath))
         {
-            Trailer.Source = new Uri(trailerPath, UriKind.Absolute);
+            Trailer.Source = new System.Uri(
+                trailerPath,
+                System.UriKind.Absolute);
             Trailer.IsMuted = true;
             Trailer.Play();
         }
     }
 
-    private static void FadeIn(UIElement element, double seconds, double delaySeconds)
+    private static void FadeIn(
+        UIElement element,
+        double seconds,
+        double delaySeconds)
     {
         var animation = new DoubleAnimation
         {
@@ -59,43 +97,46 @@ public partial class MainWindow : Window
             To = 1,
             Duration = TimeSpan.FromSeconds(seconds),
             BeginTime = TimeSpan.FromSeconds(delaySeconds),
-            EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut }
+            EasingFunction = new QuarticEase
+            {
+                EasingMode = EasingMode.EaseOut
+            }
         };
         element.BeginAnimation(OpacityProperty, animation);
     }
 
-    private async void InstallButton_Click(object sender, RoutedEventArgs e)
+    private async void InstallButton_Click(
+        object sender,
+        RoutedEventArgs e)
     {
         if (_busy)
             return;
 
         if (_installed)
         {
-            try
-            {
-                _busy = true;
-                InstallButton.IsEnabled = false;
-                StatusText.Text = "Abrindo Asphalt ReXtreme...";
-                await _engine.LaunchAsync();
-                Close();
-            }
-            catch (Exception ex)
-            {
-                ShowError(ex);
-            }
-            finally
-            {
-                _busy = false;
-                InstallButton.IsEnabled = true;
-            }
+            await LaunchGameAsync();
             return;
         }
 
+        await RunInstallAsync(_repairRequired);
+    }
+
+    private async void RepairButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (_busy)
+            return;
+
+        await RunInstallAsync(repair: true);
+    }
+
+    private async Task RunInstallAsync(bool repair)
+    {
         try
         {
-            _busy = true;
-            InstallButton.IsEnabled = false;
-            InstallButton.Content = "INSTALANDO...";
+            SetBusy(true);
+            InstallButton.Content = repair ? "REPARANDO..." : "INSTALANDO...";
 
             var progress = new Progress<InstallerEngine.ProgressInfo>(p =>
             {
@@ -104,21 +145,48 @@ public partial class MainWindow : Window
                 AnimateProgress(p.Value);
             });
 
-            await _engine.InstallAsync(progress);
-            _installed = true;
-            InstallButton.Content = "JOGAR AGORA";
-            InstallButton.IsEnabled = true;
+            await _engine.InstallAsync(progress, repair);
+            RefreshInstalledState();
         }
         catch (Exception ex)
         {
             ShowError(ex);
-            InstallButton.Content = "TENTAR NOVAMENTE";
-            InstallButton.IsEnabled = true;
+            InstallButton.Content = repair
+                ? "TENTAR REPARO NOVAMENTE"
+                : "TENTAR NOVAMENTE";
         }
         finally
         {
-            _busy = false;
+            SetBusy(false);
         }
+    }
+
+    private async Task LaunchGameAsync()
+    {
+        try
+        {
+            SetBusy(true);
+            StatusText.Text = "Abrindo Asphalt ReXtreme...";
+            DetailText.Text = "Iniciando a identidade local ReXtreme.";
+            await _engine.LaunchAsync();
+            Close();
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex);
+            RefreshInstalledState();
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    private void SetBusy(bool busy)
+    {
+        _busy = busy;
+        InstallButton.IsEnabled = !busy;
+        RepairButton.IsEnabled = !busy;
     }
 
     private void AnimateProgress(double value)
@@ -129,32 +197,45 @@ public partial class MainWindow : Window
         {
             To = width,
             Duration = TimeSpan.FromMilliseconds(520),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            EasingFunction = new CubicEase
+            {
+                EasingMode = EasingMode.EaseOut
+            }
         };
         ProgressFill.BeginAnimation(WidthProperty, animation);
         PercentText.Text = $"{Math.Round(value * 100)}%";
     }
 
-    private void Trailer_MediaOpened(object sender, RoutedEventArgs e)
+    private void Trailer_MediaOpened(
+        object sender,
+        RoutedEventArgs e)
     {
         Trailer.IsMuted = true;
     }
 
-    private void Trailer_MediaEnded(object sender, RoutedEventArgs e)
+    private void Trailer_MediaEnded(
+        object sender,
+        RoutedEventArgs e)
     {
         Trailer.Position = TimeSpan.Zero;
         Trailer.Play();
     }
 
-    private void SoundButton_Click(object sender, RoutedEventArgs e)
+    private void SoundButton_Click(
+        object sender,
+        RoutedEventArgs e)
     {
         Trailer.IsMuted = !Trailer.IsMuted;
         SoundButton.Content = Trailer.IsMuted ? "🔇" : "🔊";
     }
 
-    private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
+    private void CloseButton_Click(
+        object sender,
+        RoutedEventArgs e) => Close();
 
-    private void Root_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void Root_MouseLeftButtonDown(
+        object sender,
+        MouseButtonEventArgs e)
     {
         if (e.ButtonState == MouseButtonState.Pressed)
             DragMove();
