@@ -9,7 +9,7 @@ $ExpectedOriginal = "3d48800d37cb799e424abe5e33e07bab3235d11dbfbe2fbf50214cecab3
 $ExpectedPatched  = "56e9dbde7f7f3a75b3542a691fb45ad5bf46b86e87cb9fa11854ec1862e62ae3"
 
 function HexToBytes([string]$Hex) {
-    $clean = ($Hex -replace "\\s", "")
+    $clean = ($Hex -replace "\s", "")
     if (($clean.Length % 2) -ne 0) { throw "Invalid hex string length." }
     $bytes = New-Object byte[] ($clean.Length / 2)
     for ($i = 0; $i -lt $bytes.Length; $i++) {
