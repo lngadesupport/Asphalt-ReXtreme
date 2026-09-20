@@ -36,7 +36,8 @@ jobs:
             "tools/windows-dev/Register-CampaignDev.ps1",
             "tools/windows-dev/Launch-CampaignDev.ps1",
             "tools/windows-dev/Unregister-CampaignDev.ps1",
-            "tools/unified_diagnostic.ps1"
+            "tools/unified_diagnostic.ps1",
+            "UNIFIED_DIAGNOSTIC.ps1"
           )) {
             $tokens = $null
             $errors = $null
