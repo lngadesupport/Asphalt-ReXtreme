@@ -2,75 +2,65 @@
 
 ## Build identity
 
-- Package: `A278AB0D.AsphaltXtreme`
+- Original package: `A278AB0D.AsphaltXtreme`
 - Version: `1.7.3.8`
 - Architecture: x86
-- Entry point: `AMS.exe` / `AMS.App`
-- Core dependency: `Microsoft.VCLibs.120.00`
-
-The manifest declares Internet client, private-network client/server and
-location capabilities.
+- Original entry point: `AMS.exe` / `AMS.App`
+- Original platform model: Microsoft Store APPX
+- Core original dependency: `Microsoft.VCLibs.120.00`
 
 ## Service / monetization components
 
-Static analysis identifies old Gameloft IAP, advertising/cross-promotion and
-social endpoints, plus imports from:
-
+Static analysis previously identified:
 - `InAppPurchaseComponentW8.dll`;
 - `IGPLib_x86.dll`;
 - `WCPToolkit.dll`;
 - `Microsoft.Live.dll`;
 - `Facebook.dll`.
 
-The client itself contains local profile/save, career, currency, energy,
-reward and upgrade logic. ReXtreme therefore targets removal or replacement of
-obsolete service validation instead of recreating the original commercial
-services.
+The client also contains local profile/save, career, currency, reward and upgrade logic. Campaign Edition therefore targets local replacement/bypass of commercial service dependencies rather than recreation of the original services.
 
-## Graphics configuration
+## Mixed-purpose platform code
 
-`Gameoptions_W8.json` contains frame-rate and resolution settings. The
-observed default action/menu cap is 60 FPS, with a 30 FPS override for a lower
-GPU preset. Higher limits must be tested for timing/physics correctness before
-being enabled as release defaults.
+`WCPToolkit.dll` contains both service-facing and useful local Windows functionality such as display/input/storage helpers. It must not be deleted blindly. Calls are classified before replacement.
 
 ## Data archive
 
-`data/xml.bin` is a ZIP archive containing 59 encrypted `.xtea` assets.
-The XTEA format has been fully reproduced; see `XTEA_FORMAT.md`.
+`data/xml.bin` contains encrypted/configuration assets, including:
+- `asphaltshop`;
+- `career_data`;
+- `asphaltserverdb`;
+- request/service metadata.
 
-Important decoded assets include:
+The XTEA tooling in this repository can decode/repack the relevant data path.
 
-- `asphaltshop`: vehicle/shop and upgrade prices;
-- `career_data`: career events, seasons, payouts and requirements;
-- `asphaltserverdb`: vehicle definitions/classes/base ranks;
-- `request_rate`: request metadata/rate configuration.
+## Economy target
 
-## Economy inventory
+Campaign Edition supersedes the previous 0.80 experiment.
 
-The target shop contains 61 vehicles:
+Normal shop content target:
 
-- 31 with both credit and hard-currency prices;
-- 29 hard-currency-only;
-- 1 credit-only.
+```text
+campaign_price = round(original_price * 0.20)
+```
 
-For vehicles that already have a credit price, ReXtreme Premium uses the
-agreed exact baseline:
+Race repetition target:
 
-`new_credit_price = round(original_credit_price * 0.80)`
+```text
+runs 1-10: 100%
+run 11+: -0.2 percentage points per repeat
+floor: 98%
+```
 
-Token-only vehicles are **not** converted using one global exchange rate.
-The observed credit/token ratios of dual-priced cars vary too widely. Their
-Premium credit prices will be derived from class, base rank and career
-progression so they remain attainable without flattening progression.
+Premium currency is earned from race rewards and is not dependent on Store purchase.
 
-## Career payouts
+## Offline connectivity patch
 
-`career_data` contains explicit fields such as `money_for_playing`,
-`position_1`, `position_2`, `position_3`, star rewards and season
-completion rewards.
+The verified client singleton connectivity getter at file offset `0xBACDD0` was previously identified as a useful offline experiment. That patch is still relevant to legacy service suppression, but Campaign Edition additionally requires removal/replacement of Microsoft package identity, Store/IAP/auth activation and package-dependent save/runtime paths.
 
-A first implementation candidate for a normal repeatable first-place payout is
-`money_for_playing + position_1`. This interpretation still requires runtime
-verification before it becomes a patch rule. ReXtreme's design requirement
-remains that repeating an event never reduces its normal payout.
+## Current next step
+
+Run `tools/store_dependency_audit.py` against the extracted full source build, then classify every Microsoft/package finding as:
+- remove/bypass;
+- replace with local Win32/path/save behavior;
+- retain only if it is generic Windows functionality unrelated to Store/package identity.
