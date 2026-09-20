@@ -5,6 +5,7 @@ EXPORTS
 "?GetInstance@IGPControl@IGPLib@@SAPAV12@XZ"=ret_null
 "?HttpPostLink@IGPControl@IGPLib@@QAEXPBD@Z"=noop_ret4
 "?Init@IGPControl@IGPLib@@SAXABUInitParams@2@@Z"=noop_ret
+"?Init@IGPControl@IGPLib@@SAXABUInitParams@2@@@Z"=noop_ret
 "?InitBridgeCallbacks@IGPLib@@YAXXZ"=noop_ret
 "?InitBridgeClass@IGPLib@@YAXP$AAVPanel@Controls@Xaml@UI@Windows@@@Z"=noop_ret
 "?IsOnScreenFreemium@IGPControl@IGPLib@@SA_NXZ"=ret_false
