@@ -43,6 +43,180 @@ function Extract-BinaryStrings {
     return $set
 }
 
+function Convert-RvaToOffset {
+    param([UInt64]$Rva, [object[]]$Sections)
+
+    foreach ($section in $Sections) {
+        $span = [Math]::Max([UInt64]$section.VirtualSize, [UInt64]$section.RawSize)
+        $start = [UInt64]$section.VirtualAddress
+        if ($Rva -ge $start -and $Rva -lt ($start + $span)) {
+            return [Int64]([UInt64]$section.RawPointer + ($Rva - $start))
+        }
+    }
+    return [Int64]-1
+}
+
+function Read-AsciiZ {
+    param(
+        [System.IO.FileStream]$Stream,
+        [System.IO.BinaryReader]$Reader,
+        [Int64]$Offset,
+        [int]$MaxLength = 1024
+    )
+
+    if ($Offset -lt 0 -or $Offset -ge $Stream.Length) { return "" }
+    $Stream.Position = $Offset
+    $bytes = New-Object System.Collections.Generic.List[byte]
+    for ($i = 0; $i -lt $MaxLength -and $Stream.Position -lt $Stream.Length; $i++) {
+        $b = $Reader.ReadByte()
+        if ($b -eq 0) { break }
+        $bytes.Add($b)
+    }
+    return [System.Text.Encoding]::ASCII.GetString($bytes.ToArray())
+}
+
+function Get-PEImports {
+    param([string]$Path)
+
+    $rows = New-Object System.Collections.Generic.List[object]
+    $fs = $null
+    $br = $null
+
+    try {
+        $fs = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+        $br = New-Object System.IO.BinaryReader($fs)
+
+        if ($br.ReadUInt16() -ne 0x5A4D) { return $rows }
+        $fs.Position = 0x3C
+        $peOffset = $br.ReadInt32()
+        if ($peOffset -lt 0 -or $peOffset -gt ($fs.Length - 256)) { return $rows }
+
+        $fs.Position = $peOffset
+        if ($br.ReadUInt32() -ne 0x00004550) { return $rows }
+
+        [void]$br.ReadUInt16()
+        $numSections = $br.ReadUInt16()
+        [void]$br.ReadUInt32()
+        [void]$br.ReadUInt32()
+        [void]$br.ReadUInt32()
+        $sizeOptional = $br.ReadUInt16()
+        [void]$br.ReadUInt16()
+
+        $optionalStart = [Int64]$peOffset + 24
+        $fs.Position = $optionalStart
+        $magic = $br.ReadUInt16()
+
+        if ($magic -eq 0x10B) {
+            $dataDirectoryOffset = 96
+            $thunkSize = 4
+            $ordinalFlag = [UInt64]0x80000000
+            $addressMask = [UInt64]0x7FFFFFFF
+        } elseif ($magic -eq 0x20B) {
+            $dataDirectoryOffset = 112
+            $thunkSize = 8
+            $ordinalFlag = [UInt64]::Parse("8000000000000000", [System.Globalization.NumberStyles]::HexNumber)
+            $addressMask = [UInt64]::Parse("7FFFFFFFFFFFFFFF", [System.Globalization.NumberStyles]::HexNumber)
+        } else {
+            return $rows
+        }
+
+        $fs.Position = $optionalStart + $dataDirectoryOffset + 8
+        $importRva = [UInt64]$br.ReadUInt32()
+        $importSize = [UInt64]$br.ReadUInt32()
+        if ($importRva -eq 0 -or $importSize -eq 0) { return $rows }
+
+        $sections = New-Object System.Collections.Generic.List[object]
+        $sectionTable = $optionalStart + $sizeOptional
+        $fs.Position = $sectionTable
+
+        for ($i = 0; $i -lt $numSections; $i++) {
+            if (($fs.Position + 40) -gt $fs.Length) { break }
+            $nameBytes = $br.ReadBytes(8)
+            $name = [System.Text.Encoding]::ASCII.GetString($nameBytes).Trim([char]0)
+            $virtualSize = [UInt64]$br.ReadUInt32()
+            $virtualAddress = [UInt64]$br.ReadUInt32()
+            $rawSize = [UInt64]$br.ReadUInt32()
+            $rawPointer = [UInt64]$br.ReadUInt32()
+            $fs.Position += 16
+
+            $sections.Add([pscustomobject]@{
+                Name = $name
+                VirtualSize = $virtualSize
+                VirtualAddress = $virtualAddress
+                RawSize = $rawSize
+                RawPointer = $rawPointer
+            })
+        }
+
+        $importOffset = Convert-RvaToOffset -Rva $importRva -Sections $sections.ToArray()
+        if ($importOffset -lt 0) { return $rows }
+
+        for ($descIndex = 0; $descIndex -lt 2048; $descIndex++) {
+            $descPos = $importOffset + ($descIndex * 20)
+            if (($descPos + 20) -gt $fs.Length) { break }
+            $fs.Position = $descPos
+
+            $originalFirstThunk = [UInt64]$br.ReadUInt32()
+            $timeDateStamp = $br.ReadUInt32()
+            $forwarderChain = $br.ReadUInt32()
+            $nameRva = [UInt64]$br.ReadUInt32()
+            $firstThunk = [UInt64]$br.ReadUInt32()
+
+            if ($originalFirstThunk -eq 0 -and $timeDateStamp -eq 0 -and $forwarderChain -eq 0 -and $nameRva -eq 0 -and $firstThunk -eq 0) {
+                break
+            }
+
+            $nameOffset = Convert-RvaToOffset -Rva $nameRva -Sections $sections.ToArray()
+            $dllName = Read-AsciiZ -Stream $fs -Reader $br -Offset $nameOffset
+            if (-not $dllName) { $dllName = "<unknown>" }
+
+            $thunkRva = $(if ($originalFirstThunk -ne 0) { $originalFirstThunk } else { $firstThunk })
+            $thunkOffset = Convert-RvaToOffset -Rva $thunkRva -Sections $sections.ToArray()
+            if ($thunkOffset -lt 0) {
+                $rows.Add([pscustomobject]@{ DLL=$dllName; Function=""; Ordinal=""; Error="thunk-rva-unmapped" })
+                continue
+            }
+
+            for ($thunkIndex = 0; $thunkIndex -lt 65536; $thunkIndex++) {
+                $entryPos = $thunkOffset + ($thunkIndex * $thunkSize)
+                if (($entryPos + $thunkSize) -gt $fs.Length) { break }
+                $fs.Position = $entryPos
+
+                if ($thunkSize -eq 8) {
+                    $value = [UInt64]$br.ReadUInt64()
+                } else {
+                    $value = [UInt64]$br.ReadUInt32()
+                }
+
+                if ($value -eq 0) { break }
+
+                if (($value -band $ordinalFlag) -ne 0) {
+                    $ordinal = [int]($value -band 0xFFFF)
+                    $rows.Add([pscustomobject]@{ DLL=$dllName; Function=""; Ordinal=$ordinal; Error="" })
+                    continue
+                }
+
+                $hintNameRva = $value -band $addressMask
+                $hintNameOffset = Convert-RvaToOffset -Rva $hintNameRva -Sections $sections.ToArray()
+                if ($hintNameOffset -lt 0 -or ($hintNameOffset + 2) -ge $fs.Length) {
+                    $rows.Add([pscustomobject]@{ DLL=$dllName; Function=""; Ordinal=""; Error="name-rva-unmapped" })
+                    continue
+                }
+
+                $functionName = Read-AsciiZ -Stream $fs -Reader $br -Offset ($hintNameOffset + 2)
+                $rows.Add([pscustomobject]@{ DLL=$dllName; Function=$functionName; Ordinal=""; Error="" })
+            }
+        }
+    } catch {
+        $rows.Add([pscustomobject]@{ DLL=""; Function=""; Ordinal=""; Error=$_.Exception.Message })
+    } finally {
+        if ($br) { $br.Close() }
+        if ($fs) { $fs.Close() }
+    }
+
+    return $rows
+}
+
 $root = (Resolve-Path -LiteralPath $GameDir).Path
 if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
     $OutputRoot = Join-Path (Split-Path -Parent $PSScriptRoot) "campaign-audit-output"
@@ -136,8 +310,42 @@ foreach ($f in $allFiles) {
 $inventory | Export-Csv -NoTypeInformation -Encoding UTF8 (Join-Path $reports "inventory.csv")
 
 $focusExtensions = @(".exe",".dll",".winmd",".xml",".json",".ini",".cfg",".txt",".dat",".bin")
+$binaries = @($allFiles | Where-Object { $_.Extension.ToLowerInvariant() -in @(".exe",".dll") })
 $findings = New-Object System.Collections.Generic.List[object]
 $dllCandidates = New-Object System.Collections.Generic.HashSet[string]
+$importRows = New-Object System.Collections.Generic.List[object]
+
+foreach ($f in $binaries) {
+    $rel = Get-RelativePathCompat -Base $root -Full $f.FullName
+    foreach ($imp in (Get-PEImports -Path $f.FullName)) {
+        $importRows.Add([pscustomobject]@{
+            File = $rel
+            DLL = $imp.DLL
+            Function = $imp.Function
+            Ordinal = $imp.Ordinal
+            Error = $imp.Error
+        })
+
+        $dllLower = [string]$imp.DLL
+        $fn = [string]$imp.Function
+        if ($dllLower -match "(?i)api-ms-win-appmodel|windows\.applicationmodel") {
+            $findings.Add([pscustomobject]@{ File=$rel; Category="package_identity"; Signature=($imp.DLL + "!" + $fn); Source="pe-import" })
+        }
+        if ($fn -match "^(GetCurrentPackage|GetPackage|Package|OpenPackage|GetCurrentApplicationUserModelId|GetApplicationUserModelId)") {
+            $findings.Add([pscustomobject]@{ File=$rel; Category="package_identity"; Signature=($imp.DLL + "!" + $fn); Source="pe-import" })
+        }
+        if ($fn -match "^Ro(Initialize|Uninitialize|ActivateInstance|GetActivationFactory)$" -or $dllLower -match "(?i)api-ms-win-core-winrt") {
+            $findings.Add([pscustomobject]@{ File=$rel; Category="uwp_activation"; Signature=($imp.DLL + "!" + $fn); Source="pe-import" })
+        }
+        if ($dllLower -match "(?i)^Microsoft\.Live\.dll$") {
+            $findings.Add([pscustomobject]@{ File=$rel; Category="microsoft_auth"; Signature=$imp.DLL; Source="pe-import" })
+        }
+        if ($dllLower -match "(?i)^InAppPurchaseComponentW8\.dll$") {
+            $findings.Add([pscustomobject]@{ File=$rel; Category="store_iap"; Signature=$imp.DLL; Source="pe-import" })
+        }
+    }
+}
+$importRows | Export-Csv -NoTypeInformation -Encoding UTF8 (Join-Path $reports "pe-imports.csv")
 
 foreach ($f in $allFiles) {
     $rel = Get-RelativePathCompat -Base $root -Full $f.FullName
