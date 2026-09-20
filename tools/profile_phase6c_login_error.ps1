@@ -161,8 +161,19 @@ foreach($t in $targets){
             NearestPrologueFileOffset=if($pro -ge 0){("0x{0:X8}" -f $pro)}else{""}
             NearestPrologueVA=if($pro -ge 0 -and $null -ne (File-To-VA $pro)){("0x{0:X8}" -f (File-To-VA $pro))}else{""}
         }
-        $details += "===== $($t.Name) XREF_FILE=0x$('{0:X8}' -f $h) XREF_VA=$((if($null -ne (File-To-VA $h)){ '0x{0:X8}' -f (File-To-VA $h) } else { '' })) ====="
-        $details += "NearestPrologueFileOffset=" + $(if($pro -ge 0){"0x{0:X8}" -f $pro}else{""})
+        $xrefVaValue = File-To-VA $h
+        if($null -ne $xrefVaValue){
+            $xrefVaText = "0x{0:X8}" -f $xrefVaValue
+        } else {
+            $xrefVaText = ""
+        }
+        if($pro -ge 0){
+            $proText = "0x{0:X8}" -f $pro
+        } else {
+            $proText = ""
+        }
+        $details += ("===== {0} XREF_FILE=0x{1:X8} XREF_VA={2} =====" -f $t.Name,$h,$xrefVaText)
+        $details += ("NearestPrologueFileOffset={0}" -f $proText)
         $details += "HEX[-320,+512]"
         $details += HexWindow $h
         $details += "JCC[-128,+128]"
