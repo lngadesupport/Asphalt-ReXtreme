@@ -82,6 +82,7 @@
                                   LoadedBehavior="Manual"
                                   UnloadedBehavior="Manual"
                                   Stretch="UniformToFill"
+                                  RenderTransformOrigin="0.5,0.5"
                                   IsMuted="True"
                                   MediaOpened="Trailer_MediaOpened"
                                   MediaEnded="Trailer_MediaEnded">
