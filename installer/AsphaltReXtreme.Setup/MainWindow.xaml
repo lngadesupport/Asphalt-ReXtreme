@@ -180,6 +180,12 @@
                             Content="INSTALAR"
                             Style="{StaticResource PrimaryButton}"
                             Click="InstallButton_Click"/>
+                    <Button x:Name="RepairButton"
+                            Margin="0,10,0,0"
+                            Content="REPARAR INSTALAÇÃO"
+                            Style="{StaticResource GhostButton}"
+                            Visibility="Collapsed"
+                            Click="RepairButton_Click"/>
                     <TextBlock Margin="0,12,0,0"
                                Text="Asphalt ReXtreme 1.0 RC1 • instalação local"
                                Foreground="#656D7F"
