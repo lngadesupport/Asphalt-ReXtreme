@@ -22,7 +22,10 @@ import xml.etree.ElementTree as ET
 
 import audit_offline_data
 import make_premium_shop
-import patcher
+try:
+    from tools import patcher
+except ModuleNotFoundError:  # direct script execution from tools/
+    import patcher
 import repack_xmlbin
 import xtea_assets
 
