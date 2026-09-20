@@ -71,15 +71,17 @@ foreach ($c in $commands) {
 
 if (-not $archiverPath) {
     $candidates = @()
-    if (\${env:ProgramFiles}) {
-        $candidates += @{ Kind="7zip"; Path=(Join-Path \${env:ProgramFiles} "7-Zip\7z.exe") }
-        $candidates += @{ Kind="unrar"; Path=(Join-Path \${env:ProgramFiles} "WinRAR\UnRAR.exe") }
-        $candidates += @{ Kind="winrar"; Path=(Join-Path \${env:ProgramFiles} "WinRAR\WinRAR.exe") }
+    $pf64 = [Environment]::GetFolderPath("ProgramFiles")
+    $pf86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
+    if ($pf64) {
+        $candidates += @{ Kind="7zip"; Path=(Join-Path $pf64 "7-Zip\7z.exe") }
+        $candidates += @{ Kind="unrar"; Path=(Join-Path $pf64 "WinRAR\UnRAR.exe") }
+        $candidates += @{ Kind="winrar"; Path=(Join-Path $pf64 "WinRAR\WinRAR.exe") }
     }
-    if (\${env:ProgramFiles(x86)}) {
-        $candidates += @{ Kind="7zip"; Path=(Join-Path \${env:ProgramFiles(x86)} "7-Zip\7z.exe") }
-        $candidates += @{ Kind="unrar"; Path=(Join-Path \${env:ProgramFiles(x86)} "WinRAR\UnRAR.exe") }
-        $candidates += @{ Kind="winrar"; Path=(Join-Path \${env:ProgramFiles(x86)} "WinRAR\WinRAR.exe") }
+    if ($pf86) {
+        $candidates += @{ Kind="7zip"; Path=(Join-Path $pf86 "7-Zip\7z.exe") }
+        $candidates += @{ Kind="unrar"; Path=(Join-Path $pf86 "WinRAR\UnRAR.exe") }
+        $candidates += @{ Kind="winrar"; Path=(Join-Path $pf86 "WinRAR\WinRAR.exe") }
     }
     foreach ($c in $candidates) {
         if (Test-Path -LiteralPath $c.Path -PathType Leaf) {
