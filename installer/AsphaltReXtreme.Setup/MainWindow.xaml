@@ -147,17 +147,19 @@
 
                 <StackPanel Grid.Row="1" VerticalAlignment="Center" Opacity="0" x:Name="InstallPanel">
                     <TextBlock Text="OFFLINE EDITION" FontSize="12" FontWeight="SemiBold" Foreground="#8D94A6"/>
-                    <TextBlock x:Name="StatusText"
-                               Margin="0,12,0,0"
-                               Text="Pronto para instalar."
-                               FontSize="21"
-                               FontWeight="SemiBold"/>
-                    <TextBlock x:Name="DetailText"
-                               Margin="0,7,0,0"
-                               Text="O instalador verificará o pacote antes de alterar o sistema."
-                               FontSize="13"
-                               Foreground="#9299AA"
-                               TextWrapping="Wrap"/>
+                    <StackPanel x:Name="StatusBlock">
+                        <TextBlock x:Name="StatusText"
+                                   Margin="0,12,0,0"
+                                   Text="Pronto para instalar."
+                                   FontSize="21"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock x:Name="DetailText"
+                                   Margin="0,7,0,0"
+                                   Text="O instalador verificará o pacote antes de alterar o sistema."
+                                   FontSize="13"
+                                   Foreground="#9299AA"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
 
                     <Grid Margin="0,30,0,0" Height="8">
                         <Border Background="#1B202C" CornerRadius="4"/>
