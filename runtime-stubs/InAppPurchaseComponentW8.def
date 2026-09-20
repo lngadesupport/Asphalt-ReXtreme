@@ -1,0 +1,5 @@
+LIBRARY InAppPurchaseComponentW8.dll
+EXPORTS
+"?IapComponent_CloseXAML@@YAXXZ"=_noop_ret
+"?IapComponent_UpdateXAML@@YAXXZ"=_noop_ret
+"?pIapWrapper@@3PAVIapWrapper@@A"=_pIapWrapper DATA
