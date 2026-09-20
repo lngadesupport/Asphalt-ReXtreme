@@ -1,0 +1,116 @@
+# Campaign Edition — portable Win32 architecture
+
+## Decision
+
+The primary release is now **Asphalt ReXtreme: Campaign Edition**.
+
+The release must behave like a normal portable Windows racing game. It must not require or use Microsoft Store deployment, APPX/MSIX registration, AppUserModelID activation, Microsoft account authentication, Store licensing, Xbox authentication, or Store IAP.
+
+Target user flow:
+
+```text
+Asphalt ReXtreme Campaign Edition/
+├── AsphaltReXtreme.exe
+├── GameData/
+├── config/
+├── save/
+├── logs/
+└── runtime/
+```
+
+The user extracts the folder and launches `AsphaltReXtreme.exe`.
+
+Internet may be enabled and the user may remain signed into Microsoft Store. Campaign Edition must simply ignore those services.
+
+## Non-goals
+
+Campaign Edition will not:
+- log the user out of Microsoft Store;
+- disable networking;
+- alter Windows Store, Xbox or Windows system configuration;
+- install/register an APPX/MSIX package;
+- emulate a Microsoft Store license;
+- require Developer Mode, sideload policy, certificate installation or Add-AppxPackage;
+- redirect the original Store package identity.
+
+## Runtime separation
+
+The original 1.7.3.8 x86 build is treated as four layers:
+
+1. **Game engine / rendering / audio / input**
+2. **Local game data / career / garage / profile**
+3. **Gameloft online services / advertising / IAP**
+4. **Microsoft package identity / Store / UWP activation**
+
+Campaign Edition preserves layers 1 and 2 wherever possible, replaces layer 3 with local paid-game behavior, and removes or replaces layer 4.
+
+## Entry point
+
+The final entry point is a normal desktop executable:
+
+```text
+AsphaltReXtreme.exe
+    -> initialize portable runtime
+    -> load local profile
+    -> load local game data
+    -> create normal Windows game window
+    -> enter campaign
+```
+
+No launcher action may invoke `ms-windows-store:`, `Add-AppxPackage`, App Installer, PackageManager deployment, or AppUserModelID activation.
+
+## Local profile
+
+Campaign Edition owns its save path and profile identity.
+
+Required persisted state:
+- credits;
+- premium currency;
+- cars;
+- paints/customization;
+- upgrades;
+- career stars and completion;
+- race records;
+- settings;
+- per-event repeat counters used by the reward floor rule.
+
+Writes should be atomic and recoverable. Keep at least one previous-save backup.
+
+## Economy contract
+
+- Shop content prices: **20% of the original price** for cars, paint, upgrades, parts and similar purchasable content.
+- Currency packs / real-money products: removed from the progression model.
+- Ads: no ad may be required. Ad-gated rewards/content are converted to normal in-game purchases or campaign rewards.
+- Race rewards: credits **and** premium currency.
+- Repeating the same race:
+  - runs 1–10: 100% reward;
+  - run 11 onward: -0.2 percentage points per additional repeat;
+  - floor: 98%;
+  - reward never falls below 98%, regardless of repeat count.
+- No hidden reward reduction based on wallet balance, ownership, play time or network state.
+
+Formula:
+
+```text
+repeat_multiplier = max(0.98, 1.0 - max(0, repeat_count - 10) * 0.002)
+```
+
+## Microsoft-free acceptance test
+
+Campaign Edition is accepted only when all of the following are true:
+
+1. Windows 10/11 user remains signed into Microsoft Store.
+2. Internet remains enabled.
+3. Original Asphalt Xtreme Store package is not required to be installed.
+4. Double-clicking `AsphaltReXtreme.exe` opens the game directly.
+5. No Store, App Installer, Xbox login, package registration or license dialog appears.
+6. No Microsoft account is required.
+7. Campaign can start and finish races.
+8. Credits and premium currency are awarded locally.
+9. Shop purchases persist locally.
+10. Closing and reopening the game preserves progress.
+11. Network availability does not change the local campaign behavior.
+
+## Development rule
+
+Do not delete mixed-purpose platform DLLs blindly. First identify which calls are Store/service-facing and which provide essential local Windows functionality. Replace or bypass only the service/package-facing paths until a native equivalent exists.
