@@ -1,90 +1,61 @@
-# Runtime Pack architecture
+# Campaign Runtime Pack
 
-Starting with Alpha 0.11, ReXtreme development no longer assumes that every bootstrap component must be embedded into one giant executable.
+The final Campaign Edition runtime is portable and desktop-oriented.
 
-## Layout
+## Target layout
 
-```
-Asphalt Xtreme/
+```text
+Asphalt ReXtreme Campaign Edition/
 ├── AsphaltReXtreme.exe
-├── ReXtreme.ini
-├── ReXtreme/
-│   ├── Runtime/
-│   │   └── payload.zip
-│   ├── Identity/
-│   │   ├── ReXtremeLocal.cer
-│   │   └── ReXtremeLocal.pfx   # private alpha/test material only
-│   ├── Tools/
-│   ├── Cache/
-│   ├── Logs/
-│   └── Repair/
-├── AMS.exe
-├── AppxManifest.xml
-└── data/
+├── GameData/
+├── config/
+├── save/
+├── logs/
+└── runtime/
 ```
 
-## Why this model
+## Runtime contract
 
-- normal launch can reuse prepared/cache state instead of rebuilding bootstrap infrastructure;
-- payload, certificate/identity, repair and diagnostics can be updated independently;
-- the launcher can remain focused on orchestration and fast-path launch;
-- future portable-host / external-identity experiments can live under `ReXtreme/` without changing the original game directory layout;
-- diagnostics and recovery do not require rebuilding the launcher.
+The normal launch path must not:
+- register or install APPX/MSIX;
+- depend on AppUserModelID activation;
+- require Microsoft Store;
+- require Microsoft/Xbox sign-in;
+- query Store licensing;
+- install package certificates;
+- change Developer Mode or sideload policy;
+- copy the game into WindowsApps.
 
-## Alpha 0.11 certificate fix
+Internet may remain enabled. The user may remain signed into Microsoft Store.
+Those conditions must not change Campaign behavior.
 
-Alpha 0.10 trusted the self-signed alpha certificate only in `CurrentUser\TrustedPeople`. SignTool could still reject the chain because the self-signed root was not trusted.
+## Source-build compatibility
 
-Alpha 0.11 imports the **public certificate only** into:
-- `CurrentUser\Root`;
-- `CurrentUser\TrustedPeople`.
+The original 1.7.3.8 x86 source is a Microsoft Store/UWP-style package and uses
+package/WinRT facilities. Campaign conversion therefore separates:
+- generic Windows runtime helpers that remain useful;
+- package-identity APIs that must be replaced;
+- Store/IAP/authentication code that must be bypassed or removed;
+- obsolete Gameloft service code that must be replaced with local behavior.
 
-The private PFX remains alpha-only material and is not intended for public repository distribution.
+`tools/campaign_static_audit.ps1` and `tools/store_dependency_audit.py` are the
+static discovery tools for this work.
 
-## Portable direction
+## Portable host direction
 
-The preferred final user experience remains:
+If `AMS.exe` cannot be made directly desktop-launchable without package
+identity, the supported final route is a ReXtreme-owned Win32 host/shim layer.
+That host may provide local path/save/window/bootstrap behavior required by the
+engine, but it must not recreate Store licensing or silently register an APPX.
 
-`folder + AsphaltReXtreme.exe -> play`
+## Saves
 
-The original `AMS.exe` is a UWP/windowsApp executable and therefore uses package-identity-gated WinRT behavior. Microsoft external-location/sparse packaging is primarily designed around Win32 `win32App` binaries, so ReXtreme treats sparse identity for AMS as experimental until validated on real Windows.
+Campaign Edition owns its own local save directory and must use recoverable,
+atomic writes. Save paths may be relative to the portable directory or to a
+Campaign-owned desktop application data path, but never require the original
+Store package family.
 
-The Runtime Pack reserves two paths:
-1. **Identity mode** — minimal package identity while all large game data stays in the user folder, if the Windows runtime accepts the client model.
-2. **Portable Host mode** — ReXtreme-owned Win32 host/shims that replace the package-identity assumptions required by AMS.
+## No compatibility fallback in release
 
-A full-package install remains a compatibility fallback during development, not the desired final UX.
-
-
-## Alpha 0.12 packaging fixes
-
-Alpha 0.12 fixes both failures observed in the Alpha 0.11 compatibility path.
-
-### Sharing violation / MakeAppx 0x80070020
-
-The launcher now:
-- terminates `AMS.exe` before staging and packaging;
-- waits briefly for file handles to close;
-- retries MakeAppx automatically up to four times when the failure is a sharing violation;
-- preserves SDK/cache state between retries.
-
-This addresses package creation failures caused by game data files such as `data/textures_win32.bin` being held open by the running game.
-
-### Proper signing chain
-
-The previous alpha used a self-signed leaf code-signing certificate. Importing a `CA:FALSE` leaf into Root does not create a proper certificate authority chain.
-
-Alpha 0.12 uses:
-- **ReXtreme Local Root CA** — `CA:TRUE`, keyCertSign/cRLSign;
-- **ReXtreme Publisher Signing** — `CA:FALSE`, Digital Signature, Code Signing EKU;
-- leaf Subject remains exactly `CN=276B8086-F8CA-495E-A880-D275ED83EA67` to match the package Publisher.
-
-Trust layout:
-- Root CA -> `CurrentUser\\Root`;
-- signing leaf -> `CurrentUser\\TrustedPublisher` and `CurrentUser\\TrustedPeople`.
-
-The private alpha signing key remains private build material and is not committed to the public repository.
-
-### Final direction
-
-Full APPX packaging remains only a compatibility fallback. The preferred end state remains a portable ReXtreme host that runs from the user folder without copying the large game payload into WindowsApps.
+Historical APPX signing/registration experiments remain available in Git
+history only. They are not a supported Campaign Edition release fallback.
