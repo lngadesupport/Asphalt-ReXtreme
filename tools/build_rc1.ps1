@@ -127,9 +127,19 @@ Remove-Item $pfx -Force -ErrorAction SilentlyContinue
 Remove-Item ("Cert:\CurrentUser\My\" + $cert.Thumbprint) -Force -ErrorAction SilentlyContinue
 
 $dependencyName = $null
+$dependencySha256 = $null
 if ($VCLibsPath) {
-    $vc = (Resolve-Path $VCLibsPath).Path
+    Write-Host "=== Validating exact VC120 x86 framework ==="
+    $resolver = Join-Path $repoRoot "tools\resolve_vclibs120.ps1"
+    $validationJson = & $resolver -Candidate $VCLibsPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "VC120 validation failed."
+    }
+
+    $validation = $validationJson | ConvertFrom-Json
+    $vc = $validation.Path
     $dependencyName = Split-Path $vc -Leaf
+    $dependencySha256 = $validation.Sha256
     Copy-Item $vc (Join-Path $payload $dependencyName) -Force
 }
 
@@ -139,9 +149,10 @@ $installManifest = @{
     package = (Split-Path $appx -Leaf)
     certificate = (Split-Path $cer -Leaf)
     dependency = $dependencyName
+    dependencySha256 = $dependencySha256
     packageSha256 = (Get-FileHash $appx -Algorithm SHA256).Hash.ToLowerInvariant()
     certificateSha256 = (Get-FileHash $cer -Algorithm SHA256).Hash.ToLowerInvariant()
-    releaseEligible = [bool]$buildMeta.release_eligible -and [bool]$dependencyName
+    releaseEligible = [bool]$buildMeta.release_eligible -and [bool]$dependencyName -and [bool]$dependencySha256
 }
 
 $installManifest |
