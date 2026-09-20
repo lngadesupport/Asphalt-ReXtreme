@@ -59,9 +59,14 @@ jobs:
             Set-Content -LiteralPath (Join-Path $fixture "AMS.exe") -Encoding ASCII
           "<Package><Identity Name='A278AB0D.AsphaltXtreme'/></Package>" |
             Set-Content -LiteralPath (Join-Path $fixture "AppxManifest.xml") -Encoding UTF8
+          Copy-Item -LiteralPath "$env:WINDIR\System32\notepad.exe" -Destination (Join-Path $fixture "platform.exe")
           & powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/campaign_static_audit.ps1 -GameDir $fixture -OutputRoot $out
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $report = Get-ChildItem -LiteralPath $out -Directory | Select-Object -First 1
           if (-not $report) { throw "Audit report directory was not created" }
           $csv = Import-Csv (Join-Path $report.FullName "reports/microsoft-service-findings.csv")
           if (@($csv).Count -lt 2) { throw "Expected Store/package findings were not detected" }
+          $imports = Import-Csv (Join-Path $report.FullName "reports/pe-imports.csv")
+          if (@($imports | Where-Object { $_.File -eq "platform.exe" -and $_.DLL }).Count -eq 0) {
+            throw "PE import parser did not return imports for platform.exe"
+          }
