@@ -7,6 +7,24 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $SourceDir = (Resolve-Path -LiteralPath $SourceDir).Path
+
+# Loose-file registration (-Register) requires Windows developer mode.
+$devMode = 0
+try {
+    $unlock = Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock" -ErrorAction Stop
+    if ($null -ne $unlock.AllowDevelopmentWithoutDevLicense) {
+        $devMode = [int]$unlock.AllowDevelopmentWithoutDevLicense
+    }
+} catch {
+    $devMode = 0
+}
+if ($devMode -ne 1) {
+    Write-Host ""
+    Write-Host "Developer Mode is not enabled." -ForegroundColor Yellow
+    Write-Host "Windows 10: Settings > Update & Security > For developers > Developer mode"
+    Write-Host ""
+    throw "Package Phase 5 requires Windows Developer Mode for Add-AppxPackage -Register."
+}
 $ExpectedAMS = "56e9dbde7f7f3a75b3542a691fb45ad5bf46b86e87cb9fa11854ec1862e62ae3"
 
 function Get-PeDllCharacteristics([string]$Path) {
