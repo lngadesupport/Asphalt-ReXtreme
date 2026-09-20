@@ -14,6 +14,7 @@ public partial class MainWindow : Window
     private bool _installed;
     private bool _repairRequired;
     private bool _busy;
+    private string _lastStatus = string.Empty;
 
     public MainWindow()
     {
@@ -38,23 +39,29 @@ public partial class MainWindow : Window
 
         if (_installed)
         {
-            StatusText.Text = "Asphalt ReXtreme já está instalado.";
-            DetailText.Text = $"Versão {state.Version} • instalação verificada pelo Windows.";
+            SetStatus(
+                "Asphalt ReXtreme já está instalado.",
+                $"Versão {state.Version} • instalação verificada pelo Windows.",
+                animate: false);
             InstallButton.Content = "JOGAR AGORA";
             RepairButton.Visibility = Visibility.Visible;
             AnimateProgress(1.0);
         }
         else if (_repairRequired)
         {
-            StatusText.Text = "A instalação precisa de reparo.";
-            DetailText.Text = "O Windows detectou arquivos ausentes, modificados ou indisponíveis.";
+            SetStatus(
+                "A instalação precisa de reparo.",
+                "O Windows detectou arquivos ausentes, modificados ou indisponíveis.",
+                animate: false);
             InstallButton.Content = "REPARAR";
             RepairButton.Visibility = Visibility.Collapsed;
         }
         else
         {
-            StatusText.Text = "Pronto para instalar.";
-            DetailText.Text = "O instalador verificará o pacote antes de alterar o sistema.";
+            SetStatus(
+                "Pronto para instalar.",
+                "O instalador verificará o pacote antes de alterar o sistema.",
+                animate: false);
             InstallButton.Content = "INSTALAR";
             RepairButton.Visibility = Visibility.Collapsed;
         }
@@ -140,8 +147,7 @@ public partial class MainWindow : Window
 
             var progress = new Progress<InstallerEngine.ProgressInfo>(p =>
             {
-                StatusText.Text = p.Status;
-                DetailText.Text = p.Detail;
+                SetStatus(p.Status, p.Detail);
                 AnimateProgress(p.Value);
             });
 
@@ -166,8 +172,9 @@ public partial class MainWindow : Window
         try
         {
             SetBusy(true);
-            StatusText.Text = "Abrindo Asphalt ReXtreme...";
-            DetailText.Text = "Iniciando a identidade local ReXtreme.";
+            SetStatus(
+                "Abrindo Asphalt ReXtreme...",
+                "Iniciando a identidade local ReXtreme.");
             await _engine.LaunchAsync();
             Close();
         }
@@ -241,9 +248,69 @@ public partial class MainWindow : Window
             DragMove();
     }
 
+    private void SetStatus(
+        string status,
+        string detail,
+        bool animate = true)
+    {
+        if (string.Equals(_lastStatus, status, StringComparison.Ordinal))
+        {
+            DetailText.Text = detail;
+            return;
+        }
+
+        _lastStatus = status;
+
+        if (!animate)
+        {
+            StatusBlock.BeginAnimation(OpacityProperty, null);
+            StatusBlock.Opacity = 1;
+            StatusText.Text = status;
+            DetailText.Text = detail;
+            return;
+        }
+
+        var fadeOut = new DoubleAnimation
+        {
+            To = 0,
+            Duration = TimeSpan.FromMilliseconds(130),
+            EasingFunction = new CubicEase
+            {
+                EasingMode = EasingMode.EaseIn
+            }
+        };
+
+        fadeOut.Completed += (_, _) =>
+        {
+            StatusText.Text = status;
+            DetailText.Text = detail;
+
+            var fadeIn = new DoubleAnimation
+            {
+                From = 0,
+                To = 1,
+                Duration = TimeSpan.FromMilliseconds(260),
+                EasingFunction = new CubicEase
+                {
+                    EasingMode = EasingMode.EaseOut
+                }
+            };
+            StatusBlock.BeginAnimation(
+                OpacityProperty,
+                fadeIn,
+                HandoffBehavior.SnapshotAndReplace);
+        };
+
+        StatusBlock.BeginAnimation(
+            OpacityProperty,
+            fadeOut,
+            HandoffBehavior.SnapshotAndReplace);
+    }
+
     private void ShowError(Exception ex)
     {
-        StatusText.Text = "Não foi possível concluir.";
-        DetailText.Text = ex.Message;
+        SetStatus(
+            "Não foi possível concluir.",
+            ex.Message);
     }
 }
