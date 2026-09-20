@@ -1,0 +1,194 @@
+<Window x:Class="AsphaltReXtreme.Setup.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Asphalt ReXtreme"
+        Width="1040" Height="640"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        Background="#090B10"
+        Foreground="White"
+        Loaded="Window_Loaded">
+    <Window.Resources>
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Height" Value="50"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#E36B20"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.88"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.72"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.38"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="GhostButton" TargetType="Button">
+            <Setter Property="Foreground" Value="#D8DCE7"/>
+            <Setter Property="Background" Value="#171B25"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="7">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#232A38"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.38"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border CornerRadius="12" BorderBrush="#242936" BorderThickness="1" Background="#0D1017">
+        <Grid MouseLeftButtonDown="Root_MouseLeftButtonDown">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="365"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border x:Name="TrailerPanel"
+                    Grid.Column="0"
+                    Margin="14"
+                    CornerRadius="10"
+                    Background="#05070A"
+                    ClipToBounds="True"
+                    Opacity="0">
+                <Grid>
+                    <MediaElement x:Name="Trailer"
+                                  LoadedBehavior="Manual"
+                                  UnloadedBehavior="Manual"
+                                  Stretch="UniformToFill"
+                                  IsMuted="True"
+                                  MediaOpened="Trailer_MediaOpened"
+                                  MediaEnded="Trailer_MediaEnded">
+                        <MediaElement.RenderTransform>
+                            <ScaleTransform ScaleX="1.06" ScaleY="1.06"/>
+                        </MediaElement.RenderTransform>
+                    </MediaElement>
+                    <Button x:Name="SoundButton"
+                            Width="42" Height="34"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Bottom"
+                            Margin="14"
+                            Content="🔇"
+                            Style="{StaticResource GhostButton}"
+                            Click="SoundButton_Click"/>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Column="1" Margin="38,28,32,28">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Grid>
+                    <Button Width="34" Height="30"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Content="×"
+                            FontSize="20"
+                            Style="{StaticResource GhostButton}"
+                            Click="CloseButton_Click"/>
+                    <StackPanel x:Name="BrandPanel" Opacity="0" Margin="0,26,70,0">
+                        <Image x:Name="LogoImage"
+                               Height="92"
+                               HorizontalAlignment="Left"
+                               Stretch="Uniform"/>
+                        <TextBlock x:Name="LogoFallback"
+                                   Text="ASPHALT ReXTREME"
+                                   Visibility="Collapsed"
+                                   FontSize="31"
+                                   FontWeight="Black"
+                                   Foreground="White"/>
+                    </StackPanel>
+                </Grid>
+
+                <StackPanel Grid.Row="1" VerticalAlignment="Center" Opacity="0" x:Name="InstallPanel">
+                    <TextBlock Text="OFFLINE EDITION" FontSize="12" FontWeight="SemiBold" Foreground="#8D94A6"/>
+                    <TextBlock x:Name="StatusText"
+                               Margin="0,12,0,0"
+                               Text="Pronto para instalar."
+                               FontSize="21"
+                               FontWeight="SemiBold"/>
+                    <TextBlock x:Name="DetailText"
+                               Margin="0,7,0,0"
+                               Text="O instalador verificará o pacote antes de alterar o sistema."
+                               FontSize="13"
+                               Foreground="#9299AA"
+                               TextWrapping="Wrap"/>
+
+                    <Grid Margin="0,30,0,0" Height="8">
+                        <Border Background="#1B202C" CornerRadius="4"/>
+                        <Border x:Name="ProgressFill"
+                                Width="0"
+                                HorizontalAlignment="Left"
+                                Background="#E36B20"
+                                CornerRadius="4"/>
+                    </Grid>
+                    <TextBlock x:Name="PercentText"
+                               Margin="0,9,0,0"
+                               Text="0%"
+                               HorizontalAlignment="Right"
+                               Foreground="#A5ABBA"
+                               FontSize="12"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="2" Opacity="0" x:Name="ActionPanel">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="160"/>
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="InstallButton"
+                                Grid.Column="0"
+                                Content="INSTALAR"
+                                Style="{StaticResource PrimaryButton}"
+                                Click="InstallButton_Click"/>
+                        <Button x:Name="RepairButton"
+                                Grid.Column="2"
+                                Content="REPARAR"
+                                Height="50"
+                                Visibility="Collapsed"
+                                Style="{StaticResource GhostButton}"
+                                Click="RepairButton_Click"/>
+                    </Grid>
+                    <TextBlock Margin="0,12,0,0"
+                               Text="Asphalt ReXtreme 1.0 RC1 • instalação local"
+                               Foreground="#656D7F"
+                               FontSize="11"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

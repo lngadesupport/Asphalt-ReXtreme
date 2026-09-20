@@ -1,0 +1,71 @@
+name: Validate 1.0 RC1 installer
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "installer/**"
+      - "tools/*.ps1"
+      - "tools/build_full_repack.py"
+      - "tools/patcher.py"
+      - "patches/**"
+      - "config/**"
+      - ".github/workflows/validate-rc1-installer.yml"
+  workflow_dispatch:
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Parse RC PowerShell scripts
+        shell: pwsh
+        run: |
+          $files = @(
+            "tools/build_rc1.ps1",
+            "tools/prepare_installer_assets.ps1",
+            "tools/assemble_setup.ps1",
+            "tools/prepare_installer_icon.ps1",
+            "tools/resolve_vclibs120.ps1"
+          )
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $file),
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | Format-List
+              throw "PowerShell syntax errors found in $file"
+            }
+          }
+
+      - name: Publish installer
+        shell: pwsh
+        run: dotnet publish installer/AsphaltReXtreme.Setup/AsphaltReXtreme.Setup.csproj -c Release -r win-x64 --self-contained true -o .artifacts/installer
+
+      - name: Verify installer output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path ".artifacts/installer/AsphaltReXtreme.Setup.exe")) {
+            throw "Installer executable was not generated."
+          }
+          Get-Item ".artifacts/installer/AsphaltReXtreme.Setup.exe" | Format-List Name,Length,LastWriteTime
+
+      - name: Upload installer shell
+        uses: actions/upload-artifact@v4
+        with:
+          name: Asphalt-ReXtreme-RC1-Installer-Shell
+          path: .artifacts/installer/**
+          if-no-files-found: error

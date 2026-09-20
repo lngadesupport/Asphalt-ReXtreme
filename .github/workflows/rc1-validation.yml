@@ -1,0 +1,50 @@
+name: RC1 validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "installer/**"
+      - "tools/**"
+      - "patches/**"
+      - "config/**"
+      - ".github/workflows/rc1-validation.yml"
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Validate Python tools
+        shell: pwsh
+        run: |
+          python -m py_compile tools/patcher.py
+          python -m py_compile tools/build_full_repack.py
+          python -m py_compile tools/make_install_manifest.py
+
+      - name: Build installer
+        shell: pwsh
+        run: dotnet publish installer/AsphaltReXtreme.Setup/AsphaltReXtreme.Setup.csproj -c Release -r win-x64 --self-contained true -o .artifacts/installer
+
+      - name: Confirm single-file output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path ".artifacts/installer/AsphaltReXtreme.Setup.exe")) {
+            throw "Installer executable was not produced."
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Asphalt-ReXtreme-RC1-Installer-Shell
+          path: .artifacts/installer/**

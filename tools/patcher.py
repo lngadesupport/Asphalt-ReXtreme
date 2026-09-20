@@ -2,27 +2,8 @@
 """
 Asphalt ReXtreme patcher core.
 
-This tool applies only explicitly defined, hash-verified byte patches.
-It never guesses offsets and refuses to patch an unknown build.
-
-Manifest format:
-{
-  "build": {...},
-  "files": [
-    {
-      "path": "AMS.exe",
-      "sha256": "...",
-      "patches": [
-        {
-          "name": "example",
-          "offset": 1234,
-          "before": "75 0A",
-          "after":  "90 90"
-        }
-      ]
-    }
-  ]
-}
+Applies only explicitly defined, hash-verified byte patches.
+Unknown builds and already-corrupted inputs are rejected.
 """
 from __future__ import annotations
 
@@ -84,15 +65,24 @@ def validate_patch(p: dict) -> BytePatch:
     return BytePatch(name, offset, before, after)
 
 
-def apply_file_patches(path: Path, entry: dict, dry_run: bool) -> None:
-    expected_hash = str(entry["sha256"]).lower()
-    actual_hash = sha256_file(path).lower()
-    if actual_hash != expected_hash:
+def verify_expected_hash(path: Path, expected: str, label: str) -> None:
+    actual = sha256_file(path).lower()
+    expected = expected.lower()
+    if actual != expected:
         raise PatchError(
-            f"Hash mismatch for {path.name}\n"
-            f" expected: {expected_hash}\n"
-            f" actual:   {actual_hash}"
+            f"{label} hash mismatch for {path.name}\n"
+            f" expected: {expected}\n"
+            f" actual:   {actual}"
         )
+
+
+def apply_file_patches(
+    path: Path,
+    entry: dict,
+    dry_run: bool = False,
+    create_backup: bool = True,
+) -> None:
+    verify_expected_hash(path, str(entry["sha256"]), "source")
 
     patches = [validate_patch(p) for p in entry.get("patches", [])]
     if not patches:
@@ -116,20 +106,34 @@ def apply_file_patches(path: Path, entry: dict, dry_run: bool) -> None:
         if not dry_run:
             data[p.offset:end] = p.after
 
-    if not dry_run:
+    if dry_run:
+        return
+
+    if create_backup:
         backup = path.with_suffix(path.suffix + ".rex.bak")
         if not backup.exists():
             shutil.copy2(path, backup)
-        path.write_bytes(data)
-        print(f"[WRITE] {path}")
         print(f"[BACKUP] {backup}")
+
+    path.write_bytes(data)
+    print(f"[WRITE] {path}")
+
+    patched_hash = entry.get("patched_sha256")
+    if patched_hash:
+        verify_expected_hash(path, str(patched_hash), "patched")
+        print(f"[OK] patched SHA-256 verified: {path.name}")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("game_dir", type=Path)
-    ap.add_argument("--manifest", type=Path, default=Path("patches/1.7.3.8-x86.json"))
+    ap.add_argument(
+        "--manifest",
+        type=Path,
+        default=Path("patches/1.7.3.8-x86.json"),
+    )
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--no-backup", action="store_true")
     args = ap.parse_args()
 
     game_dir = args.game_dir.resolve()
@@ -148,7 +152,12 @@ def main() -> int:
             target = game_dir / entry["path"]
             if not target.is_file():
                 raise PatchError(f"Required file not found: {target}")
-            apply_file_patches(target, entry, args.dry_run)
+            apply_file_patches(
+                target,
+                entry,
+                dry_run=args.dry_run,
+                create_backup=not args.no_backup,
+            )
     except (PatchError, KeyError, ValueError, json.JSONDecodeError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1

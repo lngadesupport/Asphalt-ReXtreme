@@ -45,3 +45,6 @@ dumps/
 *.suo
 Thumbs.db
 .DS_Store
+
+# Locally generated branding binary
+installer/AsphaltReXtreme.Setup/Resources/app.ico
