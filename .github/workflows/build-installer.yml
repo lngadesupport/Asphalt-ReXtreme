@@ -1,0 +1,33 @@
+name: Build installer shell
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "installer/**"
+      - ".github/workflows/build-installer.yml"
+  push:
+    branches:
+      - "release/1.0-rc1"
+    paths:
+      - "installer/**"
+      - ".github/workflows/build-installer.yml"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish self-contained WPF installer
+        shell: pwsh
+        run: dotnet publish installer/AsphaltReXtreme.Setup/AsphaltReXtreme.Setup.csproj -c Release -r win-x64 --self-contained true -o .artifacts/installer
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Asphalt-ReXtreme-Installer-Shell
+          path: .artifacts/installer/**
