@@ -20,14 +20,20 @@ from datetime import datetime, timezone
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-import audit_offline_data
-import make_premium_shop
 try:
-    from tools import patcher
+    from tools import (
+        audit_offline_data,
+        make_premium_shop,
+        patcher,
+        repack_xmlbin,
+        xtea_assets,
+    )
 except ModuleNotFoundError:  # direct script execution from tools/
+    import audit_offline_data
+    import make_premium_shop
     import patcher
-import repack_xmlbin
-import xtea_assets
+    import repack_xmlbin
+    import xtea_assets
 
 
 DROP_ROOT_FILES = {
