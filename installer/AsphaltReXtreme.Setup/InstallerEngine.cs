@@ -1,6 +1,7 @@
-using System.Diagnostics;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
+using Windows.Management.Deployment;
 
 namespace AsphaltReXtreme.Setup;
 
@@ -42,61 +43,101 @@ public sealed class InstallerEngine
         await VerifyHashIfPresentAsync(packagePath, manifest.packageSha256, ct);
         await VerifyHashIfPresentAsync(certPath, manifest.certificateSha256, ct);
 
-        progress.Report(new(0.18, "Preparando o Windows...", "Confiando no certificado local do ReXtreme."));
-        await RunPowerShellAsync(
-            $"Import-Certificate -FilePath {PsQuote(certPath)} -CertStoreLocation 'Cert:\\LocalMachine\\TrustedPeople' | Out-Null",
-            ct);
+        progress.Report(new(0.16, "Preparando o Windows...", "Confiando no certificado local do ReXtreme."));
+        TrustPublisherCertificate(certPath);
 
         progress.Report(new(
-            0.34,
+            0.28,
             "Preparando dependências...",
             dependencyPath is null
                 ? "A dependência VC120 deve já estar instalada."
                 : "VC120 x86 será instalada junto com o jogo."));
 
-        progress.Report(new(0.48, "Instalando Asphalt ReXtreme...", "Registrando o pacote independente ReXtreme."));
+        var packageUri = new Uri(packagePath, UriKind.Absolute);
+        var dependencies = dependencyPath is null
+            ? Array.Empty<Uri>()
+            : new[] { new Uri(dependencyPath, UriKind.Absolute) };
 
-        string installCommand;
-        if (dependencyPath is not null)
+        var packageManager = new PackageManager();
+        var operation = packageManager.AddPackageAsync(
+            packageUri,
+            dependencies,
+            DeploymentOptions.ForceApplicationShutdown);
+
+        operation.Progress = (_, deploymentProgress) =>
         {
-            installCommand =
-                $"Add-AppxPackage -Path {PsQuote(packagePath)} -DependencyPath {PsQuote(dependencyPath)} " +
-                "-ForceApplicationShutdown -RetainFilesOnFailure";
-        }
-        else
+            var fraction = deploymentProgress.percentage / 100.0;
+            progress.Report(new(
+                0.32 + fraction * 0.58,
+                "Instalando Asphalt ReXtreme...",
+                "Aplicando o Full Repack e registrando a identidade ReXtreme."));
+        };
+
+        using var registration = ct.Register(() => operation.Cancel());
+        var result = await operation;
+
+        if (result.ExtendedErrorCode is not null)
         {
-            installCommand =
-                $"Add-AppxPackage -Path {PsQuote(packagePath)} -ForceApplicationShutdown -RetainFilesOnFailure";
+            throw new InvalidOperationException(
+                string.IsNullOrWhiteSpace(result.ErrorText)
+                    ? result.ExtendedErrorCode.Message
+                    : result.ErrorText,
+                result.ExtendedErrorCode);
         }
 
-        await RunPowerShellAsync(installCommand, ct);
+        progress.Report(new(0.94, "Verificando instalação...", "Confirmando a identidade ReXtreme."));
+        var installed = packageManager
+            .FindPackagesForUser(string.Empty)
+            .FirstOrDefault(p => string.Equals(
+                p.Id.Name,
+                "ReXtreme.AsphaltXtreme",
+                StringComparison.OrdinalIgnoreCase));
 
-        progress.Report(new(0.90, "Verificando instalação...", "Confirmando a identidade ReXtreme."));
-        await RunPowerShellAsync(
-            "$p = Get-AppxPackage -Name 'ReXtreme.AsphaltXtreme' -ErrorAction Stop; " +
-            "if (-not $p) { throw 'Package not found after install.' }",
-            ct);
+        if (installed is null)
+            throw new InvalidOperationException("O pacote ReXtreme não foi localizado após a instalação.");
 
         progress.Report(new(1.0, "Instalação concluída.", "Asphalt ReXtreme está pronto para jogar."));
     }
 
-    public async Task LaunchAsync(CancellationToken ct = default)
+    public async Task LaunchAsync()
     {
-        const string script =
-            "$p = Get-AppxPackage -Name 'ReXtreme.AsphaltXtreme' -ErrorAction Stop; " +
-            "$m = Get-AppxPackageManifest $p; " +
-            "$id = $m.Package.Applications.Application[0].Id; " +
-            "$target = 'shell:AppsFolder\\' + $p.PackageFamilyName + '!' + $id; " +
-            "Start-Process explorer.exe $target;";
-        await RunPowerShellAsync(script, ct);
+        var packageManager = new PackageManager();
+        var package = packageManager
+            .FindPackagesForUser(string.Empty)
+            .FirstOrDefault(p => string.Equals(
+                p.Id.Name,
+                "ReXtreme.AsphaltXtreme",
+                StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidOperationException("Asphalt ReXtreme não está instalado.");
+
+        var entries = await package.GetAppListEntriesAsync();
+        var entry = entries.FirstOrDefault()
+            ?? throw new InvalidOperationException("O pacote não expõe uma entrada inicializável.");
+
+        if (!await entry.LaunchAsync())
+            throw new InvalidOperationException("O Windows recusou a inicialização do jogo.");
     }
 
     private string RequirePayload(string fileName)
     {
-        var path = Path.Combine(_payloadDirectory, fileName);
+        var path = Path.GetFullPath(Path.Combine(_payloadDirectory, fileName));
+        var root = Path.GetFullPath(_payloadDirectory) + Path.DirectorySeparatorChar;
+
+        if (!path.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("O manifesto de instalação contém um caminho inválido.");
+
         if (!File.Exists(path))
             throw new FileNotFoundException($"Arquivo obrigatório ausente: {fileName}", path);
+
         return path;
+    }
+
+    private static void TrustPublisherCertificate(string path)
+    {
+        using var cert = new X509Certificate2(path);
+        using var store = new X509Store(StoreName.TrustedPeople, StoreLocation.LocalMachine);
+        store.Open(OpenFlags.ReadWrite);
+        store.Add(cert);
     }
 
     private static async Task VerifyHashIfPresentAsync(string path, string? expected, CancellationToken ct)
@@ -107,44 +148,8 @@ public sealed class InstallerEngine
         await using var stream = File.OpenRead(path);
         using var sha = SHA256.Create();
         var actual = Convert.ToHexString(await sha.ComputeHashAsync(stream, ct)).ToLowerInvariant();
+
         if (!string.Equals(actual, expected.Trim().ToLowerInvariant(), StringComparison.Ordinal))
             throw new InvalidDataException($"SHA-256 inválido: {Path.GetFileName(path)}");
-    }
-
-    private static string PsQuote(string value) => "'" + value.Replace("'", "''") + "'";
-
-    private static async Task RunPowerShellAsync(string command, CancellationToken ct)
-    {
-        var psi = new ProcessStartInfo
-        {
-            FileName = "powershell.exe",
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WindowStyle = ProcessWindowStyle.Hidden,
-        };
-
-        psi.ArgumentList.Add("-NoProfile");
-        psi.ArgumentList.Add("-NonInteractive");
-        psi.ArgumentList.Add("-ExecutionPolicy");
-        psi.ArgumentList.Add("Bypass");
-        psi.ArgumentList.Add("-Command");
-        psi.ArgumentList.Add(command);
-
-        using var process = new Process { StartInfo = psi };
-        process.Start();
-
-        var stdoutTask = process.StandardOutput.ReadToEndAsync(ct);
-        var stderrTask = process.StandardError.ReadToEndAsync(ct);
-        await process.WaitForExitAsync(ct);
-        var stdout = await stdoutTask;
-        var stderr = await stderrTask;
-
-        if (process.ExitCode != 0)
-        {
-            var message = string.IsNullOrWhiteSpace(stderr) ? stdout : stderr;
-            throw new InvalidOperationException(message.Trim());
-        }
     }
 }
