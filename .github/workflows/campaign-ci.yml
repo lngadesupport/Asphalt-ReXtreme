@@ -32,7 +32,10 @@ jobs:
           $failed = $false
           foreach ($path in @(
             "tools/prepare_campaign_source.ps1",
-            "tools/campaign_static_audit.ps1"
+            "tools/campaign_static_audit.ps1",
+            "tools/windows-dev/Register-CampaignDev.ps1",
+            "tools/windows-dev/Launch-CampaignDev.ps1",
+            "tools/windows-dev/Unregister-CampaignDev.ps1"
           )) {
             $tokens = $null
             $errors = $null
