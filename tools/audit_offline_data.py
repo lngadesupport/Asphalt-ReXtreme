@@ -15,7 +15,10 @@ import zipfile
 from collections import Counter
 from pathlib import Path
 
-import xtea_assets
+try:
+    from tools import xtea_assets
+except ModuleNotFoundError:  # direct script execution from tools/
+    import xtea_assets
 
 
 TERMS = {
