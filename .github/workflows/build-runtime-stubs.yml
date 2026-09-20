@@ -31,9 +31,9 @@ jobs:
           for /f "tokens=1,* delims==" %%A in (msvc-env.txt) do set "%%A=%%B"
           mkdir out
           cl /nologo /c /GS- /Zl /Foout\igp_stub.obj runtime-stubs\igp_stub.c
-          link /nologo /dll /noentry /nodefaultlib /machine:x86 /dynamicbase /nxcompat /def:runtime-stubs\IGPLib_x86.def /out:out\IGPLib_x86.dll out\igp_stub.obj
+          link /nologo /Brepro /dll /noentry /nodefaultlib /machine:x86 /dynamicbase /nxcompat /def:runtime-stubs\IGPLib_x86.def /out:out\IGPLib_x86.dll out\igp_stub.obj
           cl /nologo /c /GS- /Zl /Foout\iap_stub.obj runtime-stubs\iap_stub.c
-          link /nologo /dll /noentry /nodefaultlib /machine:x86 /dynamicbase /nxcompat /def:runtime-stubs\InAppPurchaseComponentW8.def /out:out\InAppPurchaseComponentW8.dll out\iap_stub.obj
+          link /nologo /Brepro /dll /noentry /nodefaultlib /machine:x86 /dynamicbase /nxcompat /def:runtime-stubs\InAppPurchaseComponentW8.def /out:out\InAppPurchaseComponentW8.dll out\iap_stub.obj
           certutil -hashfile out\IGPLib_x86.dll SHA256 > out\SHA256.txt
           certutil -hashfile out\InAppPurchaseComponentW8.dll SHA256 >> out\SHA256.txt
           dumpbin /headers out\IGPLib_x86.dll > out\IGPLib_x86.headers.txt
