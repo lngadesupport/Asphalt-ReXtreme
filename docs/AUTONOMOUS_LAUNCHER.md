@@ -71,3 +71,26 @@ Alpha 0.8 changes the bootstrapper architecture to reduce Windows-specific deplo
 - continues to validate exact game hashes and preserve backups before patching.
 
 The project does not claim that any Windows application can be guaranteed error-free on every future OS, driver or managed-policy configuration. The launcher contract is instead: detect known prerequisites up front, self-repair known failure modes, preserve user data/backups, and only surface an actionable diagnostic after automated recovery has been exhausted.
+
+
+## Alpha 0.9 signed-package model
+
+Alpha 0.9 removes loose-file registration from the normal launcher flow.
+
+Previous alphas used `Add-AppxPackage -Register AppxManifest.xml`. Microsoft documents loose-file registration as a development/testing mechanism, not a production distribution model. Alpha 0.9 instead:
+
+1. verifies and patches the supported 1.7.3.8 x86 source;
+2. builds a clean staging layout excluding original signature/blockmap metadata and ReXtreme tooling/backups;
+3. changes only the package version in staging to `1.7.3.9`;
+4. obtains Microsoft's Windows SDK BuildTools when not cached;
+5. uses `MakeAppx.exe` to create a normal APPX;
+6. creates a local code-signing certificate whose Subject exactly matches the manifest Publisher;
+7. trusts that certificate for the current user;
+8. signs the APPX with SHA-256 using `SignTool.exe`;
+9. verifies the signature;
+10. installs the APPX with `Add-AppxPackage -Path` and the VC120 x86 dependency;
+11. launches the normal AppUserModelID.
+
+The package family remains compatible with the original manifest because the Publisher string is preserved. The ReXtreme package is distinguishable by version `1.7.3.9`.
+
+The launcher no longer attempts to solve deployment failures by forcing Developer Mode or repeatedly registering a loose Store-origin package.
