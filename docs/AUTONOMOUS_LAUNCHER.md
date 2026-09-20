@@ -34,3 +34,23 @@ The public repository does not contain Microsoft's binary framework package or p
 ## Branding
 
 Alpha 0.6 and later use the project owner's RX artwork as the embedded Windows executable icon.
+
+
+## Automatic sideload preparation
+
+Starting with Alpha 0.7, the launcher handles loose-APPX registration policy automatically.
+
+Registration flow:
+1. try `Add-AppxPackage -Register ... -DisableDevelopmentMode` first;
+2. if Windows requires development/sideload mode, relaunch the ReXtreme launcher through UAC;
+3. enable the Microsoft-documented local policy values for trusted/development apps;
+4. register the extracted APPX;
+5. launch the game.
+
+The launcher configures:
+- `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock\AllowAllTrustedApps=1`
+- `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock\AllowDevelopmentWithoutDevLicense=1`
+
+and matching Appx policy values when administrative access is available.
+
+Normal users still only launch `AsphaltReXtreme.exe`; no PowerShell command is required.
