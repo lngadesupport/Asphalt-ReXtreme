@@ -20,3 +20,48 @@ jobs:
         run: python -m compileall -q tools tests
       - name: Run Campaign economy tests
         run: python -m unittest discover -s tests -v
+
+  powershell-validation:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse Campaign PowerShell tools
+        shell: pwsh
+        run: |
+          $failed = $false
+          foreach ($path in @(
+            "tools/prepare_campaign_source.ps1",
+            "tools/campaign_static_audit.ps1"
+          )) {
+            $tokens = $null
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $path),
+              [ref]$tokens,
+              [ref]$errors
+            )
+            if ($errors.Count -gt 0) {
+              $failed = $true
+              Write-Host "Parse errors in $path"
+              $errors | Format-List
+            }
+          }
+          if ($failed) { exit 1 }
+
+      - name: Smoke-test static audit
+        shell: pwsh
+        run: |
+          $fixture = Join-Path $env:RUNNER_TEMP "campaign-fixture"
+          $out = Join-Path $env:RUNNER_TEMP "campaign-output"
+          New-Item -ItemType Directory -Force -Path $fixture | Out-Null
+          "MZ fake AMS Windows.ApplicationModel.Store ms-windows-store: Microsoft.Live.dll" |
+            Set-Content -LiteralPath (Join-Path $fixture "AMS.exe") -Encoding ASCII
+          "<Package><Identity Name='A278AB0D.AsphaltXtreme'/></Package>" |
+            Set-Content -LiteralPath (Join-Path $fixture "AppxManifest.xml") -Encoding UTF8
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/campaign_static_audit.ps1 -GameDir $fixture -OutputRoot $out
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $report = Get-ChildItem -LiteralPath $out -Directory | Select-Object -First 1
+          if (-not $report) { throw "Audit report directory was not created" }
+          $csv = Import-Csv (Join-Path $report.FullName "reports/microsoft-service-findings.csv")
+          if (@($csv).Count -lt 2) { throw "Expected Store/package findings were not detected" }
