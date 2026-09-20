@@ -46,7 +46,7 @@ The manifest registers:
 - Vungle/advertising-related runtime components;
 - Facebook/MSN runtime classes.
 
-The first offline build should keep required files present so APPX activation/import resolution remains stable, while the client stops depending on their network results.
+During reverse engineering, component files may remain in the analysis tree so imports and call sites can be classified. The final Campaign runtime must not depend on APPX activation, Store licensing, advertising runtime activation or Microsoft account services.
 
 ## Verified service strings / endpoints in AMS.exe
 
@@ -78,17 +78,18 @@ These are targets for further xref/call-graph analysis. They are **not yet patch
 
 The client contains explicit `localprofile` / `/localprofile` strings and WCP local-folder/storage APIs. This supports the goal of retaining profile state locally while disconnecting remote sync.
 
-## Offline implementation order
+## Campaign implementation order
 
-1. Keep platform DLLs/files present so the executable and APPX runtime can load normally.
-2. Disable social configuration for Windows8 where safe.
-3. Bypass IGP/store/ad UI entry points.
-4. Prevent credit/hardcurrency/ad-reward/energy operations from requiring remote sync.
-5. Preserve local profile/save writes.
-6. Test startup and career with networking physically disabled.
-7. Only after behavior is verified, remove manifest capabilities/components that are proven unnecessary.
+1. Inventory PE imports and WinRT/package activation on the exact supported build.
+2. Classify mixed-purpose platform calls so display/input/local storage remain intact.
+3. Bypass IGP, Store, IAP, social and advertising initialization/call sites.
+4. Replace package-family save paths with Campaign-owned local paths.
+5. Prevent credit, hardcurrency, ad-reward and energy operations from requiring remote sync.
+6. Preserve local profile/save writes and validate atomic persistence.
+7. Remove APPX/package metadata from the final portable output only after package identity is no longer required.
+8. Validate with Internet enabled and Microsoft Store still signed in.
 
-This conservative order avoids breaking unrelated Windows functionality while removing the service dependency.
+Campaign Edition does not use APPX installation as a compatibility fallback.
 
 ## Central connectivity flag / Offline Alpha
 
