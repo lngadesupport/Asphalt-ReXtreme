@@ -94,3 +94,41 @@ Previous alphas used `Add-AppxPackage -Register AppxManifest.xml`. Microsoft doc
 The package family remains compatible with the original manifest because the Publisher string is preserved. The ReXtreme package is distinguishable by version `1.7.3.9`.
 
 The launcher no longer attempts to solve deployment failures by forcing Developer Mode or repeatedly registering a loose Store-origin package.
+
+
+## Alpha 0.10 bootstrap fixes
+
+Alpha 0.10 corrects two Alpha 0.9 bootstrap defects and adds a real fast path.
+
+### Manifest isolation
+
+Alpha 0.9 used hard links when creating the APPX staging tree. Because `AppxManifest.xml` was also hard-linked, changing the staging package version could mutate the source manifest.
+
+Alpha 0.10:
+- always copies `AppxManifest.xml` into staging;
+- accepts source manifests at `1.7.3.8` or the accidental `1.7.3.9` state left by Alpha 0.9;
+- normalizes only the staging manifest to package version `1.7.3.10`;
+- never mutates the source manifest during package creation.
+
+### Embedded signing identity
+
+Alpha 0.9 generated a self-signed certificate at runtime through PowerShell. On some Windows configurations, `New-SelfSignedCertificate` can fail because of certificate-provider permissions.
+
+Alpha 0.10 uses a pre-generated private test signing certificate embedded only in the private launcher build. The public repository does **not** contain the private key. The launcher:
+- extracts the public certificate/PFX into the private runtime cache;
+- adds only the public certificate to the current user's TrustedPeople store;
+- signs with SignTool using the embedded test PFX;
+- does not run `New-SelfSignedCertificate`.
+
+A future public release should use a proper project signing identity rather than this private alpha certificate.
+
+### Performance
+
+Normal startup checks for an already installed `1.7.3.10` package first. If present, it skips patching, dependency setup, SDK discovery, staging, packaging and signing and immediately launches the game.
+
+The launcher also caches:
+- VC120;
+- Windows SDK BuildTools;
+- the signed ReXtreme APPX.
+
+A retry after an installation failure reuses a verified signed APPX instead of rebuilding the game package.
