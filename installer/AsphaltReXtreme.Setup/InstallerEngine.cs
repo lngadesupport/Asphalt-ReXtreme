@@ -18,6 +18,7 @@ public sealed class InstallerEngine
         string package,
         string certificate,
         string? dependency,
+        string? dependencySha256,
         string? packageSha256,
         string? certificateSha256,
         bool releaseEligible);
@@ -75,6 +76,7 @@ public sealed class InstallerEngine
 
         await VerifyHashIfPresentAsync(packagePath, manifest.packageSha256, ct);
         await VerifyHashIfPresentAsync(certPath, manifest.certificateSha256, ct);
+        await VerifyHashIfPresentAsync(dependencyPath, manifest.dependencySha256, ct);
 
         progress.Report(new(
             0.15,
