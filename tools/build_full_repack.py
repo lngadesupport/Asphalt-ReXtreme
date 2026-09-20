@@ -15,6 +15,7 @@ import os
 import shutil
 import sys
 import tempfile
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -22,6 +23,7 @@ import xml.etree.ElementTree as ET
 import make_premium_shop
 import patcher
 import repack_xmlbin
+import xtea_assets
 
 
 DROP_ROOT_FILES = {
@@ -163,35 +165,71 @@ def entry_name_for_plaintext(path: Path) -> str:
     return f"xml/{path.stem}.xtea"
 
 
-def apply_xml_data(stage: Path, plaintext_dir: Path | None) -> dict:
-    if plaintext_dir is None:
-        return {
-            "applied": False,
-            "release_eligible": False,
-            "reason": "no private XML plaintext directory supplied",
-        }
-    if not plaintext_dir.is_dir():
-        raise RuntimeError(f"XML plaintext directory not found: {plaintext_dir}")
+def derive_baseline_plaintext(xml_bin: Path, out_dir: Path) -> Path:
+    """Derive only the data that has a deterministic public transform.
 
+    The source remains the user's own xml.bin. No decrypted game data is
+    checked into the repository.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    wanted = {
+        "xml/asphaltshop.xtea": out_dir / "asphaltshop.xml",
+    }
+
+    with zipfile.ZipFile(xml_bin) as archive:
+        names = set(archive.namelist())
+        missing = sorted(set(wanted) - names)
+        if missing:
+            raise RuntimeError(
+                "xml.bin lacks required baseline entries: " + ", ".join(missing)
+            )
+
+        for entry, destination in wanted.items():
+            try:
+                payload, _meta = xtea_assets.decode_stream(archive.read(entry))
+            except xtea_assets.DecodeError as exc:
+                raise RuntimeError(f"Could not decode {entry}: {exc}") from exc
+            destination.write_bytes(payload)
+
+    return out_dir
+
+
+def apply_xml_data(stage: Path, plaintext_dir: Path | None) -> dict:
     xml_bin = stage / "data" / "xml.bin"
     hdr = stage / "data" / "xml.bin.hdr"
     if not xml_bin.is_file() or not hdr.is_file():
         raise RuntimeError("stage is missing data/xml.bin or data/xml.bin.hdr")
 
-    originals = [
-        p for p in plaintext_dir.iterdir()
-        if p.is_file() and p.suffix.lower() in {".xml", ".json"}
-    ]
-    if not originals:
-        raise RuntimeError(f"No XML/JSON plaintext files found in {plaintext_dir}")
+    explicit_overrides = plaintext_dir is not None
 
     with tempfile.TemporaryDirectory(prefix="rextreme-xml-") as tmp_raw:
         tmp = Path(tmp_raw)
+
+        if plaintext_dir is None:
+            plaintext_dir = derive_baseline_plaintext(
+                xml_bin,
+                tmp / "derived-baseline",
+            )
+            plaintext_origin = "auto-derived-from-user-source"
+        else:
+            plaintext_dir = plaintext_dir.resolve()
+            plaintext_origin = "approved-private-overrides"
+
+        if not plaintext_dir.is_dir():
+            raise RuntimeError(f"XML plaintext directory not found: {plaintext_dir}")
+
+        originals = [
+            p for p in plaintext_dir.iterdir()
+            if p.is_file() and p.suffix.lower() in {".xml", ".json"}
+        ]
+        if not originals:
+            raise RuntimeError(f"No XML/JSON plaintext files found in {plaintext_dir}")
+
         replacements: dict[str, Path] = {}
         transforms: list[dict] = []
 
         for src in originals:
-            out = tmp / src.name
+            out = tmp / ("patched-" + src.name)
             if src.stem.lower() == "asphaltshop":
                 report_path = tmp / "asphaltshop.report.json"
                 report = make_premium_shop.transform_file(
@@ -237,14 +275,22 @@ def apply_xml_data(stage: Path, plaintext_dir: Path | None) -> dict:
 
         shutil.copy2(rebuilt, xml_bin)
 
+    release_eligible = explicit_overrides
     final = {
         "applied": True,
-        "release_eligible": True,
-        "plaintext_source": str(plaintext_dir),
+        "baseline_premium_applied": True,
+        "release_eligible": release_eligible,
+        "plaintext_origin": plaintext_origin,
         "replacement_count": len(replacements),
         "transforms": transforms,
         "xmlbin_sha256": sha256_file(xml_bin),
     }
+
+    if not release_eligible:
+        final["reason"] = (
+            "baseline Premium data was auto-derived and applied, but approved "
+            "offline plaintext overrides were not supplied"
+        )
 
     report_dir = stage / "ReXtreme"
     report_dir.mkdir(exist_ok=True)
