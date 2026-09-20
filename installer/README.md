@@ -38,3 +38,8 @@ independent package identity before enabling JOGAR AGORA.
 
 The final 1.0 outer packer may combine these files into a single downloadable
 Setup executable. RC1 keeps them separated so failures can be diagnosed.
+
+
+## CI
+
+Every push to `release/1.0-rc1` recompiles the self-contained WPF installer on a Windows runner. This is a compile gate only; proprietary payload/media are supplied locally for private RC packaging.
