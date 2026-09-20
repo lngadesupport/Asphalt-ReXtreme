@@ -1,66 +1,185 @@
 #!/usr/bin/env python3
-"""Simulate mandatory-car purchase progression and quantify farming."""
+"""Simulate Campaign Edition mandatory-car progression and repeat farming."""
 from __future__ import annotations
-import argparse,json,math,statistics
+
+import argparse
+import json
+import math
+import statistics
 from pathlib import Path
 from economy_audit import FILTERS
 
-def load(p): return json.loads(Path(p).read_text(encoding="utf-8-sig"))
+
+def load(p):
+    return json.loads(Path(p).read_text(encoding="utf-8-sig"))
+
+
 def event_credits(e):
-    n=int(e.get("money_for_playing",0) or 0)+int(e.get("position_1",0) or 0)
-    for pre in ("first_star_reward","second_star_reward","third_star_reward","completion_reward"):
-        if str(e.get(pre+"_type","")).lower()=="credits": n+=int(e.get(pre+"_amount",0) or 0)
+    n = int(e.get("money_for_playing", 0) or 0) + int(e.get("position_1", 0) or 0)
+    for pre in ("first_star_reward", "second_star_reward", "third_star_reward", "completion_reward"):
+        if str(e.get(pre + "_type", "")).lower() == "credits":
+            n += int(e.get(pre + "_amount", 0) or 0)
     return n
-def repeat_payout(e): return int(e.get("money_for_playing",0) or 0)+int(e.get("position_1",0) or 0)
+
+
+def repeat_payout(e):
+    return int(e.get("money_for_playing", 0) or 0) + int(e.get("position_1", 0) or 0)
+
+
+def repeat_multiplier(repeat_count: int, grace: int, decay: float, floor: float) -> float:
+    if repeat_count <= grace:
+        return 1.0
+    return max(floor, 1.0 - (repeat_count - grace) * decay)
+
 
 def main():
-    ap=argparse.ArgumentParser(); ap.add_argument("career_data",type=Path); ap.add_argument("car_catalog",type=Path)
-    ap.add_argument("--reward-multiplier",type=float,default=1.0); ap.add_argument("--vehicle-multiplier",type=float,default=.80)
-    ap.add_argument("--premium-currency-race-multiplier",type=float,default=.50)
-    ap.add_argument("--upgrade-reserve-fraction",type=float,default=0.0)
-    ap.add_argument("--out",type=Path)
-    a=ap.parse_args(); career=load(a.career_data); cars=load(a.car_catalog); byid={int(c["car_id"]):c for c in cars}
-    ratios={cls:statistics.median([c["credit_price"]/c["hardcurrency_price"] for c in cars
-            if c.get("class")==cls and c.get("credit_price",0)>0 and c.get("hardcurrency_price",0)>0]) for cls in "DCBAS"}
-    seasons=sorted([s for s in career["seasons"] if int(s.get("serieid",0) or 0)==1],key=lambda s:int(s.get("index",0) or 0))
-    wallet=0.0; premium_wallet=0.0; owned=set(); prior=[]; gates=[]; total_farm=0; max_farm=0
+    ap = argparse.ArgumentParser()
+    ap.add_argument("career_data", type=Path)
+    ap.add_argument("car_catalog", type=Path)
+    ap.add_argument("--reward-multiplier", type=float, default=1.0)
+    ap.add_argument("--vehicle-multiplier", type=float, default=0.20)
+    ap.add_argument("--premium-currency-race-multiplier", type=float, default=0.50)
+    ap.add_argument("--upgrade-reserve-fraction", type=float, default=0.0)
+    ap.add_argument("--repeat-grace", type=int, default=10)
+    ap.add_argument("--repeat-decay", type=float, default=0.002)
+    ap.add_argument("--repeat-floor", type=float, default=0.98)
+    ap.add_argument("--out", type=Path)
+    a = ap.parse_args()
+
+    if not (0 < a.repeat_floor <= 1.0):
+        raise SystemExit("repeat floor must be > 0 and <= 1")
+    if a.repeat_decay < 0:
+        raise SystemExit("repeat decay must be >= 0")
+
+    career = load(a.career_data)
+    cars = load(a.car_catalog)
+    byid = {int(c["car_id"]): c for c in cars}
+    ratios = {
+        cls: statistics.median([
+            c["credit_price"] / c["hardcurrency_price"]
+            for c in cars
+            if c.get("class") == cls
+            and c.get("credit_price", 0) > 0
+            and c.get("hardcurrency_price", 0) > 0
+        ])
+        for cls in "DCBAS"
+    }
+
+    seasons = sorted(
+        [s for s in career["seasons"] if int(s.get("serieid", 0) or 0) == 1],
+        key=lambda s: int(s.get("index", 0) or 0),
+    )
+
+    wallet = 0.0
+    premium_wallet = 0.0
+    owned = set()
+    prior = []
+    gates = []
+    total_farm = 0
+    max_farm = 0
+
     for s in seasons:
-        sid=int(s.get("seasonid",s.get("id",0)) or 0)
-        evs=sorted([e for e in career["events"] if int(e.get("season",0) or 0)==sid and not e.get("masteries",False)],
-                   key=lambda e:int(e.get("eventid",0) or 0))
+        sid = int(s.get("seasonid", s.get("id", 0)) or 0)
+        evs = sorted(
+            [
+                e for e in career["events"]
+                if int(e.get("season", 0) or 0) == sid and not e.get("masteries", False)
+            ],
+            key=lambda e: int(e.get("eventid", 0) or 0),
+        )
+
         for e in evs:
-            f=str(e.get("carracerfilter","") or "")
+            f = str(e.get("carracerfilter", "") or "")
             if f in FILTERS and FILTERS[f] not in owned:
-                cid=FILTERS[f]; c=byid[cid]
-                if int(c.get("credit_price",0) or 0)>0:
-                    price=round(int(c["credit_price"])*a.vehicle_multiplier); source="credit_80pct"
+                cid = FILTERS[f]
+                c = byid[cid]
+                if int(c.get("credit_price", 0) or 0) > 0:
+                    price = round(int(c["credit_price"]) * a.vehicle_multiplier)
+                    source = "credit_20pct"
                 else:
-                    price=round(int(c["hardcurrency_price"])*ratios[c["class"]]*a.vehicle_multiplier)
-                    source="hc_class_equivalent_80pct"
-                reserve=round(int(c.get("credit_upgrade_total",0) or 0)*a.upgrade_reserve_fraction)
-                need=price+reserve; before=wallet; best=max(prior,default=0)*a.reward_multiplier; farm=0
-                if wallet<need and best>0:
-                    farm=math.ceil((need-wallet)/best); wallet+=farm*best
-                short=max(0,need-wallet); wallet-=need
-                total_farm+=farm; max_farm=max(max_farm,farm); owned.add(cid)
-                gates.append({"event_id":int(e["eventid"]),"car_id":cid,"class":c["class"],"price":price,
-                    "upgrade_reserve":reserve,"required_total":need,"price_source":source,
-                    "wallet_before":round(before),"best_prior_repeat_payout":round(best),
-                    "extra_repeats_needed":farm,"unfunded_shortfall":round(short),"wallet_after_purchase":round(wallet)})
-            normal_repeat=repeat_payout(e)
-            wallet+=event_credits(e)*a.reward_multiplier
-            premium_wallet+=math.floor(normal_repeat*a.premium_currency_race_multiplier)
+                    price = round(
+                        int(c["hardcurrency_price"])
+                        * ratios[c["class"]]
+                        * a.vehicle_multiplier
+                    )
+                    source = "hc_class_equivalent_20pct"
+
+                reserve = round(
+                    int(c.get("credit_upgrade_total", 0) or 0)
+                    * a.upgrade_reserve_fraction
+                )
+                need = price + reserve
+                before = wallet
+                best = max(prior, default=0) * a.reward_multiplier
+                farm = 0
+
+                while wallet < need and best > 0:
+                    farm += 1
+                    wallet += best * repeat_multiplier(
+                        farm, a.repeat_grace, a.repeat_decay, a.repeat_floor
+                    )
+
+                short = max(0, need - wallet)
+                wallet -= need
+                total_farm += farm
+                max_farm = max(max_farm, farm)
+                owned.add(cid)
+                gates.append({
+                    "event_id": int(e["eventid"]),
+                    "car_id": cid,
+                    "class": c["class"],
+                    "price": price,
+                    "upgrade_reserve": reserve,
+                    "required_total": need,
+                    "price_source": source,
+                    "wallet_before": round(before),
+                    "best_prior_repeat_payout": round(best),
+                    "extra_repeats_needed": farm,
+                    "last_repeat_multiplier": (
+                        repeat_multiplier(farm, a.repeat_grace, a.repeat_decay, a.repeat_floor)
+                        if farm else 1.0
+                    ),
+                    "unfunded_shortfall": round(short),
+                    "wallet_after_purchase": round(wallet),
+                })
+
+            normal_repeat = repeat_payout(e)
+            wallet += event_credits(e) * a.reward_multiplier
+            premium_wallet += math.floor(normal_repeat * a.premium_currency_race_multiplier)
             prior.append(normal_repeat)
-        for r in s.get("rewards",[]) or []:
-            if str(r.get("completionrewardtype","")).lower()=="credits":
-                wallet+=int(r.get("completionrewardamount",0) or 0)*a.reward_multiplier
-    result={"reward_multiplier":a.reward_multiplier,"vehicle_multiplier":a.vehicle_multiplier,
-            "upgrade_reserve_fraction":a.upgrade_reserve_fraction,"mandatory_cars":len(owned),
-            "total_extra_repeats":total_farm,"max_extra_repeats_at_one_gate":max_farm,
-            "final_wallet":round(wallet),"final_premium_currency":round(premium_wallet),
-            "premium_currency_race_multiplier":a.premium_currency_race_multiplier,
-            "gates":gates,"class_credit_per_hardcurrency_median":ratios}
-    print(json.dumps({k:v for k,v in result.items() if k not in ("gates","class_credit_per_hardcurrency_median")},indent=2))
-    if a.out: a.out.write_text(json.dumps(result,indent=2,ensure_ascii=False),encoding="utf-8")
+
+        for r in s.get("rewards", []) or []:
+            if str(r.get("completionrewardtype", "")).lower() == "credits":
+                wallet += int(r.get("completionrewardamount", 0) or 0) * a.reward_multiplier
+
+    result = {
+        "reward_multiplier": a.reward_multiplier,
+        "vehicle_multiplier": a.vehicle_multiplier,
+        "discount_fraction": 1.0 - a.vehicle_multiplier,
+        "upgrade_reserve_fraction": a.upgrade_reserve_fraction,
+        "repeat_rule": {
+            "grace_runs": a.repeat_grace,
+            "decay_per_run": a.repeat_decay,
+            "floor": a.repeat_floor,
+        },
+        "mandatory_cars": len(owned),
+        "total_extra_repeats": total_farm,
+        "max_extra_repeats_at_one_gate": max_farm,
+        "final_wallet": round(wallet),
+        "final_premium_currency": round(premium_wallet),
+        "premium_currency_race_multiplier": a.premium_currency_race_multiplier,
+        "gates": gates,
+        "class_credit_per_hardcurrency_median": ratios,
+    }
+
+    print(json.dumps(
+        {k: v for k, v in result.items() if k not in ("gates", "class_credit_per_hardcurrency_median")},
+        indent=2,
+    ))
+    if a.out:
+        a.out.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
     return 0
-if __name__=="__main__": raise SystemExit(main())
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
