@@ -135,6 +135,7 @@ def check_payload(payload: Path) -> list[str]:
     for key, hash_key in (
         ("package", "packageSha256"),
         ("certificate", "certificateSha256"),
+        ("dependency", "dependencySha256"),
     ):
         name = install.get(key)
         expected = install.get(hash_key)
@@ -151,6 +152,12 @@ def check_payload(payload: Path) -> list[str]:
     dependency_path = payload / dependency
     if not dependency_path.is_file():
         raise GateError(f"Bundled dependency missing: {dependency}")
+
+    lower_name = dependency.lower()
+    if not lower_name.startswith("microsoft.vclibs.120.00_"):
+        raise GateError("Bundled dependency is not Microsoft.VCLibs.120.00")
+    if "_x86__8wekyb3d8bbwe.appx" not in lower_name:
+        raise GateError("Bundled VC120 dependency is not the expected x86 Microsoft package")
 
     notes.append("installer payload ok")
     return notes
