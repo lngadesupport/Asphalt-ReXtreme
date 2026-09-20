@@ -1,68 +1,52 @@
-# Full Repack Architecture
+# Portable Campaign Repack Architecture
 
 ## Decision
 
-For the primary Windows Offline Edition, ReXtreme will move toward a **full repack** of the compatible Asphalt Xtreme 1.7.3.8 x86 source rather than trying to preserve the original Microsoft Store package identity.
+The signed APPX/MSIX repack approach is retired for the primary release.
 
-The user-facing target becomes:
+Campaign Edition targets a **portable desktop/Win32-style runtime** that does not require Microsoft Store deployment or package identity.
 
-```
-Asphalt ReXtreme/
+See `CAMPAIGN_EDITION_ARCHITECTURE.md` for the normative runtime contract.
+
+## Target layout
+
+```text
+Asphalt ReXtreme Campaign Edition/
 ├── AsphaltReXtreme.exe
-├── ReXtreme.appx / installation cache
-├── ReXtreme/
-└── original game payload transformed into the ReXtreme build
+├── GameData/
+├── config/
+├── save/
+├── logs/
+└── runtime/
 ```
 
-## Why
+The release builder transforms a supported legitimate 1.7.3.8 x86 source into this directory.
 
-A full repack gives ReXtreme control over:
-- package identity;
-- publisher/signing identity;
-- manifest;
-- versioning;
-- dependencies;
-- app capabilities;
-- package metadata;
-- all modified binaries/data;
-- startup/launcher behavior;
-- future migration of saves.
+## Prohibited runtime dependencies
 
-It avoids relying on the original Store signature or Store-managed deployment state.
+The final release must not require:
+- APPX/MSIX installation or registration;
+- AppUserModelID activation;
+- Add-AppxPackage;
+- App Installer;
+- Microsoft Store license checks;
+- Store IAP;
+- Microsoft/Xbox sign-in;
+- package certificates;
+- Developer Mode or sideload policy.
 
-## New identity
+Internet may remain enabled and the user may remain signed into Microsoft Store.
 
-The final ReXtreme package should use a distinct package identity, e.g.:
+## Migration strategy
 
-- Name: `ReXtreme.AsphaltXtreme`
-- DisplayName: `Asphalt ReXtreme`
-- Publisher: ReXtreme-controlled signing subject
-- Version: independent ReXtreme versioning
-
-The original Store package can remain installed separately because the package family will be different.
-
-## Installation model
-
-The full game payload may remain approximately 1.5 GB. The launcher/installer should:
-1. verify a supported legitimate 1.7.3.8 x86 source;
-2. transform it into the ReXtreme build;
-3. install the ReXtreme signing certificate when required;
-4. install the VC120 x86 framework dependency;
-5. install the signed ReXtreme APPX/MSIX;
-6. launch the ReXtreme AppUserModelID.
-
-Windows 10 2004+ generally supports sideloading signed non-Store MSIX/AppX packages without enabling Developer Mode, provided the signing certificate is trusted.
-
-## Consequences
-
-Changing package identity changes package-family-dependent locations such as LocalState. ReXtreme must therefore:
-- migrate/import old saves deliberately;
-- use a ReXtreme-owned local save model;
-- audit any hard-coded original package-family references;
-- patch Store/IAP/social/service assumptions that depend on the old identity.
+The original Store build uses package-family-dependent locations and UWP/platform helpers. Conversion therefore proceeds by:
+1. inventorying package/Store/UWP references;
+2. preserving essential local Windows functionality;
+3. replacing package-path/save APIs with Campaign-owned local paths;
+4. bypassing Store/IAP/auth activation paths;
+5. replacing obsolete online/ad logic with local campaign behavior;
+6. validating direct executable startup in a normal Windows session.
 
 ## Distribution
 
-Public releases should not redistribute original proprietary game content. The public installer/rebuilder should transform a legitimate user-provided source package into the ReXtreme package locally.
-
-Private development/test builds may contain transformed game files when supplied by the project owner for testing.
+The public repository contains code, patch metadata and tooling only. Proprietary game files are transformed locally from a legitimate source copy.
