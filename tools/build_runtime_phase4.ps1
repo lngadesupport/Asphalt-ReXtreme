@@ -82,53 +82,17 @@ Patch-Bytes $wd 187504 (Hex "55 8B EC 83 E4 F8 6A FF 68 C8 97 0A 10 64 A1 00 00 
 [IO.File]::WriteAllBytes($wcp,$wd)
 $wcpFlags = Clear-AppContainer $wcp
 
-# Extract local VCLibs runtime
-$vclibsArchive = @(Get-ChildItem -LiteralPath $SourceDir -File | Where-Object { $_.Name -like "Microsoft.VCLibs.120.00_12.0.21005.1_x86__8wekyb3d8bbwe*.rar" } | Select-Object -First 1)
-if (-not $vclibsArchive) { throw "VCLibs x86 RAR not found in $SourceDir" }
-
-$archiver = $null
-$kind = $null
-foreach ($c in @(
-    @{K="7z"; P=(Join-Path ([Environment]::GetFolderPath("ProgramFiles")) "7-Zip\7z.exe")},
-    @{K="unrar"; P=(Join-Path ([Environment]::GetFolderPath("ProgramFiles")) "WinRAR\UnRAR.exe")},
-    @{K="winrar"; P=(Join-Path ([Environment]::GetFolderPath("ProgramFiles")) "WinRAR\WinRAR.exe")}
-)) {
-    if ($c.P -and (Test-Path -LiteralPath $c.P)) { $archiver=$c.P; $kind=$c.K; break }
-}
-if (-not $archiver) {
-    $pf86=[Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
-    foreach ($c in @(
-        @{K="7z"; P=(Join-Path $pf86 "7-Zip\7z.exe")},
-        @{K="unrar"; P=(Join-Path $pf86 "WinRAR\UnRAR.exe")},
-        @{K="winrar"; P=(Join-Path $pf86 "WinRAR\WinRAR.exe")}
-    )) {
-        if ($c.P -and (Test-Path -LiteralPath $c.P)) { $archiver=$c.P; $kind=$c.K; break }
-    }
-}
-if (-not $archiver) { throw "7-Zip/WinRAR/UnRAR not found." }
-
-$tmp = Join-Path $SourceDir "_VCLIBS_TMP"
-if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
-New-Item -ItemType Directory -Path $tmp -Force | Out-Null
-
-if ($kind -eq "7z") {
-    & $archiver x -y -bso0 -bsp0 ("-o{0}" -f $tmp) $vclibsArchive.FullName
-} elseif ($kind -eq "unrar") {
-    & $archiver x -y -idq $vclibsArchive.FullName ($tmp + "\")
-} else {
-    & $archiver x -y -ibck $vclibsArchive.FullName ($tmp + "\")
-}
-if ($LASTEXITCODE -ne 0) { throw "Failed to extract VCLibs archive." }
-
+# Copy local VCLibs runtime
+$vclibs = Join-Path $SourceDir "VCLIBS120_X86"
 $runtimeNames = @("vccorlib120_app.dll","msvcp120_app.dll","msvcr120_app.dll","vcamp120_app.dll","vcomp120_app.dll")
 $runtimeRows=@()
 foreach ($n in $runtimeNames) {
-    $f = @(Get-ChildItem -LiteralPath $tmp -Recurse -File -Filter $n | Select-Object -First 1)
-    if (-not $f) { throw "Missing VCLibs runtime file: $n" }
-    Copy-Item -LiteralPath $f.FullName -Destination (Join-Path $out $n) -Force
-    $runtimeRows += [pscustomobject]@{ File=$n; SHA256=(Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $out $n)).Hash.ToLowerInvariant() }
+    $src = Join-Path $vclibs $n
+    if (-not (Test-Path -LiteralPath $src -PathType Leaf)) { throw "Missing VCLibs runtime file: $src" }
+    $dst = Join-Path $out $n
+    Copy-Item -LiteralPath $src -Destination $dst -Force
+    $runtimeRows += [pscustomobject]@{ File=$n; SHA256=(Get-FileHash -Algorithm SHA256 -LiteralPath $dst).Hash.ToLowerInvariant() }
 }
-Remove-Item -LiteralPath $tmp -Recurse -Force
 
 # Build launch wrapper
 $launch = @'
