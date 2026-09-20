@@ -118,13 +118,19 @@ public sealed class InstallerEngine
         var psi = new ProcessStartInfo
         {
             FileName = "powershell.exe",
-            Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command " + QuoteArgument(command),
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             WindowStyle = ProcessWindowStyle.Hidden,
         };
+
+        psi.ArgumentList.Add("-NoProfile");
+        psi.ArgumentList.Add("-NonInteractive");
+        psi.ArgumentList.Add("-ExecutionPolicy");
+        psi.ArgumentList.Add("Bypass");
+        psi.ArgumentList.Add("-Command");
+        psi.ArgumentList.Add(command);
 
         using var process = new Process { StartInfo = psi };
         process.Start();
@@ -141,7 +147,4 @@ public sealed class InstallerEngine
             throw new InvalidOperationException(message.Trim());
         }
     }
-
-    private static string QuoteArgument(string value)
-        => """ + value.Replace("\\", "\\\\").Replace(""", "\\"") + """;
 }
