@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
+import audit_offline_data
 import make_premium_shop
 import patcher
 import repack_xmlbin
@@ -307,6 +308,7 @@ def write_build_metadata(
     manifest_info: dict,
     patch_results: list[dict],
     xml_data: dict,
+    offline_audit: dict,
 ) -> None:
     data = {
         "product": "Asphalt ReXtreme Offline Edition",
@@ -324,6 +326,13 @@ def write_build_metadata(
         "manifest_transform": manifest_info,
         "critical_files": patch_results,
         "xml_data": xml_data,
+        "offline_audit": {
+            "decoded_xtea_entries": offline_audit.get("decoded_xtea_entries", 0),
+            "text_entries": offline_audit.get("text_entries", 0),
+            "candidate_entries": offline_audit.get("candidate_entries", 0),
+            "category_totals": offline_audit.get("category_totals", {}),
+            "report": "ReXtreme/offline-data-audit.json",
+        },
         "release_eligible": bool(xml_data.get("release_eligible")),
         "built_utc": datetime.now(timezone.utc).isoformat(),
     }
@@ -378,29 +387,45 @@ def main() -> int:
 
         manifest = patcher.load_manifest(patch_manifest_path)
 
-        print("[1/7] Copying full source tree...")
+        print("[1/8] Copying full source tree...")
         copy_source(source, stage)
 
-        print("[2/7] Applying verified binary patches...")
+        print("[2/8] Applying verified binary patches...")
         patch_results = apply_verified_patches(stage, manifest)
 
-        print("[3/7] Applying Premium/offline XML data...")
+        print("[3/8] Applying Premium/offline XML data...")
         plaintext_dir = resolve_xml_plaintext_dir(source, args.xml_plaintext_dir)
         xml_data = apply_xml_data(stage, plaintext_dir)
         if not xml_data["applied"]:
             print("[WARN] Premium XML data was not applied; build is not 1.0-release eligible.")
 
-        print("[4/7] Rewriting package identity...")
+        print("[4/8] Auditing remaining offline/service data...")
+        offline_audit = audit_offline_data.audit(stage / "data" / "xml.bin")
+        report_dir = stage / "ReXtreme"
+        report_dir.mkdir(exist_ok=True)
+        (report_dir / "offline-data-audit.json").write_text(
+            json.dumps(offline_audit, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+        print("[5/8] Rewriting package identity...")
         manifest_info = rewrite_manifest(stage / "AppxManifest.xml")
 
-        print("[5/7] Installing ReXtreme configuration...")
+        print("[6/8] Installing ReXtreme configuration...")
         shutil.copy2(config_path, stage / "ReXtreme.ini")
 
-        print("[6/7] Applying optional branding overlay...")
+        print("[7/8] Applying optional branding overlay...")
         overlay_branding(stage, args.branding_dir.resolve() if args.branding_dir else None)
 
-        print("[7/7] Writing build metadata...")
-        write_build_metadata(stage, source, manifest_info, patch_results, xml_data)
+        print("[8/8] Writing build metadata...")
+        write_build_metadata(
+            stage,
+            source,
+            manifest_info,
+            patch_results,
+            xml_data,
+            offline_audit,
+        )
 
         print(f"RC1 staging tree ready: {stage}")
         return 0
