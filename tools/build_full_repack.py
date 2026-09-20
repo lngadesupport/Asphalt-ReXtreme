@@ -195,66 +195,152 @@ def derive_baseline_plaintext(xml_bin: Path, out_dir: Path) -> Path:
     return out_dir
 
 
+def load_override_manifest(plaintext_dir: Path) -> dict:
+    manifest_path = plaintext_dir / "rextreme-overrides.json"
+    if not manifest_path.is_file():
+        return {
+            "approved": False,
+            "reason": "rextreme-overrides.json is missing",
+            "files": [],
+        }
+
+    data = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
+    if data.get("schema") != 1:
+        raise RuntimeError("unsupported ReXtreme override manifest schema")
+    if data.get("target_build") != "1.7.3.8-x86":
+        raise RuntimeError("override manifest targets a different game build")
+    if not isinstance(data.get("files"), list):
+        raise RuntimeError("override manifest must contain a files array")
+
+    verified: list[dict] = []
+    for item in data["files"]:
+        filename = str(item.get("file", "")).strip()
+        entry = str(item.get("entry", "")).replace("\\", "/").strip()
+        expected_hash = str(item.get("sha256", "")).lower().strip()
+
+        if not filename or not entry or not expected_hash:
+            raise RuntimeError("override manifest file records require file/entry/sha256")
+        if "/" in filename or "\\" in filename:
+            raise RuntimeError(f"override filename must be a basename: {filename}")
+        if not entry.startswith("xml/") or not entry.endswith(".xtea"):
+            raise RuntimeError(f"invalid override xml.bin entry: {entry}")
+
+        source = plaintext_dir / filename
+        if not source.is_file():
+            raise RuntimeError(f"approved override file is missing: {filename}")
+
+        actual_hash = sha256_file(source)
+        if actual_hash.lower() != expected_hash:
+            raise RuntimeError(
+                f"override hash mismatch for {filename}: "
+                f"expected {expected_hash}, got {actual_hash}"
+            )
+
+        verified.append(
+            {
+                "file": filename,
+                "entry": entry,
+                "sha256": actual_hash,
+                "purpose": str(item.get("purpose", "")).strip(),
+                "source": source,
+            }
+        )
+
+    approved = bool(data.get("approved_for_release")) and bool(verified)
+    return {
+        "approved": approved,
+        "reason": None if approved else "override manifest is not approved for release",
+        "files": verified,
+    }
+
+
 def apply_xml_data(stage: Path, plaintext_dir: Path | None) -> dict:
     xml_bin = stage / "data" / "xml.bin"
     hdr = stage / "data" / "xml.bin.hdr"
     if not xml_bin.is_file() or not hdr.is_file():
         raise RuntimeError("stage is missing data/xml.bin or data/xml.bin.hdr")
 
-    explicit_overrides = plaintext_dir is not None
-
     with tempfile.TemporaryDirectory(prefix="rextreme-xml-") as tmp_raw:
         tmp = Path(tmp_raw)
-
-        if plaintext_dir is None:
-            plaintext_dir = derive_baseline_plaintext(
-                xml_bin,
-                tmp / "derived-baseline",
-            )
-            plaintext_origin = "auto-derived-from-user-source"
-        else:
-            plaintext_dir = plaintext_dir.resolve()
-            plaintext_origin = "approved-private-overrides"
-
-        if not plaintext_dir.is_dir():
-            raise RuntimeError(f"XML plaintext directory not found: {plaintext_dir}")
-
-        originals = [
-            p for p in plaintext_dir.iterdir()
-            if p.is_file() and p.suffix.lower() in {".xml", ".json"}
-        ]
-        if not originals:
-            raise RuntimeError(f"No XML/JSON plaintext files found in {plaintext_dir}")
+        baseline_dir = derive_baseline_plaintext(
+            xml_bin,
+            tmp / "derived-baseline",
+        )
 
         replacements: dict[str, Path] = {}
         transforms: list[dict] = []
+        override_meta = {
+            "approved": False,
+            "reason": "no approved private override directory supplied",
+            "files": [],
+        }
 
-        for src in originals:
-            out = tmp / ("patched-" + src.name)
-            if src.stem.lower() == "asphaltshop":
-                report_path = tmp / "asphaltshop.report.json"
-                report = make_premium_shop.transform_file(
-                    src,
-                    out,
-                    report_path=report_path,
-                    vehicle_multiplier=0.80,
-                )
-                transforms.append(
-                    {
-                        "entry": entry_name_for_plaintext(src),
-                        "transform": "premium_vehicle_prices_80pct",
-                        "report": report,
-                    }
-                )
+        # Baseline Premium transform is always derived from the user's own source.
+        shop_source = baseline_dir / "asphaltshop.xml"
+
+        if plaintext_dir is not None:
+            plaintext_dir = plaintext_dir.resolve()
+            if not plaintext_dir.is_dir():
+                raise RuntimeError(f"XML plaintext directory not found: {plaintext_dir}")
+
+            override_meta = load_override_manifest(plaintext_dir)
+
+            # Diagnostic/unapproved directories may still be used locally, but they
+            # never make the build release-eligible.
+            if override_meta["files"]:
+                override_items = override_meta["files"]
             else:
+                override_items = [
+                    {
+                        "file": p.name,
+                        "entry": entry_name_for_plaintext(p),
+                        "sha256": sha256_file(p),
+                        "purpose": "unapproved diagnostic override",
+                        "source": p,
+                    }
+                    for p in plaintext_dir.iterdir()
+                    if p.is_file()
+                    and p.name != "rextreme-overrides.json"
+                    and p.suffix.lower() in {".xml", ".json"}
+                ]
+
+            for item in override_items:
+                src = item["source"]
+                entry = item["entry"]
+                if Path(item["file"]).stem.lower() == "asphaltshop":
+                    shop_source = src
+                    continue
+
+                out = tmp / ("override-" + Path(item["file"]).name)
                 shutil.copy2(src, out)
+                replacements[entry] = out
                 transforms.append(
                     {
-                        "entry": entry_name_for_plaintext(src),
-                        "transform": "approved_plaintext_override",
+                        "entry": entry,
+                        "transform": "approved_plaintext_override"
+                            if override_meta["approved"]
+                            else "diagnostic_plaintext_override",
+                        "sha256": item["sha256"],
+                        "purpose": item.get("purpose", ""),
                     }
                 )
-            replacements[entry_name_for_plaintext(src)] = out
+
+        shop_out = tmp / "patched-asphaltshop.xml"
+        shop_report = make_premium_shop.transform_file(
+            shop_source,
+            shop_out,
+            report_path=tmp / "asphaltshop.report.json",
+            vehicle_multiplier=0.80,
+        )
+        replacements["xml/asphaltshop.xtea"] = shop_out
+        transforms.insert(
+            0,
+            {
+                "entry": "xml/asphaltshop.xtea",
+                "transform": "premium_vehicle_prices_80pct",
+                "report": shop_report,
+            },
+        )
 
         header = repack_xmlbin.parse_hdr(hdr)
         original_problems = repack_xmlbin.verify(xml_bin, header)
@@ -265,7 +351,7 @@ def apply_xml_data(stage: Path, plaintext_dir: Path | None) -> dict:
             )
 
         rebuilt = tmp / "xml.bin"
-        report = repack_xmlbin.rebuild(xml_bin, rebuilt, replacements)
+        repack_xmlbin.rebuild(xml_bin, rebuilt, replacements)
         layout_problems = repack_xmlbin.verify(rebuilt, header)
 
         if layout_problems or rebuilt.stat().st_size != xml_bin.stat().st_size:
@@ -276,12 +362,31 @@ def apply_xml_data(stage: Path, plaintext_dir: Path | None) -> dict:
 
         shutil.copy2(rebuilt, xml_bin)
 
-    release_eligible = explicit_overrides
+    release_eligible = bool(override_meta["approved"])
     final = {
         "applied": True,
         "baseline_premium_applied": True,
         "release_eligible": release_eligible,
-        "plaintext_origin": plaintext_origin,
+        "plaintext_origin": (
+            "approved-private-overrides"
+            if release_eligible
+            else "auto-derived-baseline-plus-diagnostic-overrides"
+            if plaintext_dir is not None
+            else "auto-derived-from-user-source"
+        ),
+        "override_manifest": {
+            "approved": bool(override_meta["approved"]),
+            "reason": override_meta.get("reason"),
+            "verified_files": [
+                {
+                    "file": item["file"],
+                    "entry": item["entry"],
+                    "sha256": item["sha256"],
+                    "purpose": item.get("purpose", ""),
+                }
+                for item in override_meta.get("files", [])
+            ],
+        },
         "replacement_count": len(replacements),
         "transforms": transforms,
         "xmlbin_sha256": sha256_file(xml_bin),
@@ -289,8 +394,8 @@ def apply_xml_data(stage: Path, plaintext_dir: Path | None) -> dict:
 
     if not release_eligible:
         final["reason"] = (
-            "baseline Premium data was auto-derived and applied, but approved "
-            "offline plaintext overrides were not supplied"
+            "Premium baseline was applied, but no hash-verified "
+            "rextreme-overrides.json approved for release was supplied"
         )
 
     report_dir = stage / "ReXtreme"
