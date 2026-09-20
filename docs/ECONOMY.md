@@ -1,202 +1,127 @@
-# Premium Economy Design
+# Campaign Edition Economy
 
-The default Asphalt ReXtreme Offline Edition economy should behave like a traditional paid racing game, not a free-to-play service.
+The default economy is designed as a traditional paid racing game rather than a free-to-play service.
 
-## Core principles
+## Core rules
 
-- No real-money purchases.
-- No premium-currency purchases.
+- No real-money purchases are required for progression.
 - No rewarded-ad gates.
-- No energy/fuel system that prevents continued play.
-- No timers whose purpose is to sell skips.
-- No login streaks or server-dependent daily rewards required for progression.
-- Every car, upgrade and event that exists in the target build should be obtainable through offline play.
-- Progression should reward racing skill and career completion rather than repetitive grinding.
-- A fresh Premium save must be able to reach and complete the end of the offline career without needing exploits, purchases, advertisements or unreasonable grinding.
-- **Race rewards never diminish because a race has already been completed or repeated.** The same performance in the same event must always produce the same base payout.
+- No energy/fuel system that blocks continued play.
+- No monetization timers or pay-to-skip waits.
+- No Microsoft Store or Gameloft IAP dependency.
+- Normal credits and premium currency are both earned through gameplay.
+- Every locally present car, upgrade and campaign event must be obtainable offline.
+- The shop remains visually/functionally close to the original where possible.
 
-## Default mode: Premium
+## Shop pricing
 
-The default economy is **Premium**.
+Campaign Edition applies an **80% discount** to normal content prices:
 
-### Currency
-
-Keep one primary gameplay currency where practical.
-
-If the original build uses multiple currencies:
-- normal race currency remains earnable through play;
-- premium-only currency costs should be converted to normal progression, direct unlock conditions, or offline rewards;
-- no currency should require a store purchase or advertisement.
-
-Exact conversion values must be derived from the real 1.7.3.8 data rather than guessed.
-
-### Repeatable race rewards
-
-All normal offline races remain repeatable sources of currency.
-
-Rules:
-- no first-win-only reduction to the normal race payout;
-- no diminishing returns after repeated completions;
-- no daily payout cap;
-- no cooldown before a race can pay again;
-- no hidden penalty for farming the same event;
-- no server-side reward validation required;
-- the player's position, difficulty/performance bonuses and other legitimate race modifiers may affect the payout, but **repeat count may not**.
-
-Example target behavior:
-
-```
-Race A — 1st place = 4,000 credits
-1st completion  -> 4,000
-2nd completion  -> 4,000
-10th completion -> 4,000
-50th completion -> 4,000
+```text
+campaign_price = round(original_price * 0.20)
 ```
 
-This gives the player freedom to replay a favorite race whenever extra money is needed without the game progressively punishing them.
+Applies to:
+- cars;
+- paint/customization;
+- upgrades;
+- parts;
+- other normal shop content.
 
-### Career completion guarantee
+Examples:
 
-The economy must be balanced around a complete fresh-save playthrough.
-
-For each career tier/chapter we will calculate:
-
+```text
+Original 10,000  -> Campaign 2,000
+Original 50,000  -> Campaign 10,000
+Original 125,000 -> Campaign 25,000
 ```
-guaranteed normal earnings
+
+Currency packs sold for real money are not treated as normal shop content and are removed from the progression model.
+
+## Premium currency
+
+Premium currency remains a distinct gameplay resource, but it is no longer tied to real-money purchase.
+
+Race completion grants:
+- normal credits;
+- premium currency.
+
+The exact premium-currency payout is derived from the real event payout data and balance simulation. It may scale from the normal repeatable payout, but must remain fully earnable offline.
+
+## Ad conversion
+
+Any path that originally required an advertisement is converted to normal paid-game progression.
+
+Examples:
+- ad-gated car -> credit/premium-currency purchase;
+- ad reward -> ordinary campaign/race reward;
+- ad refill -> remove the artificial gate or use normal gameplay rules.
+
+No fake "ad watched" state should be required.
+
+## Repeat reward rule
+
+The same race may be replayed indefinitely.
+
+For each event:
+- completions 1 through 10: **100%** of the normal repeatable reward;
+- completion 11 onward: reward drops by **0.2 percentage points per repeat**;
+- minimum multiplier: **98%**;
+- reward can never drop below 98%, even after hundreds of repeats.
+
+Formula:
+
+```text
+repeat_multiplier =
+    max(0.98, 1.0 - max(0, repeat_count - 10) * 0.002)
+```
+
+Examples:
+
+| Repeat count | Multiplier |
+|---:|---:|
+| 1-10 | 100.0% |
+| 11 | 99.8% |
+| 12 | 99.6% |
+| 15 | 99.0% |
+| 20 | 98.0% |
+| 50 | 98.0% |
+| 500 | 98.0% |
+
+The same multiplier applies consistently to repeatable normal credits and repeatable premium-currency rewards derived from that race payout.
+
+There must be no hidden reduction based on wallet balance, owned cars, play time, internet state or Microsoft/Gameloft account state.
+
+## Career completion guarantee
+
+A fresh save must be able to finish the offline career without advertisements, real-money purchases, service logins or unreasonable grinding.
+
+For each progression gate:
+
+```text
+guaranteed campaign earnings
 + reasonable optional replay earnings
 >= required car purchases
-+ required upgrade costs
++ required upgrades
 + progression expenses
 ```
 
-Design targets:
-- normal career completion should fund the majority of required progression;
-- a player making sensible purchases should never reach a mandatory event with no realistic way to continue;
-- optional replaying can accelerate progression or correct poor spending choices;
-- repeating races must always remain a reliable recovery path;
-- no single mandatory car or upgrade should require excessive repetition of one event;
-- 100% completion should be achievable entirely offline.
+The 98% repeat floor ensures every completed event remains a reliable recovery/farming path.
 
-### Cars
+## Saves
 
-Baseline Premium-mode vehicle pricing target:
-
-```
-ReXtreme car price = original car price × 0.80
-```
-
-That is a default **20% reduction** from the original 1.7.3.8 price.
-
-Examples:
-
-```
-Original 10,000  -> ReXtreme 8,000
-Original 50,000  -> ReXtreme 40,000
-Original 125,000 -> ReXtreme 100,000
-```
-
-Rules:
-- apply the 20% reduction before final balancing;
-- preserve meaningful progression between vehicle classes/tiers;
-- retain career/event unlock conditions where they improve progression;
-- cars that originally require premium currency must be converted to normal offline progression or normal credits;
-- if a specific car remains a progression bottleneck after the 20% reduction, it may receive an additional targeted adjustment;
-- if the reduction makes a very cheap starter car meaningless, that individual price may be rounded sensibly rather than following the multiplier mechanically.
-
-Cars should be unlocked through one or more of:
-- career progression;
-- event completion;
-- class/tier progression;
-- achievement-style milestones;
-- reasonable credit purchase after the related tier is reached.
-
-A player should not need to repeat the same race excessively just to afford the next required car.
-
-### Upgrades
-
-Upgrades retain meaningful progression but use reasonable in-game costs.
-
-Targets:
-- early upgrades should be affordable after normal career play;
-- later upgrades may require additional races, but not free-to-play-style grinding;
-- no upgrade timer;
-- no premium-currency skip;
-- no ad requirement;
-- mandatory performance-rating gates must always be financially reachable from offline play.
-
-### Events and gates
-
-If an event is blocked only by:
-- an advertisement;
-- an unavailable online service;
-- a real-money purchase;
-- an artificial wait timer;
-
-the ReXtreme offline logic should replace that requirement with an offline progression condition or direct availability.
-
-Skill/progression requirements may remain when they improve the game.
-
-## Optional mode: Sandbox
-
-For testing and players who want unrestricted access, ReXtreme can also provide a separate **Sandbox** profile:
-
-- unlimited local currency;
-- zero-cost upgrades;
-- all locally present cars/content unlocked;
-- no effect on Premium-mode saves.
-
-Sandbox is not the default game balance.
-
-## Save separation
-
-Premium and Sandbox should use separate profile/save identifiers so that switching modes cannot accidentally destroy normal progression.
+Campaign and Sandbox modes use separate save/profile identifiers. Campaign saves store per-event repeat counters so the reward rule is deterministic across restarts.
 
 ## Balance workflow
 
-Before setting final values:
-1. extract vehicle prices, upgrade costs, event payouts and unlock conditions from build 1.7.3.8;
-2. apply the initial 0.80 vehicle-price multiplier;
-3. map the complete career progression;
-4. identify any original first-win, repeat-reward, cooldown, daily-cap or server-validation logic;
-5. calculate expected income versus required spending per tier;
-6. simulate a fresh save from the first event through career completion;
-7. rebalance progression bottlenecks and price outliers;
-8. verify repeated events always retain their full intended payout;
-9. play-test fresh saves with conservative, average and completionist spending patterns.
+1. extract original shop/career data;
+2. apply the 0.20 content-price multiplier;
+3. map premium-currency-only items;
+4. simulate mandatory car and upgrade gates;
+5. apply the repeat-reward rule;
+6. ensure premium currency is awarded by races;
+7. verify all ad/IAP-only gates have offline replacements;
+8. run a fresh-save campaign simulation;
+9. play-test conservative, average and completionist spending paths.
 
-The goal is a complete paid-game progression curve, not simply multiplying rewards or setting every value to zero.
-
-
-### Premium currency from races
-
-Premium currency becomes a normal offline race reward instead of a real-money resource.
-
-Baseline rule:
-
-```
-premium_currency_reward = floor(repeatable_credit_payout × 0.50)
-```
-
-Where `repeatable_credit_payout` is the normal repeatable race payout, currently modeled as:
-
-```
-money_for_playing + finishing-position reward
-```
-
-Examples:
-
-```
-Repeatable credits = 345  -> premium currency = 172
-Repeatable credits = 800  -> premium currency = 400
-Repeatable credits = 2,000 -> premium currency = 1,000
-```
-
-Rules:
-- the premium-currency reward is granted on every valid race completion;
-- replaying the same event never reduces it;
-- star rewards and other one-time progression bonuses are excluded from the 50% calculation;
-- position/performance may legitimately change both rewards because they change the underlying repeatable payout;
-- no daily cap, cooldown, ad, store purchase or server validation is required;
-- Sandbox mode may still use unlimited currency separately.
-
-This preserves premium currency as a meaningful resource while making it fully earnable through normal offline play.
+The goal is a complete premium-game progression curve, not free/unlimited progression.
