@@ -8,6 +8,24 @@ Set-StrictMode -Version Latest
 
 $SourceDir = (Resolve-Path -LiteralPath $SourceDir).Path
 
+# Check effective AppX policies as well as AppModelUnlock.
+$policyPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Appx"
+$policyTrusted = $null
+$policyDev = $null
+try {
+    $p = Get-ItemProperty -Path $policyPath -ErrorAction Stop
+    $policyTrusted = $p.AllowAllTrustedApps
+    $policyDev = $p.AllowDevelopmentWithoutDevLicense
+} catch {}
+
+if (($policyTrusted -eq 0) -or ($policyDev -eq 0)) {
+    Write-Host ""
+    Write-Host "AppX Group Policy explicitly denies sideload/developer registration." -ForegroundColor Red
+    Write-Host "AllowAllTrustedApps=$policyTrusted"
+    Write-Host "AllowDevelopmentWithoutDevLicense=$policyDev"
+    throw "Windows AppX policy blocks Add-AppxPackage -Register (0x80073CFF)."
+}
+
 # Loose-file registration (-Register) requires Windows developer mode.
 $devMode = 0
 try {
@@ -122,6 +140,10 @@ try {
 } catch {
     $detail = $_ | Out-String
     $detail | Set-Content -LiteralPath (Join-Path $out "PHASE5-REGISTER-ERROR.txt") -Encoding UTF8
+    try {
+        Get-AppxLog | Out-String -Width 300 |
+            Set-Content -LiteralPath (Join-Path $out "PHASE5-APPXLOG.txt") -Encoding UTF8
+    } catch {}
     throw
 }
 
