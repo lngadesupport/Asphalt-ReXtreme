@@ -54,3 +54,20 @@ The launcher configures:
 and matching Appx policy values when administrative access is available.
 
 Normal users still only launch `AsphaltReXtreme.exe`; no PowerShell command is required.
+
+
+## Alpha 0.8 resilience
+
+Alpha 0.8 changes the bootstrapper architecture to reduce Windows-specific deployment failures:
+
+- launcher is **x64** even though Asphalt Xtreme remains x86, avoiding WOW64 registry/System32 redirection;
+- uses the native 64-bit `reg.exe`, `PowerShell`, `gpupdate.exe` and system tools;
+- writes and validates both Microsoft AppModelUnlock and Group Policy AppX values in the 64-bit registry view;
+- forces a computer-policy refresh before retrying loose-package registration;
+- checks that the game is on a local NTFS volume;
+- captures AppX deployment ActivityId diagnostics automatically;
+- performs a safe registration-repair pass before surfacing an error;
+- when Windows reports that newly applied developer/sideload policy requires a reboot, schedules a RunOnce resume and offers a one-time restart;
+- continues to validate exact game hashes and preserve backups before patching.
+
+The project does not claim that any Windows application can be guaranteed error-free on every future OS, driver or managed-policy configuration. The launcher contract is instead: detect known prerequisites up front, self-repair known failure modes, preserve user data/backups, and only surface an actionable diagnostic after automated recovery has been exhausted.
