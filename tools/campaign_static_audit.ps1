@@ -199,7 +199,7 @@ $fileSummary = @(
             Categories = ($cats -join ",")
         }
     } |
-    Sort-Object FindingCount -Descending,File
+    Sort-Object -Property @{Expression={$_.FindingCount};Descending=$true}, File
 )
 $fileSummary | Export-Csv -NoTypeInformation -Encoding UTF8 (Join-Path $reports "finding-summary-by-file.csv")
 
