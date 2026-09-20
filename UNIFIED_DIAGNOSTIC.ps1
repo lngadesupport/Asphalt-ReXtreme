@@ -1,18 +1,3 @@
-';" ^
-  "$idx=$raw.IndexOf($mark);" ^
-  "if($idx -lt 0){Write-Error 'Embedded diagnostic not found'; exit 10};" ^
-  "$code=$raw.Substring($idx+$mark.Length);" ^
-  "& ([ScriptBlock]::Create($code)) -GameRoot (Get-Location).Path;" ^
-  "exit $LASTEXITCODE"
-
-set "RC=%ERRORLEVEL%"
-echo.
-if not "%RC%"=="0" echo Diagnostico terminou com codigo %RC%.
-echo.
-pause
-exit /b %RC%
-
-:__POWERSHELL_BELOW__
 param(
     [Parameter(Mandatory=$true)]
     [string]$GameRoot
