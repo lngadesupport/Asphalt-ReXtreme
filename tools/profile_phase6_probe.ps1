@@ -38,19 +38,50 @@ function Read-U16([int]$Offset) {
 function Read-U32([int]$Offset) {
     return [BitConverter]::ToUInt32($data,$Offset)
 }
-function Find-Bytes([byte[]]$Haystack,[byte[]]$Needle) {
-    $hits = @()
-    if ($Needle.Length -eq 0 -or $Needle.Length -gt $Haystack.Length) { return $hits }
-    $first = $Needle[0]
-    for ($i=0; $i -le $Haystack.Length-$Needle.Length; $i++) {
-        if ($Haystack[$i] -ne $first) { continue }
-        $ok = $true
-        for ($j=1; $j -lt $Needle.Length; $j++) {
-            if ($Haystack[$i+$j] -ne $Needle[$j]) { $ok=$false; break }
+Add-Type -TypeDefinition @"
+using System;
+using System.Collections.Generic;
+
+public static class ReXtremeByteSearch
+{
+    public static int[] FindAll(byte[] haystack, byte[] needle)
+    {
+        if (haystack == null || needle == null || needle.Length == 0 || needle.Length > haystack.Length)
+            return new int[0];
+
+        var hits = new List<int>();
+        int start = 0;
+        byte first = needle[0];
+
+        while (start <= haystack.Length - needle.Length)
+        {
+            int pos = Array.IndexOf<byte>(haystack, first, start);
+            if (pos < 0 || pos > haystack.Length - needle.Length)
+                break;
+
+            bool match = true;
+            for (int j = 1; j < needle.Length; j++)
+            {
+                if (haystack[pos + j] != needle[j])
+                {
+                    match = false;
+                    break;
+                }
+            }
+
+            if (match)
+                hits.Add(pos);
+
+            start = pos + 1;
         }
-        if ($ok) { $hits += $i }
+
+        return hits.ToArray();
     }
-    return $hits
+}
+"@
+
+function Find-Bytes([byte[]]$Haystack,[byte[]]$Needle) {
+    return [ReXtremeByteSearch]::FindAll($Haystack,$Needle)
 }
 function Hex-Window([int]$Offset,[int]$Before=32,[int]$After=48) {
     $start=[Math]::Max(0,$Offset-$Before)
@@ -104,13 +135,10 @@ $targets=@(
     "hardcurrency_full_sync",
     "hardcurrency_partial_sync",
     "playerCachedHardCurrency",
-    "creditsEarnedToday",
-    "profile",
-    "online",
-    "offline",
-    "login",
-    "account"
+    "creditsEarnedToday"
 )
+
+Write-Host "Mapping high-value profile/sync strings in AMS.exe..." -ForegroundColor Cyan
 
 $rows=@()
 foreach($target in $targets){
@@ -144,6 +172,7 @@ foreach($target in $targets){
     }
 }
 $rows | Export-Csv -NoTypeInformation -Encoding UTF8 -LiteralPath (Join-Path $out "ams-profile-string-xrefs.csv")
+Write-Host ("AMS mapping complete: {0} string hits." -f $rows.Count) -ForegroundColor Green
 
 # Write compact candidate windows around xrefs.
 $xrefLines=@()
@@ -160,6 +189,8 @@ foreach($r in $rows){
     }
 }
 $xrefLines | Set-Content -LiteralPath (Join-Path $out "ams-profile-xref-windows.txt") -Encoding UTF8
+
+Write-Host "Scanning small text/config files..." -ForegroundColor Cyan
 
 # Profile-related plain-text config hits from the registered package tree.
 $textExt=@(".json",".xml",".txt",".ini",".cfg",".csv",".manifest")
@@ -181,6 +212,9 @@ Get-ChildItem -LiteralPath $GameRoot -Recurse -File -ErrorAction SilentlyContinu
     }
 $configHits | Export-Csv -NoTypeInformation -Encoding UTF8 -LiteralPath (Join-Path $out "package-profile-config-hits.csv")
 
+Write-Host ("Config scan complete: {0} hits." -f $configHits.Count) -ForegroundColor Green
+Write-Host "Inventorying package-local storage..." -ForegroundColor Cyan
+
 # Inspect actual package-local storage created by the successful packaged boot.
 $localStateRows=@()
 if($pkg){
@@ -199,6 +233,8 @@ if($pkg){
         $localStateRows | Export-Csv -NoTypeInformation -Encoding UTF8 -LiteralPath (Join-Path $out "package-local-storage-inventory.csv")
     }
 }
+
+Write-Host ("Local storage inventory complete: {0} files." -f $localStateRows.Count) -ForegroundColor Green
 
 $summary=[ordered]@{
     Phase="Profile Phase 6 Probe"
