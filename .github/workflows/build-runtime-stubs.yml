@@ -42,6 +42,8 @@ jobs:
           dumpbin /headers out\InAppPurchaseComponentW8.dll > out\InAppPurchaseComponentW8.headers.txt
           dumpbin /exports out\InAppPurchaseComponentW8.dll > out\InAppPurchaseComponentW8.exports.txt
           dumpbin /imports out\InAppPurchaseComponentW8.dll > out\InAppPurchaseComponentW8.imports.txt
+          echo ===== SHA256 =====
+          type out\SHA256.txt
           echo ===== IGPLib exports =====
           type out\IGPLib_x86.exports.txt
           echo ===== IAP exports =====
