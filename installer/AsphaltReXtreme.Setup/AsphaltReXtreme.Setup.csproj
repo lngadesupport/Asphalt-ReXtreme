@@ -12,6 +12,7 @@
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon Condition="Exists('Resources\app.ico')">Resources\app.ico</ApplicationIcon>
     <AssemblyName>AsphaltReXtreme.Setup</AssemblyName>
     <RootNamespace>AsphaltReXtreme.Setup</RootNamespace>
   </PropertyGroup>
