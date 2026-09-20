@@ -56,6 +56,9 @@
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="#232A38"/>
                             </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.38"/>
+                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -82,7 +85,6 @@
                                   LoadedBehavior="Manual"
                                   UnloadedBehavior="Manual"
                                   Stretch="UniformToFill"
-                                  RenderTransformOrigin="0.5,0.5"
                                   IsMuted="True"
                                   MediaOpened="Trailer_MediaOpened"
                                   MediaEnded="Trailer_MediaEnded">
@@ -90,22 +92,6 @@
                             <ScaleTransform ScaleX="1.06" ScaleY="1.06"/>
                         </MediaElement.RenderTransform>
                     </MediaElement>
-                    <Border VerticalAlignment="Top" Height="90">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#A8000000" Offset="0"/>
-                                <GradientStop Color="#00000000" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
-                    </Border>
-                    <Border VerticalAlignment="Bottom" Height="110">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#00000000" Offset="0"/>
-                                <GradientStop Color="#B0000000" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
-                    </Border>
                     <Button x:Name="SoundButton"
                             Width="42" Height="34"
                             HorizontalAlignment="Left"
@@ -148,19 +134,17 @@
 
                 <StackPanel Grid.Row="1" VerticalAlignment="Center" Opacity="0" x:Name="InstallPanel">
                     <TextBlock Text="OFFLINE EDITION" FontSize="12" FontWeight="SemiBold" Foreground="#8D94A6"/>
-                    <StackPanel x:Name="StatusBlock">
-                        <TextBlock x:Name="StatusText"
-                                   Margin="0,12,0,0"
-                                   Text="Pronto para instalar."
-                                   FontSize="21"
-                                   FontWeight="SemiBold"/>
-                        <TextBlock x:Name="DetailText"
-                                   Margin="0,7,0,0"
-                                   Text="O instalador verificará o pacote antes de alterar o sistema."
-                                   FontSize="13"
-                                   Foreground="#9299AA"
-                                   TextWrapping="Wrap"/>
-                    </StackPanel>
+                    <TextBlock x:Name="StatusText"
+                               Margin="0,12,0,0"
+                               Text="Pronto para instalar."
+                               FontSize="21"
+                               FontWeight="SemiBold"/>
+                    <TextBlock x:Name="DetailText"
+                               Margin="0,7,0,0"
+                               Text="O instalador verificará o pacote antes de alterar o sistema."
+                               FontSize="13"
+                               Foreground="#9299AA"
+                               TextWrapping="Wrap"/>
 
                     <Grid Margin="0,30,0,0" Height="8">
                         <Border Background="#1B202C" CornerRadius="4"/>
@@ -179,16 +163,25 @@
                 </StackPanel>
 
                 <StackPanel Grid.Row="2" Opacity="0" x:Name="ActionPanel">
-                    <Button x:Name="InstallButton"
-                            Content="INSTALAR"
-                            Style="{StaticResource PrimaryButton}"
-                            Click="InstallButton_Click"/>
-                    <Button x:Name="RepairButton"
-                            Margin="0,10,0,0"
-                            Content="REPARAR INSTALAÇÃO"
-                            Style="{StaticResource GhostButton}"
-                            Visibility="Collapsed"
-                            Click="RepairButton_Click"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="160"/>
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="InstallButton"
+                                Grid.Column="0"
+                                Content="INSTALAR"
+                                Style="{StaticResource PrimaryButton}"
+                                Click="InstallButton_Click"/>
+                        <Button x:Name="RepairButton"
+                                Grid.Column="2"
+                                Content="REPARAR"
+                                Height="50"
+                                Visibility="Collapsed"
+                                Style="{StaticResource GhostButton}"
+                                Click="RepairButton_Click"/>
+                    </Grid>
                     <TextBlock Margin="0,12,0,0"
                                Text="Asphalt ReXtreme 1.0 RC1 • instalação local"
                                Foreground="#656D7F"
