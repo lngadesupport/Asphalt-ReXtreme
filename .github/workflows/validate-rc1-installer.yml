@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - "installer/**"
-      - "tools/build_rc1.ps1"
+      - "tools/*.ps1"
       - "tools/build_full_repack.py"
       - "tools/patcher.py"
       - "patches/**"
@@ -26,6 +26,28 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
+
+      - name: Parse RC PowerShell scripts
+        shell: pwsh
+        run: |
+          $files = @(
+            "tools/build_rc1.ps1",
+            "tools/prepare_installer_assets.ps1",
+            "tools/assemble_setup.ps1"
+          )
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $file),
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | Format-List
+              throw "PowerShell syntax errors found in $file"
+            }
+          }
 
       - name: Publish installer
         shell: pwsh
