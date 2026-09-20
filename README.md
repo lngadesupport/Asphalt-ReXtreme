@@ -69,4 +69,18 @@ Asphalt-ReXtreme/
 
 ## Status
 
-Early reverse-engineering / preservation research against build `1.7.3.8 x86`.
+**1.0 RC integration.** The project now has:
+
+- an independent Full Repack staging pipeline for the verified `1.7.3.8 x86` source;
+- hash-verified native patch application;
+- XTEA/xml.bin decode and layout-preserving type-0 repack tooling;
+- the approved Premium baseline (80% vehicle prices + 50% repeatable-race Premium reward hook);
+- independent `ReXtreme.AsphaltXtreme` package identity;
+- a self-contained animated WPF Setup shell;
+- signed APPX payload assembly, VC120 dependency handling and integrity hashes;
+- install/launch/repair logic;
+- automated Windows installer compilation and Python repack regression tests.
+
+RC1 is **not** promoted to `v1.0.0` until the offline boot, fresh-save career,
+economy, save persistence, repair and final one-click packaging gates pass on
+real Windows installations.
