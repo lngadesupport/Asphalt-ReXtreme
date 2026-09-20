@@ -1,47 +1,58 @@
 # Release model
 
-## Asphalt ReXtreme Offline Edition
+## Asphalt ReXtreme: Campaign Edition
 
-This is the first and primary target.
+Campaign Edition is the primary release target.
 
 ### User experience
 
-The intended end-user flow is:
+The intended flow is:
 
-1. Obtain/own a compatible original Asphalt Xtreme Windows build.
-2. Run the ReXtreme importer once.
-3. The importer verifies the source build and creates an independent ReXtreme installation.
-4. From then on, launch `AsphaltReXtreme.exe` and play offline.
+1. Obtain/own a compatible original Asphalt Xtreme Windows 1.7.3.8 x86 build.
+2. Run the ReXtreme importer/rebuilder once.
+3. The rebuilder verifies the source and creates a portable Campaign directory.
+4. Launch `AsphaltReXtreme.exe` directly from that directory.
 
-Normal gameplay must not require:
-- an active Internet connection;
-- Gameloft/Netflix services;
+Normal play must not require:
+- Microsoft Store;
+- APPX/MSIX registration;
+- Microsoft/Xbox authentication;
+- Store licensing or IAP;
+- Gameloft services;
 - ad servers;
-- a community backend;
-- Python or developer tools;
-- command-line arguments;
-- manual configuration editing.
+- an active community backend;
+- Python/developer tools;
+- manual package policy changes.
 
-### Default Offline profile
+Internet may remain enabled and the Windows user may remain signed into
+Microsoft Store.
 
-The Offline Edition should ship with an easy preservation-focused profile:
-- offline services only;
+### Campaign profile
+
+Campaign Edition uses:
 - local saves;
-- ad-dependent local actions made available offline;
-- preservation economy enabled;
-- free/local upgrades enabled;
-- modern display/input defaults.
+- campaign/career progression;
+- credits and premium currency earned by racing;
+- no advertisement gates;
+- no real-money progression;
+- shop content at 20% of original price by default;
+- repeat-race reward floor of 98% after the 10th completion;
+- no monetization energy/timer blocks.
 
-Where possible, power users can disable individual preservation conveniences in `ReXtreme.ini`.
+### Sandbox profile
 
-## Asphalt ReXtreme Online Edition
-
-A later, separate release track.
-
-It may add a community backend, lobbies and multiplayer, but must not become a dependency of the Offline Edition. Offline saves/configuration should remain usable without the online client/server components.
+An optional Sandbox profile may provide unrestricted progression for testing or
+free play. It uses a separate save and is not the default balance.
 
 ## Repository vs release package
 
-GitHub stores only project-owned code, patch descriptions, tools and documentation.
+GitHub stores project-owned code, patch descriptions, analysis tools and
+documentation only.
 
-The project does **not** publish original proprietary game assets or binaries. The importer creates the playable ReXtreme directory from files supplied by the user from a compatible legitimate copy.
+Original proprietary game assets and binaries are not published in the
+repository. The rebuilder transforms a legitimate user-provided source locally.
+
+## Online/community work
+
+Any future community multiplayer/backend work is a separate release track and
+must never become a dependency of Campaign Edition.
