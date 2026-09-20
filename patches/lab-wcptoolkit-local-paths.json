@@ -15,14 +15,14 @@
         {
           "name": "GetAppInstalledFolderPath -> process current directory",
           "category": "package-identity-lab",
-          "offset": 187760,
+          "offset": 186992,
           "before": "55 8B EC 83 E4 F8 6A FF 68 C8 97 0A 10 64 A1 00 00 00 00 50 83",
           "after": "8B 4C 24 04 6A 01 68 FE 90 0B 10 E8 E0 B3 FF FF 8B 44 24 04 C3"
         },
         {
           "name": "GetAppLocalFolderPath -> process current directory",
           "category": "package-identity-lab",
-          "offset": 188272,
+          "offset": 187504,
           "before": "55 8B EC 83 E4 F8 6A FF 68 C8 97 0A 10 64 A1 00 00 00 00 50 83",
           "after": "8B 4C 24 04 6A 01 68 FE 90 0B 10 E8 E0 B1 FF FF 8B 44 24 04 C3"
         }
