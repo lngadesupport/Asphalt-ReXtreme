@@ -108,7 +108,8 @@ function Get-JccCandidates([int]$off) {
     for($i=$a;$i -le $b;$i++){
         $op=$data[$i]
         if($op -ge 0x70 -and $op -le 0x7F){
-            $rel=[sbyte]$data[$i+1]
+            $relByte=[int]$data[$i+1]
+            if($relByte -ge 0x80){ $rel=$relByte-0x100 } else { $rel=$relByte }
             $dest=$i+2+$rel
             $rows += [pscustomobject]@{
                 FileOffset=("0x{0:X8}" -f $i)
