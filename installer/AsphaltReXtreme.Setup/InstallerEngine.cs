@@ -1,11 +1,11 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Windows.ApplicationModel;
 using Windows.Management.Deployment;
 
 namespace AsphaltReXtreme.Setup;
@@ -19,13 +19,34 @@ public sealed class InstallerEngine
         string certificate,
         string? dependency,
         string? packageSha256,
-        string? certificateSha256);
+        string? certificateSha256,
+        bool releaseEligible);
 
     public sealed record ProgressInfo(double Value, string Status, string Detail);
 
+    public sealed record InstalledState(
+        bool IsInstalled,
+        bool IsHealthy,
+        string? Version);
+
+    private const string PackageName = "ReXtreme.AsphaltXtreme";
     private readonly string _payloadDirectory = Path.Combine(AppContext.BaseDirectory, "payload");
 
-    public async Task InstallAsync(IProgress<ProgressInfo> progress, CancellationToken ct = default)
+    public InstalledState GetInstalledState()
+    {
+        var package = FindInstalledPackage();
+        if (package is null)
+            return new(false, false, null);
+
+        var version = package.Id.Version;
+        var versionText = $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
+        return new(true, package.Status.VerifyIsOK(), versionText);
+    }
+
+    public async Task InstallAsync(
+        IProgress<ProgressInfo> progress,
+        bool repair = false,
+        CancellationToken ct = default)
     {
         progress.Report(new(0.04, "Verificando arquivos...", "Validando o payload do ReXtreme."));
 
@@ -34,10 +55,14 @@ public sealed class InstallerEngine
             throw new FileNotFoundException("install-manifest.json não foi encontrado.", manifestPath);
 
         var json = await File.ReadAllTextAsync(manifestPath, ct);
-        var manifest = JsonSerializer.Deserialize<InstallManifest>(
+        var manifest = System.Text.Json.JsonSerializer.Deserialize<InstallManifest>(
             json,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })
             ?? throw new InvalidDataException("Manifesto de instalação inválido.");
+
+        if (!manifest.releaseEligible)
+            throw new InvalidDataException(
+                "Este payload é apenas diagnóstico e não atende ao gate do RC1.");
 
         var packagePath = RequirePayload(manifest.package);
         var certPath = RequirePayload(manifest.certificate);
@@ -45,40 +70,44 @@ public sealed class InstallerEngine
             ? null
             : RequirePayload(manifest.dependency);
 
+        if (dependencyPath is null)
+            throw new InvalidDataException("O runtime VC120 x86 não está presente no payload.");
+
         await VerifyHashIfPresentAsync(packagePath, manifest.packageSha256, ct);
         await VerifyHashIfPresentAsync(certPath, manifest.certificateSha256, ct);
 
-        progress.Report(new(0.16, "Preparando o Windows...", "Confiando no certificado local do ReXtreme."));
+        progress.Report(new(
+            0.15,
+            repair ? "Preparando reparo..." : "Preparando o Windows...",
+            "Validando o certificado local do ReXtreme."));
         TrustPublisherCertificate(certPath);
 
-        progress.Report(new(
-            0.28,
-            "Preparando dependências...",
-            dependencyPath is null
-                ? "A dependência VC120 deve já estar instalada."
-                : "VC120 x86 será instalada junto com o jogo."));
+        var packageUri = new System.Uri(packagePath, System.UriKind.Absolute);
+        var dependencyUri = new System.Uri(dependencyPath, System.UriKind.Absolute);
 
-        var packageUri = new Uri(packagePath, UriKind.Absolute);
-        var dependencies = dependencyPath is null
-            ? Array.Empty<Uri>()
-            : new[] { new Uri(dependencyPath, UriKind.Absolute) };
+        var options = new AddPackageOptions
+        {
+            ForceAppShutdown = true,
+            ForceUpdateFromAnyVersion = repair,
+            RetainFilesOnFailure = true,
+        };
+        options.DependencyPackageUris.Add(dependencyUri);
 
         var packageManager = new PackageManager();
-        var operation = packageManager.AddPackageAsync(
-            packageUri,
-            dependencies,
-            DeploymentOptions.ForceApplicationShutdown);
+        var operation = packageManager.AddPackageByUriAsync(packageUri, options);
 
         operation.Progress = (_, deploymentProgress) =>
         {
             var fraction = deploymentProgress.percentage / 100.0;
             progress.Report(new(
-                0.32 + fraction * 0.58,
-                "Instalando Asphalt ReXtreme...",
-                "Aplicando o Full Repack e registrando a identidade ReXtreme."));
+                0.25 + fraction * 0.66,
+                repair ? "Reparando Asphalt ReXtreme..." : "Instalando Asphalt ReXtreme...",
+                repair
+                    ? "Reaplicando o pacote verificado sem apagar o progresso local."
+                    : "Aplicando o Full Repack e registrando a identidade ReXtreme."));
         };
 
-        using var registration = ct.Register(() => operation.Cancel());
+        using var registration = ct.Register(operation.Cancel);
         var result = await operation;
 
         if (result.ExtendedErrorCode is not null)
@@ -90,37 +119,49 @@ public sealed class InstallerEngine
                 result.ExtendedErrorCode);
         }
 
-        progress.Report(new(0.94, "Verificando instalação...", "Confirmando a identidade ReXtreme."));
-        var installed = packageManager
-            .FindPackagesForUser(string.Empty)
-            .FirstOrDefault(p => string.Equals(
-                p.Id.Name,
-                "ReXtreme.AsphaltXtreme",
-                StringComparison.OrdinalIgnoreCase));
+        progress.Report(new(0.94, "Verificando instalação...", "Confirmando integridade e identidade ReXtreme."));
+        var installed = FindInstalledPackage()
+            ?? throw new InvalidOperationException(
+                "O pacote ReXtreme não foi localizado após a instalação.");
 
-        if (installed is null)
-            throw new InvalidOperationException("O pacote ReXtreme não foi localizado após a instalação.");
+        if (!installed.Status.VerifyIsOK())
+            throw new InvalidOperationException(
+                "O Windows registrou o pacote, mas a verificação de integridade não passou.");
 
-        progress.Report(new(1.0, "Instalação concluída.", "Asphalt ReXtreme está pronto para jogar."));
+        progress.Report(new(
+            1.0,
+            repair ? "Reparo concluído." : "Instalação concluída.",
+            "Asphalt ReXtreme está pronto para jogar."));
     }
 
     public async Task LaunchAsync()
     {
-        var packageManager = new PackageManager();
-        var package = packageManager
-            .FindPackagesForUser(string.Empty)
-            .FirstOrDefault(p => string.Equals(
-                p.Id.Name,
-                "ReXtreme.AsphaltXtreme",
-                StringComparison.OrdinalIgnoreCase))
+        var package = FindInstalledPackage()
             ?? throw new InvalidOperationException("Asphalt ReXtreme não está instalado.");
+
+        if (!package.Status.VerifyIsOK())
+            throw new InvalidOperationException(
+                "A instalação precisa ser reparada antes de iniciar o jogo.");
 
         var entries = await package.GetAppListEntriesAsync();
         var entry = entries.FirstOrDefault()
-            ?? throw new InvalidOperationException("O pacote não expõe uma entrada inicializável.");
+            ?? throw new InvalidOperationException(
+                "O pacote não expõe uma entrada inicializável.");
 
         if (!await entry.LaunchAsync())
-            throw new InvalidOperationException("O Windows recusou a inicialização do jogo.");
+            throw new InvalidOperationException(
+                "O Windows recusou a inicialização do jogo.");
+    }
+
+    private static Package? FindInstalledPackage()
+    {
+        var packageManager = new PackageManager();
+        return packageManager
+            .FindPackagesForUser(string.Empty)
+            .FirstOrDefault(p => string.Equals(
+                p.Id.Name,
+                PackageName,
+                StringComparison.OrdinalIgnoreCase));
     }
 
     private string RequirePayload(string fileName)
@@ -129,10 +170,13 @@ public sealed class InstallerEngine
         var root = Path.GetFullPath(_payloadDirectory) + Path.DirectorySeparatorChar;
 
         if (!path.StartsWith(root, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("O manifesto de instalação contém um caminho inválido.");
+            throw new InvalidDataException(
+                "O manifesto de instalação contém um caminho inválido.");
 
         if (!File.Exists(path))
-            throw new FileNotFoundException($"Arquivo obrigatório ausente: {fileName}", path);
+            throw new FileNotFoundException(
+                $"Arquivo obrigatório ausente: {fileName}",
+                path);
 
         return path;
     }
@@ -140,21 +184,42 @@ public sealed class InstallerEngine
     private static void TrustPublisherCertificate(string path)
     {
         using var cert = new X509Certificate2(path);
-        using var store = new X509Store(StoreName.TrustedPeople, StoreLocation.LocalMachine);
+        using var store = new X509Store(
+            StoreName.TrustedPeople,
+            StoreLocation.LocalMachine);
+
         store.Open(OpenFlags.ReadWrite);
-        store.Add(cert);
+
+        var alreadyTrusted = store.Certificates
+            .Find(X509FindType.FindByThumbprint, cert.Thumbprint, validOnly: false)
+            .Count > 0;
+
+        if (!alreadyTrusted)
+            store.Add(cert);
     }
 
-    private static async Task VerifyHashIfPresentAsync(string path, string? expected, CancellationToken ct)
+    private static async Task VerifyHashIfPresentAsync(
+        string path,
+        string? expected,
+        CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(expected))
-            return;
+            throw new InvalidDataException(
+                $"SHA-256 ausente no manifesto: {Path.GetFileName(path)}");
 
         await using var stream = File.OpenRead(path);
         using var sha = SHA256.Create();
-        var actual = Convert.ToHexString(await sha.ComputeHashAsync(stream, ct)).ToLowerInvariant();
+        var actual = Convert
+            .ToHexString(await sha.ComputeHashAsync(stream, ct))
+            .ToLowerInvariant();
 
-        if (!string.Equals(actual, expected.Trim().ToLowerInvariant(), StringComparison.Ordinal))
-            throw new InvalidDataException($"SHA-256 inválido: {Path.GetFileName(path)}");
+        if (!string.Equals(
+                actual,
+                expected.Trim().ToLowerInvariant(),
+                StringComparison.Ordinal))
+        {
+            throw new InvalidDataException(
+                $"SHA-256 inválido: {Path.GetFileName(path)}");
+        }
     }
 }
