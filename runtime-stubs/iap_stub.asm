@@ -2,6 +2,7 @@
 .model flat
 
 .data
+PUBLIC pIapWrapper
 pIapWrapper DWORD 0
 
 .code
