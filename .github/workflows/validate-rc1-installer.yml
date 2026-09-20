@@ -33,7 +33,9 @@ jobs:
           $files = @(
             "tools/build_rc1.ps1",
             "tools/prepare_installer_assets.ps1",
-            "tools/assemble_setup.ps1"
+            "tools/assemble_setup.ps1",
+            "tools/prepare_installer_icon.ps1",
+            "tools/resolve_vclibs120.ps1"
           )
           foreach ($file in $files) {
             $tokens = $null
