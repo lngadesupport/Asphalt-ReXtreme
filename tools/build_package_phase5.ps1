@@ -81,6 +81,20 @@ Copy-Item -LiteralPath $cleanGameRoot -Destination $out -Recurse -Force
 Write-Host "Overlaying verified Phase 2 AMS (AppContainer preserved)..." -ForegroundColor Cyan
 Copy-Item -LiteralPath $phase2 -Destination (Join-Path $out "AMS.exe") -Force
 
+# This is now a loose development layout, not the original signed Store package.
+# Remove stale package-integrity metadata because AMS.exe has been modified.
+$stalePackageMetadata = @(
+    (Join-Path $out "AppxSignature.p7x"),
+    (Join-Path $out "AppxBlockMap.xml"),
+    (Join-Path $out "AppxMetadata\CodeIntegrity.cat")
+)
+foreach ($meta in $stalePackageMetadata) {
+    if (Test-Path -LiteralPath $meta -PathType Leaf) {
+        Write-Host ("Removing stale development-layout metadata: {0}" -f (Split-Path $meta -Leaf)) -ForegroundColor Cyan
+        Remove-Item -LiteralPath $meta -Force
+    }
+}
+
 $manifestPath = Join-Path $out "AppxManifest.xml"
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "AppxManifest.xml missing from Phase 5 tree." }
 
