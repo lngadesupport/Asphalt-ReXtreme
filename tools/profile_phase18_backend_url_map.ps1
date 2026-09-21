@@ -15,15 +15,29 @@ $br=New-Object IO.BinaryReader($fs)
 try{
   $fs.Position=0x3C
   $pe=$br.ReadInt32()
-  $fs.Position=$pe+6
+  $fs.Position=$pe
+  $sig=$br.ReadUInt32()
+  if($sig -ne 0x00004550){throw ("Invalid PE signature at 0x{0:X8}" -f $pe)}
+
+  $fs.Position=$pe+4
+  $machine=$br.ReadUInt16()
   $sections=$br.ReadUInt16()
-  $fs.Position=$pe+20
-  $opt=$br.ReadUInt16()
-  if($opt -ne 0x10B){throw "Expected PE32/x86"}
-  $fs.Position=$pe+24+28
-  $imageBase=$br.ReadUInt32()
+
   $fs.Position=$pe+20
   $optSize=$br.ReadUInt16()
+
+  $fs.Position=$pe+24
+  $optMagic=$br.ReadUInt16()
+  if($optMagic -ne 0x10B){
+    throw ("Expected PE32 optional-header magic 0x10B, got 0x{0:X} (Machine=0x{1:X4}, PE=0x{2:X8})" -f $optMagic,$machine,$pe)
+  }
+  if($machine -ne 0x014C){
+    throw ("Expected x86 Machine=0x014C, got 0x{0:X4}" -f $machine)
+  }
+
+  $fs.Position=$pe+24+28
+  $imageBase=$br.ReadUInt32()
+
   $secOff=$pe+24+$optSize
   $sec=@()
   for($i=0;$i -lt $sections;$i++){
@@ -91,6 +105,9 @@ $report=New-Object System.Collections.Generic.List[object]
 $txt=New-Object System.Collections.Generic.List[string]
 
 $txt.Add(("AMS SHA256: "+(Get-FileHash -LiteralPath $Ams -Algorithm SHA256).Hash.ToLowerInvariant()))
+$txt.Add(("PEOffset: 0x{0:X8}" -f $pe))
+$txt.Add(("Machine: 0x{0:X4}" -f $machine))
+$txt.Add(("OptionalMagic: 0x{0:X}" -f $optMagic))
 $txt.Add(("ImageBase: 0x{0:X8}" -f $imageBase))
 $txt.Add("")
 
@@ -125,6 +142,9 @@ $report|Export-Csv -LiteralPath (Join-Path $outDir "BACKEND-URL-XREFS.csv") -NoT
 $summary=[ordered]@{
   Phase="18-backend-url-map"
   AMS_SHA256=(Get-FileHash -LiteralPath $Ams -Algorithm SHA256).Hash.ToLowerInvariant()
+  PEOffset=("0x{0:X8}" -f $pe)
+  Machine=("0x{0:X4}" -f $machine)
+  OptionalMagic=("0x{0:X}" -f $optMagic)
   ImageBase=("0x{0:X8}" -f $imageBase)
   TargetCount=$targets.Count
   XrefCount=$report.Count
