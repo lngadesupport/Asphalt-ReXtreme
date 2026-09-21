@@ -19,7 +19,7 @@ echo.
 
 echo [1/4] Baixando patch...
 curl.exe -fL --retry 3 --retry-delay 1 ^
-  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/962a37a818bd6b825dd899732b13081e20c90cbd/tools/profile_phase20_local_online_gates.ps1" ^
+  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/18dfe101abdcb5337c85a5c628829f2f549b349d/tools/profile_phase20_local_online_gates.ps1" ^
   -o "%TOOLS%\profile_phase20_local_online_gates.ps1"
 if errorlevel 1 goto :fail
 
