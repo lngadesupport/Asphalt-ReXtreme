@@ -113,11 +113,11 @@ $txt.Add("")
 
 foreach($t in $targets){
   $needle=[Text.Encoding]::ASCII.GetBytes($t+[char]0)
-  $hits=FindBytes $needle
+  $hits=@(FindBytes $needle)
   foreach($off in $hits){
     $va=FileToVA $off
     $ptr=[BitConverter]::GetBytes([uint32]$va)
-    $refs=FindBytes $ptr
+    $refs=@(FindBytes $ptr)
     $txt.Add(("===== STRING {0}" -f $t))
     $txt.Add(("FileOffset=0x{0:X8} VA=0x{1:X8} DirectRefs={2}" -f $off,$va,$refs.Count))
     $txt.Add("")
@@ -147,7 +147,7 @@ $summary=[ordered]@{
   OptionalMagic=("0x{0:X}" -f $optMagic)
   ImageBase=("0x{0:X8}" -f $imageBase)
   TargetCount=$targets.Count
-  XrefCount=$report.Count
+  XrefCount=@($report).Count
 }
 $summary|ConvertTo-Json -Depth 4|Set-Content -LiteralPath (Join-Path $outDir "SUMMARY.json") -Encoding UTF8
 $zip=Join-Path $GameRoot "PROFILE-PHASE18-BACKEND-URL-MAP.zip"
@@ -158,5 +158,5 @@ Write-Host ""
 Write-Host "============================================================"
 Write-Host " PHASE 18 BACKEND URL MAP COMPLETE" -ForegroundColor Green
 Write-Host "============================================================"
-Write-Host ("Xrefs: {0}" -f $report.Count)
+Write-Host ("Xrefs: {0}" -f @($report).Count)
 Write-Host ("ZIP: {0}" -f $zip)
