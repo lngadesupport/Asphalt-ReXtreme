@@ -122,7 +122,9 @@ function ContainsDirectCall([int]$funcOff,[int]$maxLen,[int[]]$targetOffs){
     if($d[$o]-ne0xE8){continue}
     $sv=[int64](FileToVa $o);if($sv-eq0){continue}
     $rel=[BitConverter]::ToInt32($d,$o+1)
-    $dest=[uint32]($sv+5+$rel)
+    $dest64=[int64]$sv + 5 + [int64]$rel
+    if($dest64 -lt 0 -or $dest64 -gt 4294967295){continue}
+    $dest=[uint32]$dest64
     if($targets.ContainsKey($dest)){$hits.Add(("call@{0}->targetFile={1}"-f(Fmt $o),(Fmt $targets[$dest])))}
   }
   return $hits.ToArray()
@@ -131,7 +133,7 @@ function ContainsDirectCall([int]$funcOff,[int]$maxLen,[int[]]$targetOffs){
 $sb=New-Object Text.StringBuilder
 function W([string]$s=""){[void]$sb.AppendLine($s)}
 W "============================================================"
-W " ReXtreme Phase 28 - AVAsphaltConnectivityTracker RTTI"
+W " ReXtreme Phase 28 - AVAsphaltConnectivityTracker RTTI v2"
 W "============================================================"
 W ("AMS_SHA256="+$hash)
 W ("ImageBase=0x{0:X8}"-f$imageBase)
@@ -218,6 +220,6 @@ W "Methods marked KNOWN CONNECTIVITY CALL directly call one of the Phase25/26 Wi
 $sb.ToString()|Set-Content -LiteralPath $out -Encoding UTF8
 Write-Host ""
 Write-Host "============================================================"
-Write-Host " PHASE 28 CONNECTIVITY RTTI READY" -ForegroundColor Green
+Write-Host " PHASE 28 CONNECTIVITY RTTI READY (v2)" -ForegroundColor Green
 Write-Host "============================================================"
 Write-Host ("Report: "+$out)
