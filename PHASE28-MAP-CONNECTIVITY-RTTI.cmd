@@ -28,7 +28,7 @@ echo.
 
 echo [1/2] Baixando mapper...
 curl.exe -fL --retry 3 --retry-delay 1 ^
-  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/28ea54a217e08ded6b4f458688c6dc6e51af6ab6/tools/profile_phase28_connectivity_rtti.ps1" ^
+  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/a761010775f153a5a513783bfd6e94c377910d53/tools/profile_phase28_connectivity_rtti.ps1" ^
   -o "%SCRIPT%"
 if errorlevel 1 goto :fail
 
