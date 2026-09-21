@@ -2,11 +2,31 @@ param([string]$GameRoot = "")
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$pkg = Get-AppxPackage -Name "A278AB0D.AsphaltXtreme" -ErrorAction Stop |
-    Sort-Object Version -Descending |
-    Select-Object -First 1
+if ([string]::IsNullOrWhiteSpace($GameRoot)) {
+    $projectRoot = Split-Path -Parent $PSScriptRoot
+    $localPhase5 = Join-Path $projectRoot "_PACKAGE_PHASE5"
 
-if ([string]::IsNullOrWhiteSpace($GameRoot)) { $GameRoot = $pkg.InstallLocation }
+    if (Test-Path -LiteralPath (Join-Path $localPhase5 "AMS.exe") -PathType Leaf) {
+        $GameRoot = $localPhase5
+    } else {
+        $pkg = Get-AppxPackage -Name "A278AB0D.AsphaltXtreme" -ErrorAction SilentlyContinue |
+            Sort-Object Version -Descending |
+            Select-Object -First 1
+
+        if ($null -eq $pkg) {
+            throw "Could not locate _PACKAGE_PHASE5 locally and the registered package was not found."
+        }
+
+        $installLocation = $pkg.PSObject.Properties["InstallLocation"]
+        if ($null -eq $installLocation -or [string]::IsNullOrWhiteSpace([string]$installLocation.Value)) {
+            throw "Registered package was found but InstallLocation is unavailable."
+        }
+
+        $GameRoot = [string]$installLocation.Value
+    }
+} else {
+    $GameRoot = (Resolve-Path -LiteralPath $GameRoot).Path
+}
 
 $ams = Join-Path $GameRoot "AMS.exe"
 $expected = "56e9dbde7f7f3a75b3542a691fb45ad5bf46b86e87cb9fa11854ec1862e62ae3"
