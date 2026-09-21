@@ -77,7 +77,7 @@ if (-not (Test-RequiredProfileFiles)) {
     New-Item -ItemType Directory -Path $LocalState -Force | Out-Null
 
     # Launch only to let the original game code create its valid profile containers.
-    Start-Process "explorer.exe" ("shell:AppsFolder" + $PFN + "!App")
+    Start-Process "explorer.exe" ("shell:AppsFolder\\" + $PFN + "!App")
 
     $created = $false
     for($i=0; $i -lt 120; $i++) {
