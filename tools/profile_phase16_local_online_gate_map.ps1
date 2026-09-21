@@ -8,7 +8,7 @@ $Expected="56e9dbde7f7f3a75b3542a691fb45ad5bf46b86e87cb9fa11854ec1862e62ae3"
 $ProjectRoot=(Resolve-Path -LiteralPath $ProjectRoot).Path
 $GameRoot=Join-Path $ProjectRoot "_PACKAGE_PHASE5"
 
-function H([string]$p){(Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash.ToLowerInvariant()}
+function Get-Sha256([string]$p){(Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash.ToLowerInvariant()}
 $c=@(
  (Join-Path $GameRoot "_PROFILE_PHASE15_BACKUP\AMS.phase5.bak"),
  (Join-Path $GameRoot "_PROFILE_PHASE14_BACKUP\AMS.phase5.bak"),
@@ -18,7 +18,7 @@ $c=@(
  (Join-Path $GameRoot "AMS.exe")
 )
 $Ams=$null
-foreach($p in $c){if((Test-Path $p) -and ((H $p)-eq $Expected)){$Ams=$p;break}}
+foreach($p in $c){if((Test-Path $p) -and ((Get-Sha256 $p)-eq $Expected)){$Ams=$p;break}}
 if($null -eq $Ams){throw "Verified Phase 5 AMS not found."}
 [byte[]]$d=[IO.File]::ReadAllBytes($Ams)
 
@@ -52,7 +52,7 @@ $summary=[ordered]@{
   Phase="16-local-online-gate-map"
   ReadOnly=$true
   SourceAMS=$Ams
-  SourceSHA256=(H $Ams)
+  SourceSHA256=(Get-Sha256 $Ams)
   IsOnlineGetter="0x00BACDD0"
   CallCount=$rows.Count
   LobbyWindowCallCount=@($rows|Where-Object{$_.NearLobby}).Count
@@ -63,7 +63,7 @@ $summary|ConvertTo-Json -Depth 5|Set-Content (Join-Path $out "SUMMARY.json") -En
 $txt=New-Object System.Collections.Generic.List[string]
 $txt.Add("PHASE 16 - LOCAL ONLINE GATE MAP")
 $txt.Add("Source: $Ams")
-$txt.Add("SHA256: $(H $Ams)")
+$txt.Add("SHA256: $(Get-Sha256 $Ams)")
 $txt.Add("Getter: 0x00BACDD0")
 $txt.Add("")
 foreach($r in $rows){
