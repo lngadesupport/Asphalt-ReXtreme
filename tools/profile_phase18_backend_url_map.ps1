@@ -112,7 +112,7 @@ New-Item -ItemType Directory -Path $outDir -Force|Out-Null
 $report=New-Object System.Collections.Generic.List[object]
 $txt=New-Object System.Collections.Generic.List[string]
 
-$txt.Add("MapperVersion: phase18-v4-flat-array")
+$txt.Add("MapperVersion: phase18-v5-safe-finalize")
 $txt.Add(("AMS SHA256: "+(Get-FileHash -LiteralPath $Ams -Algorithm SHA256).Hash.ToLowerInvariant()))
 $txt.Add(("PEOffset: 0x{0:X8}" -f $pe))
 $txt.Add(("Machine: 0x{0:X4}" -f $machine))
@@ -149,18 +149,18 @@ foreach($t in $targets){
   }
 }
 
-$txt|Set-Content -LiteralPath (Join-Path $outDir "BACKEND-URL-XREFS.txt") -Encoding UTF8
-$report|Export-Csv -LiteralPath (Join-Path $outDir "BACKEND-URL-XREFS.csv") -NoTypeInformation -Encoding UTF8
+$txt.ToArray()|Set-Content -LiteralPath (Join-Path $outDir "BACKEND-URL-XREFS.txt") -Encoding UTF8
+$report.ToArray()|Export-Csv -LiteralPath (Join-Path $outDir "BACKEND-URL-XREFS.csv") -NoTypeInformation -Encoding UTF8
 $summary=[ordered]@{
   Phase="18-backend-url-map"
-  MapperVersion="phase18-v4-flat-array"
+  MapperVersion="phase18-v5-safe-finalize"
   AMS_SHA256=(Get-FileHash -LiteralPath $Ams -Algorithm SHA256).Hash.ToLowerInvariant()
   PEOffset=("0x{0:X8}" -f $pe)
   Machine=("0x{0:X4}" -f $machine)
   OptionalMagic=("0x{0:X}" -f $optMagic)
   ImageBase=("0x{0:X8}" -f $imageBase)
   TargetCount=$targets.Count
-  XrefCount=@($report).Count
+  XrefCount=$report.Count
 }
 $summary|ConvertTo-Json -Depth 4|Set-Content -LiteralPath (Join-Path $outDir "SUMMARY.json") -Encoding UTF8
 $zip=Join-Path $GameRoot "PROFILE-PHASE18-BACKEND-URL-MAP.zip"
@@ -171,5 +171,5 @@ Write-Host ""
 Write-Host "============================================================"
 Write-Host " PHASE 18 BACKEND URL MAP COMPLETE" -ForegroundColor Green
 Write-Host "============================================================"
-Write-Host ("Xrefs: {0}" -f @($report).Count)
+Write-Host ("Xrefs: {0}" -f $report.Count)
 Write-Host ("ZIP: {0}" -f $zip)
