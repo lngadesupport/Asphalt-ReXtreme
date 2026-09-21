@@ -9,6 +9,7 @@ $GameRoot=Join-Path $ProjectRoot "_PACKAGE_PHASE5"
 New-Item -ItemType Directory -Path $OutputDir -Force|Out-Null
 $out=New-Object System.Collections.Generic.List[object]
 $files=Get-ChildItem -LiteralPath $GameRoot -File -Recurse -ErrorAction SilentlyContinue | Where-Object {
+  $_.FullName -notmatch '\\_(PROFILE|RUNTIME|LOCAL_BACKEND)' -and $_.Extension -ne '.bak' -and
   $_.Length -le 120MB -and ($_.Extension -match '^\.(exe|dll|json|xml|txt|cfg|ini|dat|bin)$' -or $_.Name -match '(?i)manifest|config|server|network')
 }
 foreach($f in $files){
