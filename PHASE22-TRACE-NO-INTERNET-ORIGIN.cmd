@@ -36,7 +36,7 @@ if errorlevel 1 goto :fail
 
 echo [2/4] Baixando debugger runner...
 curl.exe -fL --retry 3 --retry-delay 1 ^
-  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/4a759d1c274f187d082e904390ecce9088869007/tools/run_phase22_popup_trace.ps1" ^
+  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/30c9dc0813076dcba88ac6ae42e448c2bb11f7bf/tools/run_phase22_popup_trace.ps1" ^
   -o "%RUNNER%"
 if errorlevel 1 goto :fail
 
