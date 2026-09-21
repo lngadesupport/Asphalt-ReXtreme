@@ -34,7 +34,7 @@ if errorlevel 1 goto :fail
 
 echo [2/5] Baixando scanner de endpoints...
 curl.exe -fL --retry 3 --retry-delay 1 ^
-  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/f97fd07f439438a7f876ba816d28f49886d5316f/tools/scan_backend_endpoints.ps1" ^
+  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/a7506973c9291b5d4ba0bde9f7dd992921e54354/tools/scan_backend_endpoints.ps1" ^
   -o "%TOOLS%\scan_backend_endpoints.ps1"
 if errorlevel 1 goto :fail
 
