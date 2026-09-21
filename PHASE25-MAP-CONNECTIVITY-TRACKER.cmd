@@ -33,7 +33,7 @@ timeout /t 2 /nobreak >nul
 
 echo [1/2] Baixando mapper...
 curl.exe -fL --retry 3 --retry-delay 1 ^
-  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/daaa555ccde208e256e8196d03fb2a1bc772d416/tools/profile_phase25_connectivity_tracker_map.ps1" ^
+  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/9107e9f9c56b9e72495b755cc847693190d26ab6/tools/profile_phase25_connectivity_tracker_map.ps1" ^
   -o "%SCRIPT%"
 if errorlevel 1 goto :fail
 
