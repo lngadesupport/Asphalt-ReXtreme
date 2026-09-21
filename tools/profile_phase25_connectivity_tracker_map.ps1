@@ -101,6 +101,10 @@ function NearestPrologue([int]$off){
   }
   return -1
 }
+function FormatFileOffset([int]$off){
+  if($off -ge 0){ return ("0x{0:X8}" -f $off) }
+  return "N/A"
+}
 function HexContext([int]$center,[int]$before=64,[int]$after=96){
   $a=[Math]::Max(0,$center-$before); $b=[Math]::Min($d.Length-1,$center+$after)
   $lines=New-Object System.Collections.Generic.List[string]
@@ -136,7 +140,7 @@ $terms=@(
 $sb=New-Object Text.StringBuilder
 function W([string]$s=""){[void]$sb.AppendLine($s)}
 W "============================================================"
-W " ReXtreme Phase 25 - Connectivity Tracker Map"
+W " ReXtreme Phase 25 - Connectivity Tracker Map v2"
 W "============================================================"
 W ("AMS_SHA256="+$hash)
 W ("ImageBase=0x{0:X8}" -f $imageBase)
@@ -154,7 +158,7 @@ foreach($t in $terms){
     W ("ImmediateRefs="+$refs.Count)
     foreach($imm in $refs){
       $pro=NearestPrologue $imm
-      W ("REF immediate@file=0x{0:X8} nearestPrologue={1}" -f $imm,(if($pro-ge0){("0x{0:X8}"-f $pro)}else{"N/A"}))
+      W ("REF immediate@file=0x{0:X8} nearestPrologue={1}" -f $imm,(FormatFileOffset $pro))
       W (HexContext $imm 64 96)
       W ""
       $functions.Add([pscustomobject]@{Term=$t.Name;Ref=$imm;Prologue=$pro})
@@ -189,7 +193,7 @@ foreach($s in $sections){
 }
 W ("DirectIsOnlineCalls="+$calls.Count)
 foreach($c in $calls){
-  W ("CALL file=0x{0:X8} nearestPrologue={1}" -f $c.Call,(if($c.Prologue-ge0){("0x{0:X8}"-f $c.Prologue)}else{"N/A"}))
+  W ("CALL file=0x{0:X8} nearestPrologue={1}" -f $c.Call,(FormatFileOffset $c.Prologue))
 }
 W ""
 
@@ -211,6 +215,6 @@ W ("CrossMatches="+$matched)
 $sb.ToString()|Set-Content -LiteralPath $out -Encoding UTF8
 Write-Host ""
 Write-Host "============================================================"
-Write-Host " PHASE 25 CONNECTIVITY MAP READY" -ForegroundColor Green
+Write-Host " PHASE 25 CONNECTIVITY MAP READY (v2)" -ForegroundColor Green
 Write-Host "============================================================"
 Write-Host ("Report: "+$out)
