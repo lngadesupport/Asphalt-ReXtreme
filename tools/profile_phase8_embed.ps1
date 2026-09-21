@@ -69,15 +69,10 @@ if (-not (Test-RequiredProfileFiles)) {
         throw "AppxManifest.xml not found: $manifest"
     }
 
-    # Ensure the loose package is registered after an accidental uninstall/unregister.
-    $registered = Get-AppxPackage -Name "A278AB0D.AsphaltXtreme" -ErrorAction SilentlyContinue |
-        Sort-Object Version -Descending |
-        Select-Object -First 1
-
-    if ($null -eq $registered) {
-        Write-Host "Registering Campaign package..." -ForegroundColor Cyan
-        Add-AppxPackage -Register $manifest -ForceApplicationShutdown
-    }
+    # Re-register this exact Phase 5 tree. This also repairs stale/broken
+    # shell:AppsFolder registration after an accidental uninstall.
+    Write-Host "Registering Campaign package tree..." -ForegroundColor Cyan
+    Add-AppxPackage -Register $manifest -ForceApplicationShutdown
 
     New-Item -ItemType Directory -Path $LocalState -Force | Out-Null
 
