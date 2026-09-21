@@ -10,7 +10,8 @@ echo ============================================================
 echo.
 
 if not exist "tools" mkdir "tools"
-set "BASE=https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/campaign-edition-win32"
+set "PAYLOADCOMMIT=42abf3d0a46d08196701667525bc04a9260c3b91"
+set "BASE=https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/%PAYLOADCOMMIT%"
 set "PS1=tools\profile_phase16_local_online_gate_map.ps1"
 
 echo [1/3] Baixando mapper...
