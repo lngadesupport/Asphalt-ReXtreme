@@ -37,7 +37,10 @@ jobs:
             "tools/windows-dev/Launch-CampaignDev.ps1",
             "tools/windows-dev/Unregister-CampaignDev.ps1",
             "tools/unified_diagnostic.ps1",
-            "UNIFIED_DIAGNOSTIC.ps1"
+            "UNIFIED_DIAGNOSTIC.ps1",
+            "tools/profile_phase9_internal.ps1",
+            "tools/profile_phase10_local_sync.ps1",
+            "tools/profile_phase11_no_connection_errors.ps1"
           )) {
             $tokens = $null
             $errors = $null
