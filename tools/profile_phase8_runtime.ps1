@@ -43,7 +43,7 @@ foreach($name in $names){
 Write-Host "Campaign profile restored to LocalState." -ForegroundColor Cyan
 Write-Host "Launching Asphalt ReXtreme..." -ForegroundColor Cyan
 
-Start-Process "explorer.exe" ("shell:AppsFolder\\"+$PFN+"!"+$AppId)
+Start-Process "explorer.exe" ("shell:AppsFolder\"+$PFN+"!"+$AppId)
 
 $proc=$null
 for($i=0;$i -lt 60;$i++){
