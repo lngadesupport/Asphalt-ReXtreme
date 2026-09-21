@@ -11,7 +11,7 @@ if not exist "%TOOLS%" mkdir "%TOOLS%"
 
 echo [1/3] Baixando mapper Phase 18...
 curl.exe -fL --retry 3 --retry-delay 1 ^
-  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/add2271122da6e5089761cab09eeb01184dc4a86/tools/profile_phase18_backend_url_map.ps1" ^
+  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/e95543bde11ab1b82fbaf2d21c3ab0515e0da122/tools/profile_phase18_backend_url_map.ps1" ^
   -o "%PS1%.new"
 if errorlevel 1 goto :fail
 
