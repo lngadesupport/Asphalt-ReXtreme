@@ -16,16 +16,38 @@ function Get-Hash([string]$p){
 function Hex([byte[]]$b){
     (($b|ForEach-Object{$_.ToString("X2")}) -join " ")
 }
-function Find-All([byte[]]$h,[byte[]]$n){
-    $r=New-Object System.Collections.Generic.List[int]
-    if($n.Length -eq 0 -or $n.Length -gt $h.Length){return $r}
-    for($i=0;$i -le $h.Length-$n.Length;$i++){
-        if($h[$i] -ne $n[0]){continue}
-        $ok=$true
-        for($j=1;$j -lt $n.Length;$j++){if($h[$i+$j] -ne $n[$j]){$ok=$false;break}}
-        if($ok){$r.Add($i);$i += [Math]::Max(0,$n.Length-1)}
+Add-Type -TypeDefinition @"
+using System;
+using System.Collections.Generic;
+public static class ReXtremeFastSearch {
+    public static int[] FindAll(byte[] haystack, byte[] needle) {
+        if (haystack == null || needle == null || needle.Length == 0 || needle.Length > haystack.Length)
+            return new int[0];
+        var result = new List<int>();
+        int limit = haystack.Length - needle.Length;
+        int i = 0;
+        byte first = needle[0];
+        while (i <= limit) {
+            int p = Array.IndexOf<byte>(haystack, first, i);
+            if (p < 0 || p > limit) break;
+            bool ok = true;
+            for (int j = 1; j < needle.Length; j++) {
+                if (haystack[p + j] != needle[j]) { ok = false; break; }
+            }
+            if (ok) {
+                result.Add(p);
+                i = p + Math.Max(1, needle.Length);
+            } else {
+                i = p + 1;
+            }
+        }
+        return result.ToArray();
     }
-    return $r
+}
+"@
+
+function Find-All([byte[]]$h,[byte[]]$n){
+    [ReXtremeFastSearch]::FindAll($h,$n)
 }
 function Read-U16([byte[]]$b,[int]$o){[BitConverter]::ToUInt16($b,$o)}
 function Read-U32([byte[]]$b,[int]$o){[BitConverter]::ToUInt32($b,$o)}
@@ -97,6 +119,7 @@ $terms=@(
 )
 
 $stringRows=@()
+Write-Host "[A/4] Scanning AMS connection strings..." -ForegroundColor Cyan
 $xrefRows=@()
 $pointerRows=@()
 foreach($term in $terms){
@@ -151,6 +174,7 @@ foreach($term in $terms){
     }
 }
 
+Write-Host "[B/4] Writing AMS xref maps..." -ForegroundColor Cyan
 $stringRows|Sort-Object Term,StringFileOffset -Unique|Export-Csv (Join-Path $out "ams-network-strings.csv") -NoTypeInformation -Encoding UTF8
 $pointerRows|Sort-Object Term,PointerFileOffset -Unique|Export-Csv (Join-Path $out "ams-network-pointer-chain.csv") -NoTypeInformation -Encoding UTF8
 $xrefRows|Sort-Object Term,XrefFileOffset -Unique|Export-Csv (Join-Path $out "ams-network-xrefs.csv") -NoTypeInformation -Encoding UTF8
@@ -196,6 +220,7 @@ $resTerms=@(
 "NETWORK","OFFLINE","RETRY","TRY AGAIN","TRY_AGAIN","INTERNET"
 )
 $resRows=@()
+Write-Host "[C/4] Scanning package resources..." -ForegroundColor Cyan
 $files=Get-ChildItem -LiteralPath $GameRoot -Recurse -File -ErrorAction SilentlyContinue |
     Where-Object {
         $_.Length -gt 0 -and $_.Length -le 128MB -and
@@ -226,6 +251,7 @@ $currentHash=if(Test-Path -LiteralPath $currentAms){Get-Hash $currentAms}else{""
 $phase13Report=Join-Path $GameRoot "PROFILE-PHASE13-LOCAL-ONBOARDING-REPORT.json"
 if(Test-Path -LiteralPath $phase13Report){Copy-Item $phase13Report (Join-Path $out "PHASE13-REPORT.json") -Force}
 
+Write-Host "[D/4] Packaging report..." -ForegroundColor Cyan
 $summary=[ordered]@{
     Phase="14-connection-ui-map"
     ReadOnly=$true
