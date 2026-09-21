@@ -12,7 +12,7 @@ $GameRoot=Join-Path $ProjectRoot "_PACKAGE_PHASE5"
 $Ams=Join-Path $GameRoot "AMS.exe"
 $BackupRoot=Join-Path $GameRoot "_PROFILE_PHASE13_BACKUP"
 $Backup=Join-Path $BackupRoot "AMS.phase5.bak"
-$Report=Join-Path $GameRoot "PROFILE-PHASE13-LOCAL-ONBOARDING-REPORT.json"
+$ReportPath=Join-Path $GameRoot "PROFILE-PHASE13-LOCAL-ONBOARDING-REPORT.json"
 
 $ExpectedPhase5="56e9dbde7f7f3a75b3542a691fb45ad5bf46b86e87cb9fa11854ec1862e62ae3"
 
@@ -41,6 +41,7 @@ if($Restore){
 $current=Get-Hash $Ams
 if($current -ne $ExpectedPhase5){
     $candidates=@(
+        (Join-Path $GameRoot "_PROFILE_PHASE13_BACKUP\AMS.phase5.bak"),
         (Join-Path $GameRoot "_PROFILE_PHASE12_BACKUP\AMS.phase5.bak"),
         (Join-Path $GameRoot "_PROFILE_PHASE11_BACKUP\AMS.phase5.bak"),
         (Join-Path $GameRoot "_PROFILE_PHASE10_BACKUP\AMS.phase5.bak"),
@@ -224,7 +225,7 @@ $patches=@(
     }
 )
 
-$report=@()
+$patchReport=@()
 foreach($p in $patches){
     if($p.Before.Length -ne $p.After.Length){
         throw ("Patch length mismatch: {0}" -f $p.Name)
@@ -239,7 +240,7 @@ foreach($p in $patches){
 
     [Array]::Copy($p.After,0,$d,$p.Offset,$p.After.Length)
 
-    $report += [ordered]@{
+    $patchReport += [ordered]@{
         Name=$p.Name
         Offset=("0x{0:X8}" -f $p.Offset)
         Before=(($p.Before|ForEach-Object{$_.ToString("X2")}) -join " ")
@@ -259,7 +260,7 @@ $status=[ordered]@{
     OtherKnownNoInternetBlocksRetained=13
     KnownProfileLoadingSitesNeutralized=3
     PatchCount=$patches.Count
-    Patches=$report
+    Patches=$patchReport
     Notes=@(
         "Global connectivity getter remains the Phase 5 offline/false implementation.",
         "Only the two connectivity decisions inside the STR_AGE handler are forced onto their existing success continuations.",
@@ -269,7 +270,7 @@ $status=[ordered]@{
     )
 }
 
-$status|ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $Report -Encoding UTF8
+$status|ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $ReportPath -Encoding UTF8
 
 Write-Host ""
 Write-Host "============================================================"
