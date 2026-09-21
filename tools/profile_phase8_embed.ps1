@@ -44,7 +44,7 @@ if ($current -ne $ExpectedAms) {
 }
 
 if (-not (Test-Path -LiteralPath $LocalState -PathType Container)) {
-    throw "LocalState not found: $LocalState. Launch the registered game at least once first."
+    New-Item -ItemType Directory -Path $LocalState -Force | Out-Null
 }
 
 $required = @("localprofile","profile")
