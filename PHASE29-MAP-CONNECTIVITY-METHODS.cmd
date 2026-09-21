@@ -31,8 +31,22 @@ curl.exe -fL --retry 3 --retry-delay 1 ^
 if errorlevel 1 goto :fail
 
 echo [2/2] Validando e executando...
-python "%SCRIPT%" "%ROOT%"
-if errorlevel 1 goto :fail
+where python >nul 2>nul
+if not errorlevel 1 (
+  python "%SCRIPT%" "%ROOT%"
+  if errorlevel 1 goto :fail
+  goto :done
+)
+where py >nul 2>nul
+if not errorlevel 1 (
+  py -3 "%SCRIPT%" "%ROOT%"
+  if errorlevel 1 goto :fail
+  goto :done
+)
+echo [ERRO] Python 3 nao encontrado.
+goto :fail
+
+:done
 
 echo.
 echo ============================================================
