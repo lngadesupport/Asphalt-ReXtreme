@@ -51,6 +51,8 @@ jobs:
             "tools/runtime_session_logger.ps1",
             "tools/run_local_backend_discovery.ps1",
             "tools/profile_phase18_backend_url_map.ps1",
+            "tools/run_phase19_local_backend.ps1",
+            "tools/profile_phase19_local_backend_route.ps1",
             "tools/scan_backend_endpoints.ps1",
             "tools/rextreme_local_backend.ps1"
           )) {
