@@ -10,7 +10,8 @@ $ams=Join-Path $game "AMS.exe"
 $outDir=Join-Path $game "_PHASE24_POPUP_CALL_TRACE"
 $backup=Join-Path $outDir "AMS.PRE-CALL-TRAPS.exe"
 $mapFile=Join-Path $outDir "TRAPS.json"
-$target=[uint32]0x00870510
+$targetFileOffset=[int]0x00870510
+$target=[uint32]0
 
 if(-not(Test-Path -LiteralPath $ams -PathType Leaf)){throw "AMS.exe not found: $ams"}
 New-Item -ItemType Directory -Path $outDir -Force|Out-Null
@@ -59,6 +60,11 @@ function FileToRva([int]$off){
   return [uint32]0
 }
 
+$targetRva=FileToRva $targetFileOffset
+if($targetRva -eq 0){throw ("Popup target file offset 0x{0:X8} is not inside a mapped PE section." -f $targetFileOffset)}
+$target=[uint32]($imageBase+$targetRva)
+Write-Host ("Popup target file=0x{0:X8} RVA=0x{1:X8} VA=0x{2:X8}" -f $targetFileOffset,$targetRva,$target) -ForegroundColor Cyan
+
 $traps=New-Object System.Collections.Generic.List[object]
 foreach($s in $sections){
   if(($s.Characteristics -band 0x20000000) -eq 0){continue}
@@ -87,7 +93,7 @@ foreach($s in $sections){
   }
 }
 
-if($traps.Count -eq 0){throw "No direct CALL rel32 references to 0x00870510 found."}
+if($traps.Count -eq 0){throw ("No direct CALL rel32 references found for popup target file=0x{0:X8} RVA=0x{1:X8} VA=0x{2:X8}." -f $targetFileOffset,$targetRva,$target)}
 
 Copy-Item -LiteralPath $ams -Destination $backup -Force
 $before=(Get-FileHash -LiteralPath $ams -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -106,6 +112,8 @@ try{
 $after=(Get-FileHash -LiteralPath $ams -Algorithm SHA256).Hash.ToLowerInvariant()
 [ordered]@{
   Phase="24-popup-callsite-tripwire"
+  TargetFunctionFileOffset=("0x{0:X8}" -f $targetFileOffset)
+  TargetFunctionRVA=("0x{0:X8}" -f $targetRva)
   TargetFunctionVA=("0x{0:X8}" -f $target)
   PreferredImageBase=("0x{0:X8}" -f $imageBase)
   BeforeSHA256=$before
@@ -119,5 +127,5 @@ Write-Host ""
 Write-Host "============================================================"
 Write-Host " PHASE 24 POPUP CALLSITE TRAPS INSTALLED" -ForegroundColor Green
 Write-Host "============================================================"
-Write-Host ("Target function: 0x{0:X8}" -f $target)
+Write-Host ("Target function file=0x{0:X8} RVA=0x{1:X8} VA=0x{2:X8}" -f $targetFileOffset,$targetRva,$target)
 Write-Host ("Direct callsites trapped: {0}" -f $traps.Count)
