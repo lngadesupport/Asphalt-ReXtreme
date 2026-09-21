@@ -25,12 +25,118 @@ if(-not(Test-Path $launch)){throw "Game launcher not found."}
 $src=@'
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
 
 public static class ReXDebug {
   public const uint EXCEPTION_DEBUG_EVENT = 1;
   public const uint EXIT_PROCESS_DEBUG_EVENT = 5;
   public const uint DBG_CONTINUE = 0x00010002;
   public const uint DBG_EXCEPTION_NOT_HANDLED = 0x80010001;
+
+  public const uint THREAD_GET_CONTEXT = 0x0008;
+  public const uint THREAD_QUERY_INFORMATION = 0x0040;
+  public const uint WOW64_CONTEXT_CONTROL = 0x00010001;
+  public const uint WOW64_CONTEXT_INTEGER = 0x00010002;
+
+  [StructLayout(LayoutKind.Sequential, Pack=4)]
+  public struct WOW64_FLOATING_SAVE_AREA {
+    public uint ControlWord;
+    public uint StatusWord;
+    public uint TagWord;
+    public uint ErrorOffset;
+    public uint ErrorSelector;
+    public uint DataOffset;
+    public uint DataSelector;
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst=80)]
+    public byte[] RegisterArea;
+    public uint Cr0NpxState;
+  }
+
+  [StructLayout(LayoutKind.Sequential, Pack=4)]
+  public struct WOW64_CONTEXT {
+    public uint ContextFlags;
+    public uint Dr0;
+    public uint Dr1;
+    public uint Dr2;
+    public uint Dr3;
+    public uint Dr6;
+    public uint Dr7;
+    public WOW64_FLOATING_SAVE_AREA FloatSave;
+    public uint SegGs;
+    public uint SegFs;
+    public uint SegEs;
+    public uint SegDs;
+    public uint Edi;
+    public uint Esi;
+    public uint Ebx;
+    public uint Edx;
+    public uint Ecx;
+    public uint Eax;
+    public uint Ebp;
+    public uint Eip;
+    public uint SegCs;
+    public uint EFlags;
+    public uint Esp;
+    public uint SegSs;
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst=512)]
+    public byte[] ExtendedRegisters;
+  }
+
+  [DllImport("kernel32.dll", SetLastError=true)]
+  public static extern IntPtr OpenThread(uint dwDesiredAccess, bool bInheritHandle, uint dwThreadId);
+
+  [DllImport("kernel32.dll", SetLastError=true)]
+  public static extern bool CloseHandle(IntPtr hObject);
+
+  [DllImport("kernel32.dll", SetLastError=true)]
+  public static extern bool Wow64GetThreadContext(IntPtr hThread, ref WOW64_CONTEXT lpContext);
+
+  [DllImport("kernel32.dll", SetLastError=true)]
+  public static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, int dwSize, out IntPtr lpNumberOfBytesRead);
+
+  public static string CaptureWow64Stack(uint threadId, IntPtr processHandle, ulong moduleBase, uint moduleSize) {
+    var sb = new StringBuilder();
+    IntPtr hThread = OpenThread(THREAD_GET_CONTEXT | THREAD_QUERY_INFORMATION, false, threadId);
+    if (hThread == IntPtr.Zero) {
+      sb.AppendFormat("STACK: OpenThread failed Win32={0}", Marshal.GetLastWin32Error());
+      return sb.ToString();
+    }
+    try {
+      WOW64_CONTEXT ctx = new WOW64_CONTEXT();
+      ctx.ContextFlags = WOW64_CONTEXT_CONTROL | WOW64_CONTEXT_INTEGER;
+      ctx.FloatSave.RegisterArea = new byte[80];
+      ctx.ExtendedRegisters = new byte[512];
+      if (!Wow64GetThreadContext(hThread, ref ctx)) {
+        sb.AppendFormat("STACK: Wow64GetThreadContext failed Win32={0}", Marshal.GetLastWin32Error());
+        return sb.ToString();
+      }
+
+      sb.AppendFormat("CTX EIP=0x{0:X8} ESP=0x{1:X8} EBP=0x{2:X8}", ctx.Eip, ctx.Esp, ctx.Ebp);
+      byte[] stack = new byte[1024];
+      IntPtr read;
+      if (!ReadProcessMemory(processHandle, new IntPtr((long)ctx.Esp), stack, stack.Length, out read)) {
+        sb.AppendFormat("\nSTACK: ReadProcessMemory failed Win32={0}", Marshal.GetLastWin32Error());
+        return sb.ToString();
+      }
+
+      int n = Math.Min(stack.Length, read.ToInt32());
+      ulong moduleEnd = moduleBase + moduleSize;
+      int emitted = 0;
+      for (int i = 0; i + 4 <= n && emitted < 48; i += 4) {
+        uint v = BitConverter.ToUInt32(stack, i);
+        ulong vv = v;
+        if (vv >= moduleBase && vv < moduleEnd) {
+          ulong rva = vv - moduleBase;
+          sb.AppendFormat("\nSTACK_CANDIDATE slot=+0x{0:X3} runtime=0x{1:X8} RVA=0x{2:X8}", i, v, rva);
+          emitted++;
+        }
+      }
+      if (emitted == 0) sb.Append("\nSTACK: no in-module return-address candidates in first 1024 bytes");
+      return sb.ToString();
+    } finally {
+      CloseHandle(hThread);
+    }
+  }
 
   [StructLayout(LayoutKind.Sequential)]
   public struct EXCEPTION_RECORD {
@@ -101,7 +207,8 @@ if($null -eq $proc){throw "AMS.exe was not detected."}
 $pid2=[uint32]$proc.Id
 $base=[uint64]$proc.MainModule.BaseAddress.ToInt64()
 L ("GamePID="+$pid2)
-L ("RuntimeBase=0x{0:X8}" -f $base)
+$moduleSize=[uint32]$proc.MainModule.ModuleMemorySize
+L ("RuntimeBase=0x{0:X8} ModuleSize=0x{1:X8}" -f $base,$moduleSize)
 
 $lookup=@{}
 foreach($t in $map.Traps){
@@ -142,6 +249,10 @@ try{
         if($lookup.ContainsKey($key)){
           $matched=$lookup[$key]
           L ("TRIPWIRE HIT kind={0} runtime=0x{1:X8} RVA={2} file={3} firstChance={4} exception=0x{5:X8}" -f $matched.Kind,$addr,$matched.RVAHex,$matched.FileOffsetHex,$first,$code)
+          try{
+            $stackText=[ReXDebug]::CaptureWow64Stack($ev.dwThreadId,$proc.Handle,$base,$moduleSize)
+            foreach($sl in ($stackText -split "\r?\n")){if($sl){L $sl}}
+          }catch{L ("STACK-CAPTURE-ERROR: "+$_.Exception.Message)}
           $status=[ReXDebug]::DBG_EXCEPTION_NOT_HANDLED
         }elseif($code -eq 0x80000003){
           # Initial debugger breakpoint or unrelated INT3.
