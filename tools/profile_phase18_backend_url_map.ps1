@@ -73,7 +73,7 @@ $raw1to1=$latin1.GetString($d)
 
 function Find-BytePattern([byte[]]$needle){
   $hits=New-Object System.Collections.Generic.List[int]
-  if($needle.Length -eq 0){return ,$hits.ToArray()}
+  if($needle.Length -eq 0){return $hits.ToArray()}
   $pattern=$latin1.GetString($needle)
   $pos=0
   while($pos -le ($raw1to1.Length-$pattern.Length)){
@@ -82,7 +82,7 @@ function Find-BytePattern([byte[]]$needle){
     $hits.Add($idx)
     $pos=$idx+1
   }
-  return ,$hits.ToArray()
+  return $hits.ToArray()
 }
 
 function HexWindow([int]$center,[int]$before=96,[int]$after=160){
@@ -112,7 +112,7 @@ New-Item -ItemType Directory -Path $outDir -Force|Out-Null
 $report=New-Object System.Collections.Generic.List[object]
 $txt=New-Object System.Collections.Generic.List[string]
 
-$txt.Add("MapperVersion: phase18-v3-fast-indexof")
+$txt.Add("MapperVersion: phase18-v4-flat-array")
 $txt.Add(("AMS SHA256: "+(Get-FileHash -LiteralPath $Ams -Algorithm SHA256).Hash.ToLowerInvariant()))
 $txt.Add(("PEOffset: 0x{0:X8}" -f $pe))
 $txt.Add(("Machine: 0x{0:X4}" -f $machine))
@@ -153,7 +153,7 @@ $txt|Set-Content -LiteralPath (Join-Path $outDir "BACKEND-URL-XREFS.txt") -Encod
 $report|Export-Csv -LiteralPath (Join-Path $outDir "BACKEND-URL-XREFS.csv") -NoTypeInformation -Encoding UTF8
 $summary=[ordered]@{
   Phase="18-backend-url-map"
-  MapperVersion="phase18-v3-fast-indexof"
+  MapperVersion="phase18-v4-flat-array"
   AMS_SHA256=(Get-FileHash -LiteralPath $Ams -Algorithm SHA256).Hash.ToLowerInvariant()
   PEOffset=("0x{0:X8}" -f $pe)
   Machine=("0x{0:X4}" -f $machine)
