@@ -40,7 +40,8 @@ jobs:
             "UNIFIED_DIAGNOSTIC.ps1",
             "tools/profile_phase9_internal.ps1",
             "tools/profile_phase10_local_sync.ps1",
-            "tools/profile_phase11_no_connection_errors.ps1"
+            "tools/profile_phase11_no_connection_errors.ps1",
+            "tools/profile_phase12_local_offline.ps1"
           )) {
             $tokens = $null
             $errors = $null
