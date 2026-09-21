@@ -15,7 +15,7 @@ if not exist "%ROOT%\_PACKAGE_PHASE5\AMS.exe" (
 if not exist "%TOOLS%" mkdir "%TOOLS%"
 
 echo ============================================================
-echo  ASPHALT ReXTREME - PHASE 30 CONNECTIVITY SINGLETON
+echo  ASPHALT ReXTREME - PHASE 30 CONNECTIVITY SINGLETON - FAST
 echo ============================================================
 echo.
 echo Segue o singleton global real de AVAsphaltConnectivityTracker:
@@ -29,7 +29,7 @@ echo.
 
 echo [1/2] Baixando mapper...
 curl.exe -fL --retry 3 --retry-delay 1 ^
-  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/9fc2c3e196f75838b0aacd252f82a9dcbcbd9549/tools/profile_phase30_connectivity_singleton.ps1" ^
+  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/3dad22bdadb274eee5a1797b36be4c6a0939d136/tools/profile_phase30_connectivity_singleton.ps1" ^
   -o "%SCRIPT%"
 if errorlevel 1 goto :fail
 
