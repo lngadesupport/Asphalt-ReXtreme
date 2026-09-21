@@ -208,15 +208,15 @@ $patches=@(
     },
     [pscustomobject]@{
         Name="NO_INTERNET title-only path 06 -> post-popup cleanup"
-        Offset=[Convert]::ToInt32("00746EDC",16)
+        Offset=[Convert]::ToInt32("00746EDB",16)
         Before=[byte[]](0x68,0xF0,0x60,0x53,0x01)
-        After=[byte[]](0xE9,0x85,0x00,0x00,0x00)
+        After=[byte[]](0xE9,0x86,0x00,0x00,0x00)
     },
     [pscustomobject]@{
         Name="NO_INTERNET title-only path 07 -> post-popup cleanup"
-        Offset=[Convert]::ToInt32("008DA2B5",16)
+        Offset=[Convert]::ToInt32("008DA2B4",16)
         Before=[byte[]](0x68,0xF0,0x60,0x53,0x01)
-        After=[byte[]](0xE9,0x82,0x00,0x00,0x00)
+        After=[byte[]](0xE9,0x83,0x00,0x00,0x00)
     },
     [pscustomobject]@{
         Name="NO_INTERNET title-only path 08 lobby -> common continuation"
@@ -341,6 +341,7 @@ $status=[ordered]@{
         "Phase 13 age/gender local-success gates are retained.",
         "The three legacy callback jumps now land on true function epilogues instead of sibling popup code.",
         "All ten additional STR_POPUP_NO_INTERNET_TITLE paths found by the Phase 14 map are bypassed.",
+        "Direct string-xref operands at 0x00746EDC and 0x008DA2B5 are patched from their actual PUSH opcodes one byte earlier (0x00746EDB / 0x008DA2B4)."
         "No remote profile, Store, advertising or backend service is re-enabled.",
         "Runtime acceptance test: tutorial must still complete and lobby must open without SEM CONEXAO / NOVAMENTE."
     )
