@@ -29,7 +29,7 @@ echo.
 
 echo [1/3] Baixando patch interno...
 curl.exe -fL --retry 3 --retry-delay 1 ^
-  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/bc1055079614bbbb65fdbd4654b7678c3ce0e71b/tools/profile_phase21_internal_force_offline.ps1" ^
+  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/96fd29e60a6a92c21e482b722584126441135298/tools/profile_phase21_internal_force_offline.ps1" ^
   -o "%PATCH%"
 if errorlevel 1 goto :fail
 
