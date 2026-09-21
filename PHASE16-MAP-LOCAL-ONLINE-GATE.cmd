@@ -10,7 +10,7 @@ echo ============================================================
 echo.
 
 if not exist "tools" mkdir "tools"
-set "PAYLOADCOMMIT=42abf3d0a46d08196701667525bc04a9260c3b91"
+set "PAYLOADCOMMIT=63305cd030eadef187e47c052e2b1dd1bde36218"
 set "BASE=https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/%PAYLOADCOMMIT%"
 set "PS1=tools\profile_phase16_local_online_gate_map.ps1"
 
