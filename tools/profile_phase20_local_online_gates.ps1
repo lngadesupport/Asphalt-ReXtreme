@@ -53,7 +53,7 @@ $null=Stop-TargetAMS $ams
 Wait-FileWritable $ams 15
 
 function ReadB([string]$Path,[int]$Offset,[int]$Count){
-  $fs=[IO.File]::Open($Path,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
+  $fs=[IO.File]::Open($Path,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite)
   try{
     $fs.Position=$Offset
     [byte[]]$b=New-Object byte[] $Count
@@ -114,6 +114,7 @@ if(-not(Same (ReadB $ams 0x00BAEA4B 6) ([byte[]]@(0x1C,0x68,0x40,0xC3,0x57,0x01)
 $after=(Get-FileHash -LiteralPath $ams -Algorithm SHA256).Hash.ToLowerInvariant()
 [ordered]@{
   Phase="20-local-online-gates"
+  PatcherVersion="phase20-v2-self-lock-fixed"
   GlobalIsOnline="unchanged-false"
   BeforeSHA256=$before
   AfterSHA256=$after
@@ -121,6 +122,6 @@ $after=(Get-FileHash -LiteralPath $ams -Algorithm SHA256).Hash.ToLowerInvariant(
   Patches=$results.ToArray()
 }|ConvertTo-Json -Depth 6|Set-Content -LiteralPath $report -Encoding UTF8
 
-Write-Host "Phase 20 patches verified." -ForegroundColor Green
+Write-Host "Phase 20 patches verified. (v2 self-lock fixed)" -ForegroundColor Green
 $results|Format-Table Name,Offset,Status -AutoSize
 Write-Host ("AMS SHA256: "+$after)
