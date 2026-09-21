@@ -15,7 +15,7 @@ Core requirements:
 - no ad-gated progression;
 - no real-money IAP dependency;
 - race rewards grant credits and premium currency;
-- shop content (cars, paint, upgrades, parts, etc.) costs **20% of original price**;
+- economy uses a **class-balanced offline progression model** defined in `config/campaign_economy.json`;
 - repeated-race rewards remain at 100% for the first 10 runs and never fall below 98%;
 - local portable saves with recoverable writes;
 - preserve original game visuals unless a technical compatibility fix is required.
