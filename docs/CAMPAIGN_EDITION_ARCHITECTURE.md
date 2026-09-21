@@ -78,18 +78,33 @@ Writes should be atomic and recoverable. Keep at least one previous-save backup.
 
 ## Economy contract
 
-- Shop content prices: **20% of the original price** for cars, paint, upgrades, parts and similar purchasable content.
-- Currency packs / real-money products: removed from the progression model.
-- Ads: no ad may be required. Ad-gated rewards/content are converted to normal in-game purchases or campaign rewards.
-- Race rewards: credits **and** premium currency.
+The authoritative machine-readable policy is `config/campaign_economy.json`.
+
+- Standard career races: **2,500–5,000 credits**, rank-scaled, plus **2–5 tokens per completed secondary objective**.
+- Boss/season-final races: **15,000–25,000 credits + 50 tokens**.
+- Player level-up: **100–250 tokens + a guaranteed parts pack**.
+- Part resale: common **500**, uncommon **2,000**, rare **5,000**, epic **15,000** credits.
+- Vehicle prices preserve relative order within class:
+  - D: **25,000–75,000 credits**;
+  - C: **150,000–300,000 credits**;
+  - B: **500,000–800,000 credits** or **500 tokens**;
+  - A: **1,200,000–2,000,000 credits** or **1,500 tokens**;
+  - S: **3,000,000+ credits** or **3,500+ tokens**.
+- Upgrade costs per attribute:
+  - levels 1–2: **2,000–8,000 credits**;
+  - levels 3–4: **15,000–40,000 credits**;
+  - level 5 / PRO: **75,000–150,000 credits**, plus appropriate class parts.
+- Local reward boxes:
+  - basic: **10,000 credits**;
+  - advanced: **50,000 credits**;
+  - premium: **75–150 tokens**.
+- Currency packs / real-money products are removed from progression.
+- Ads are never required; ad-gated rewards/content become local campaign rewards or purchases.
 - Repeating the same race:
   - runs 1–10: 100% reward;
   - run 11 onward: -0.2 percentage points per additional repeat;
-  - floor: 98%;
-  - reward never falls below 98%, regardless of repeat count.
+  - floor: 98%.
 - No hidden reward reduction based on wallet balance, ownership, play time or network state.
-
-Formula:
 
 ```text
 repeat_multiplier = max(0.98, 1.0 - max(0, repeat_count - 10) * 0.002)
