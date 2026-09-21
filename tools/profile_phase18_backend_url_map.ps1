@@ -68,15 +68,23 @@ function VAtoFile([uint32]$va){
   }
   return -1
 }
-function FindBytes([byte[]]$needle){
+$latin1=[Text.Encoding]::GetEncoding(28591)
+$raw1to1=$latin1.GetString($d)
+
+function Find-BytePattern([byte[]]$needle){
   $hits=New-Object System.Collections.Generic.List[int]
-  for($i=0;$i -le $d.Length-$needle.Length;$i++){
-    $ok=$true
-    for($j=0;$j -lt $needle.Length;$j++){if($d[$i+$j] -ne $needle[$j]){$ok=$false;break}}
-    if($ok){$hits.Add($i)}
+  if($needle.Length -eq 0){return ,$hits.ToArray()}
+  $pattern=$latin1.GetString($needle)
+  $pos=0
+  while($pos -le ($raw1to1.Length-$pattern.Length)){
+    $idx=$raw1to1.IndexOf($pattern,$pos,[StringComparison]::Ordinal)
+    if($idx -lt 0){break}
+    $hits.Add($idx)
+    $pos=$idx+1
   }
-  return $hits
+  return ,$hits.ToArray()
 }
+
 function HexWindow([int]$center,[int]$before=96,[int]$after=160){
   $start=[Math]::Max(0,$center-$before)
   $end=[Math]::Min($d.Length,$center+$after)
@@ -104,6 +112,7 @@ New-Item -ItemType Directory -Path $outDir -Force|Out-Null
 $report=New-Object System.Collections.Generic.List[object]
 $txt=New-Object System.Collections.Generic.List[string]
 
+$txt.Add("MapperVersion: phase18-v3-fast-indexof")
 $txt.Add(("AMS SHA256: "+(Get-FileHash -LiteralPath $Ams -Algorithm SHA256).Hash.ToLowerInvariant()))
 $txt.Add(("PEOffset: 0x{0:X8}" -f $pe))
 $txt.Add(("Machine: 0x{0:X4}" -f $machine))
@@ -112,12 +121,15 @@ $txt.Add(("ImageBase: 0x{0:X8}" -f $imageBase))
 $txt.Add("")
 
 foreach($t in $targets){
+  Write-Host ("Scanning: {0}" -f $t) -ForegroundColor Cyan
   $needle=[Text.Encoding]::ASCII.GetBytes($t+[char]0)
-  $hits=@(FindBytes $needle)
+  $hits=@(Find-BytePattern $needle)
+  Write-Host ("  string hits: {0}" -f $hits.Count)
   foreach($off in $hits){
     $va=FileToVA $off
     $ptr=[BitConverter]::GetBytes([uint32]$va)
-    $refs=@(FindBytes $ptr)
+    $refs=@(Find-BytePattern $ptr)
+    Write-Host ("  xrefs for 0x{0:X8}: {1}" -f $va,$refs.Count)
     $txt.Add(("===== STRING {0}" -f $t))
     $txt.Add(("FileOffset=0x{0:X8} VA=0x{1:X8} DirectRefs={2}" -f $off,$va,$refs.Count))
     $txt.Add("")
@@ -141,6 +153,7 @@ $txt|Set-Content -LiteralPath (Join-Path $outDir "BACKEND-URL-XREFS.txt") -Encod
 $report|Export-Csv -LiteralPath (Join-Path $outDir "BACKEND-URL-XREFS.csv") -NoTypeInformation -Encoding UTF8
 $summary=[ordered]@{
   Phase="18-backend-url-map"
+  MapperVersion="phase18-v3-fast-indexof"
   AMS_SHA256=(Get-FileHash -LiteralPath $Ams -Algorithm SHA256).Hash.ToLowerInvariant()
   PEOffset=("0x{0:X8}" -f $pe)
   Machine=("0x{0:X4}" -f $machine)
