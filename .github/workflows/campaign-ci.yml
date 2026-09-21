@@ -46,7 +46,8 @@ jobs:
             "tools/profile_phase14_connection_ui_map.ps1",
             "tools/profile_phase14_no_connection_ui.ps1",
             "tools/profile_phase15_popup_dispatch_map.ps1",
-            "tools/profile_phase15_lobby_offline.ps1"
+            "tools/profile_phase15_lobby_offline.ps1",
+            "tools/profile_phase16_local_online_gate_map.ps1"
           )) {
             $tokens = $null
             $errors = $null
