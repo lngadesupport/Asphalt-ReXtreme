@@ -20,7 +20,7 @@ echo ============================================================
 echo  ASPHALT ReXTREME - PHASE 24 POPUP CALL TRACE
 echo ============================================================
 echo.
-echo Arma todos os CALL rel32 diretos para 0x00870510.
+echo Resolve 0x00870510 como OFFSET DE ARQUIVO e arma todos os CALL rel32 para a VA real.
 echo Quando qualquer popup dessa familia for construido, o jogo
 echo para/crasha no caller real e o tracer grava o endereco.
 echo Depois AMS.exe e restaurado automaticamente.
@@ -28,7 +28,7 @@ echo.
 
 echo [1/4] Baixando patcher...
 curl.exe -fL --retry 3 --retry-delay 1 ^
-  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/5052576ca8b9c1f4cbc374afa5fde43662a71039/tools/profile_phase24_popup_callsite_tripwire.ps1" ^
+  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/2b1c78f4bc02eb5867f8a261891348af1e883444/tools/profile_phase24_popup_callsite_tripwire.ps1" ^
   -o "%PATCH%"
 if errorlevel 1 goto :fail
 
