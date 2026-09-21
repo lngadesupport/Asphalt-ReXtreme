@@ -341,7 +341,7 @@ $status=[ordered]@{
         "Phase 13 age/gender local-success gates are retained.",
         "The three legacy callback jumps now land on true function epilogues instead of sibling popup code.",
         "All ten additional STR_POPUP_NO_INTERNET_TITLE paths found by the Phase 14 map are bypassed.",
-        "Direct string-xref operands at 0x00746EDC and 0x008DA2B5 are patched from their actual PUSH opcodes one byte earlier (0x00746EDB / 0x008DA2B4)."
+        "Direct string-xref operands at 0x00746EDC and 0x008DA2B5 are patched from their actual PUSH opcodes one byte earlier (0x00746EDB / 0x008DA2B4).",
         "No remote profile, Store, advertising or backend service is re-enabled.",
         "Runtime acceptance test: tutorial must still complete and lobby must open without SEM CONEXAO / NOVAMENTE."
     )
