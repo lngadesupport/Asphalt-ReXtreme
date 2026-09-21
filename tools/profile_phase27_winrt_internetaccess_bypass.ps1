@@ -13,8 +13,6 @@ $report=Join-Path $game "PHASE27-WINRT-INTERNETACCESS.json"
 if(-not(Test-Path -LiteralPath $ams -PathType Leaf)){throw "AMS.exe not found: $ams"}
 
 # Make sure no running instance keeps the image mapped.
-& taskkill.exe /F /IM AMS.exe *> $null
-Start-Sleep -Milliseconds 800
 
 function ReadBytes([int]$Offset,[int]$Count){
   $fs=[IO.File]::Open($ams,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite)
@@ -70,6 +68,7 @@ if(-not(Same $verify $patched)){throw "Phase27 verification failed."}
 $hash=(Get-FileHash -LiteralPath $ams -Algorithm SHA256).Hash.ToLowerInvariant()
 [ordered]@{
   Phase="27-winrt-internetaccess-force-true"
+  PatcherVersion="phase27-v2-no-native-taskkill-error"
   Strategy="force only WinRT InternetAccess predicate true"
   FunctionFileOffset=("0x{0:X8}"-f$off)
   Original="55 8B EC ..."
@@ -83,7 +82,7 @@ $hash=(Get-FileHash -LiteralPath $ams -Algorithm SHA256).Hash.ToLowerInvariant()
 
 Write-Host ""
 Write-Host "============================================================"
-Write-Host " PHASE 27 WINRT INTERNETACCESS BYPASS APPLIED" -ForegroundColor Green
+Write-Host " PHASE 27 WINRT INTERNETACCESS BYPASS APPLIED (v2)" -ForegroundColor Green
 Write-Host "============================================================"
 Write-Host "0x00D2E320 => mov al,1 ; ret"
 Write-Host "Global IsOnline remains FALSE."
