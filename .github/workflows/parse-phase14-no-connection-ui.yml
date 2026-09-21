@@ -1,0 +1,32 @@
+name: Parse phase 14 no connection UI
+
+on:
+  push:
+    branches: [campaign-edition-win32]
+    paths:
+      - 'tools/profile_phase14_no_connection_ui.ps1'
+      - 'BUILD-PROFILE-PHASE14-NO-CONNECTION-UI.cmd'
+      - 'RESTORE-PROFILE-PHASE14.cmd'
+      - 'PHASE14-FIX-ONECLICK.cmd'
+      - '.github/workflows/parse-phase14-no-connection-ui.yml'
+  workflow_dispatch:
+
+jobs:
+  parse:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse Phase 14 PowerShell
+        shell: powershell
+        run: |
+          $text = Get-Content -LiteralPath 'tools/profile_phase14_no_connection_ui.ps1' -Raw
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseInput($text, [ref]$tokens, [ref]$errors)
+          if($errors.Count -gt 0){
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          $names = ([regex]::Matches($text, 'Name="')).Count
+          if($names -ne 30){ throw "Expected 30 patch entries, found $names" }
+          Write-Host 'Phase 14 syntax OK; patch manifest count = 30.'
