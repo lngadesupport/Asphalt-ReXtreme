@@ -12,6 +12,46 @@ $report=Join-Path $game "PHASE20-LOCAL-ONLINE-GATES.json"
 
 if(-not(Test-Path -LiteralPath $ams -PathType Leaf)){throw "AMS.exe not found: $ams"}
 
+function Stop-TargetAMS([string]$TargetPath){
+  $targetFull=[IO.Path]::GetFullPath($TargetPath)
+  $found=$false
+  foreach($p in @(Get-Process -Name "AMS" -ErrorAction SilentlyContinue)){
+    $path=$null
+    try{$path=$p.Path}catch{}
+    if($path -and ([IO.Path]::GetFullPath($path) -ieq $targetFull)){
+      $found=$true
+      Write-Host ("Closing running AMS.exe PID {0}..." -f $p.Id) -ForegroundColor Yellow
+      try{$null=$p.CloseMainWindow()}catch{}
+      try{Wait-Process -Id $p.Id -Timeout 3 -ErrorAction SilentlyContinue}catch{}
+      if(Get-Process -Id $p.Id -ErrorAction SilentlyContinue){
+        Write-Host ("Forcing AMS.exe PID {0} to exit..." -f $p.Id) -ForegroundColor Yellow
+        Stop-Process -Id $p.Id -Force -ErrorAction Stop
+        try{Wait-Process -Id $p.Id -Timeout 5 -ErrorAction SilentlyContinue}catch{}
+      }
+    }
+  }
+  return $found
+}
+
+function Wait-FileWritable([string]$Path,[int]$Seconds=15){
+  $deadline=(Get-Date).AddSeconds($Seconds)
+  $last=$null
+  do{
+    try{
+      $s=[IO.File]::Open($Path,[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::Read)
+      $s.Dispose()
+      return
+    }catch{
+      $last=$_.Exception.Message
+      Start-Sleep -Milliseconds 400
+    }
+  }while((Get-Date)-lt $deadline)
+  throw ("AMS.exe is still locked after {0}s. Last error: {1}" -f $Seconds,$last)
+}
+
+$null=Stop-TargetAMS $ams
+Wait-FileWritable $ams 15
+
 function ReadB([string]$Path,[int]$Offset,[int]$Count){
   $fs=[IO.File]::Open($Path,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
   try{
@@ -51,6 +91,7 @@ $sites=@(
 )
 
 $results=New-Object System.Collections.Generic.List[object]
+Wait-FileWritable $ams 15
 $fs=[IO.File]::Open($ams,[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::Read)
 try{
   foreach($s in $sites){
