@@ -18,7 +18,8 @@ $hash=(Get-FileHash -LiteralPath $ams -Algorithm SHA256).Hash.ToLowerInvariant()
 $code=@"
 using System;
 using System.Collections.Generic;
-public static class FastScan30 {
+
+public static class FastScan30V3 {
   public static int[] FindDword(byte[] d, uint v) {
     var r=new List<int>();
     byte a=(byte)v,b=(byte)(v>>8),c=(byte)(v>>16),e=(byte)(v>>24);
@@ -26,11 +27,51 @@ public static class FastScan30 {
       if(d[i]==a && d[i+1]==b && d[i+2]==c && d[i+3]==e) r.Add(i);
     return r.ToArray();
   }
+
+  public static int[] FindPatternInRanges(byte[] d, byte[] p, int[] starts, int[] ends) {
+    var r=new List<int>();
+    if(p==null || p.Length==0) return r.ToArray();
+    for(int q=0;q<starts.Length;q++) {
+      int s=Math.Max(0,starts[q]), e=Math.Min(d.Length,ends[q]);
+      int last=e-p.Length;
+      for(int i=s;i<=last;i++) {
+        if(d[i]!=p[0]) continue;
+        bool ok=true;
+        for(int j=1;j<p.Length;j++) if(d[i+j]!=p[j]) {ok=false;break;}
+        if(ok) r.Add(i);
+      }
+    }
+    return r.ToArray();
+  }
+
+  // Output flattened triples: callFileOffset, targetIndex, reserved.
+  public static int[] FindCallsToTargets(
+      byte[] d, int[] starts, int[] ends, long[] startVAs, long[] targets) {
+    var r=new List<int>();
+    var map=new Dictionary<long,int>();
+    for(int i=0;i<targets.Length;i++) map[targets[i]]=i;
+
+    for(int q=0;q<starts.Length;q++) {
+      int s=Math.Max(0,starts[q]), e=Math.Min(d.Length,ends[q]);
+      long baseVA=startVAs[q];
+      for(int o=s;o<=e-5;o++) {
+        if(d[o]!=0xE8) continue;
+        int rel=BitConverter.ToInt32(d,o+1);
+        long src=baseVA+(o-s);
+        long dest=src+5L+rel;
+        int idx;
+        if(map.TryGetValue(dest,out idx)) {
+          r.Add(o); r.Add(idx); r.Add(0);
+        }
+      }
+    }
+    return r.ToArray();
+  }
 }
 "@
 Add-Type -TypeDefinition $code -Language CSharp
 
-# PE32 mapping
+# Parse PE32.
 $fs=[IO.File]::OpenRead($ams);$br=New-Object IO.BinaryReader($fs)
 try{
   $fs.Position=0x3C;$pe=$br.ReadInt32()
@@ -63,30 +104,6 @@ function FileToVa([int]$off){
   if($r-lt0){return -1}
   return [int64]$imageBase+$r
 }
-function VaToFile([int64]$va){
-  if($va-lt[int64]$imageBase){return -1}
-  $rva=$va-[int64]$imageBase
-  foreach($s in $sections){
-    $span=[Math]::Max([int64]$s.VSize,[int64]$s.RawSize)
-    $a=[int64]$s.VA
-    if($rva-ge$a -and $rva-lt($a+$span)){return [int]([int64]$s.Raw+($rva-$a))}
-  }
-  return -1
-}
-function IsExec([int]$off){
-  foreach($s in $sections){
-    $a=[int64]$s.Raw;$b=$a+[int64]$s.RawSize
-    if([int64]$off-ge$a -and [int64]$off-lt$b){return (($s.Chars-band0x20000000)-ne0)}
-  }
-  return $false
-}
-function SectionName([int]$off){
-  foreach($s in $sections){
-    $a=[int64]$s.Raw;$b=$a+[int64]$s.RawSize
-    if([int64]$off-ge$a -and [int64]$off-lt$b){return $s.Name}
-  }
-  return "?"
-}
 function NearestPrologue([int]$off,[int]$back=0x1200){
   $lo=[Math]::Max(0,$off-$back)
   for($p=$off;$p-ge$lo+2;$p--){
@@ -104,32 +121,26 @@ function HexCtx([int]$center,[int]$before=64,[int]$after=160){
   }
   return ($ls-join[Environment]::NewLine)
 }
-function DirectCallsTo([int]$targetOff){
-  $tva=FileToVa $targetOff
-  if($tva-lt0){return @()}
-  $res=New-Object Collections.Generic.List[object]
-  foreach($s in $sections){
-    if(($s.Chars-band0x20000000)-eq0){continue}
-    $start=[int]$s.Raw;$end=[Math]::Min($d.Length,[int]($s.Raw+$s.RawSize))
-    for($o=$start;$o-le$end-5;$o++){
-      if($d[$o]-ne0xE8){continue}
-      $sva=FileToVa $o
-      if($sva-lt0){continue}
-      $rel=[BitConverter]::ToInt32($d,$o+1)
-      if(([int64]$sva+5+[int64]$rel)-eq$tva){
-        $res.Add([pscustomobject]@{Call=$o;Prologue=(NearestPrologue $o)})
-      }
-    }
-  }
-  return $res.ToArray()
-}
 function Fmt([int]$x){
   if($x-ge0){return ("0x{0:X8}"-f$x)}
   return "N/A"
 }
 
+# Build executable ranges once.
+$exec=@($sections|Where-Object{($_.Chars-band0x20000000)-ne0})
+[int[]]$execStarts=@($exec|ForEach-Object{[int]$_.Raw})
+[int[]]$execEnds=@($exec|ForEach-Object{[int]([Math]::Min($d.Length,[int64]$_.Raw+[int64]$_.RawSize))})
+[long[]]$execStartVAs=@($exec|ForEach-Object{[int64]$imageBase+[int64]$_.VA})
+
 $singleton=[uint32]0x0193A56C
-$refs=@([FastScan30]::FindDword($d,$singleton)|Where-Object{IsExec $_})
+$allSingletonRefs=[FastScan30V3]::FindDword($d,$singleton)
+$refs=New-Object Collections.Generic.List[int]
+foreach($r in $allSingletonRefs){
+  for($q=0;$q-lt$execStarts.Length;$q++){
+    if($r-ge$execStarts[$q] -and $r-lt$execEnds[$q]){$refs.Add($r);break}
+  }
+}
+
 $funcMap=@{}
 foreach($r in $refs){
   $p=NearestPrologue $r
@@ -137,10 +148,25 @@ foreach($r in $refs){
   $funcMap[$p].Add($r)
 }
 
+# Build one target set: all singleton-ref functions + creation owner.
+$creator=0x00BA6FB0
+$targetFuncs=New-Object Collections.Generic.List[int]
+foreach($p in @($funcMap.Keys|Sort-Object)){if([int]$p-ge0){$targetFuncs.Add([int]$p)}}
+if(-not($targetFuncs.Contains($creator))){$targetFuncs.Add($creator)}
+
+[long[]]$targetVAs=@($targetFuncs|ForEach-Object{[int64](FileToVa $_)})
+$callFlat=[FastScan30V3]::FindCallsToTargets($d,$execStarts,$execEnds,$execStartVAs,$targetVAs)
+$callers=@{}
+for($i=0;$i-lt$targetFuncs.Count;$i++){$callers[$targetFuncs[$i]]=New-Object Collections.Generic.List[object]}
+for($i=0;$i-lt$callFlat.Length;$i+=3){
+  $call=[int]$callFlat[$i];$idx=[int]$callFlat[$i+1];$target=$targetFuncs[$idx]
+  $callers[$target].Add([pscustomobject]@{Call=$call;Prologue=(NearestPrologue $call)})
+}
+
 $sb=New-Object Text.StringBuilder
 function W([string]$s=""){[void]$sb.AppendLine($s)}
 W "============================================================"
-W " ReXtreme Phase 30 - AVAsphaltConnectivityTracker Singleton"
+W " ReXtreme Phase 30 - AVAsphaltConnectivityTracker Singleton v3 FAST"
 W "============================================================"
 W ("AMS_SHA256="+$hash)
 W ("ImageBase=0x{0:X8}"-f$imageBase)
@@ -160,21 +186,19 @@ foreach($p in @($funcMap.Keys|Sort-Object)){
     W (HexCtx $r 48 112)
   }
   if([int]$p-ge0){
-    $calls=@(DirectCallsTo ([int]$p))
-    W ("DirectCallersToFunction="+$calls.Count)
-    foreach($c in $calls){W (" CALL=0x{0:X8} callerPrologue={1}"-f$c.Call,(Fmt $c.Prologue))}
+    $cs=$callers[[int]$p]
+    W ("DirectCallersToFunction="+$cs.Count)
+    foreach($c in $cs){W (" CALL=0x{0:X8} callerPrologue={1}"-f$c.Call,(Fmt $c.Prologue))}
   }
   W ""
 }
 
-# Exact virtual getter at 0x0098CF80: return [ecx+0x5C] != 0
 $getter=0x0098CF80
 W "===== TRACKER +0x5C BOOLEAN VIRTUAL GETTER ====="
 W ("GetterFile=0x{0:X8} GetterVA=0x{1:X8}"-f$getter,(FileToVa $getter))
 W (HexCtx $getter 32 64)
 W ""
 
-# Find exact machine-code patterns that access +0x5C on common this registers.
 $patterns=@(
   [pscustomobject]@{Name="cmp dword [ecx+5C],0";Bytes=[byte[]](0x83,0x79,0x5C,0x00)},
   [pscustomobject]@{Name="cmp dword [esi+5C],0";Bytes=[byte[]](0x83,0x7E,0x5C,0x00)},
@@ -186,15 +210,7 @@ $patterns=@(
 )
 W "===== EXACT +0x5C ACCESS PATTERNS ====="
 foreach($pat in $patterns){
-  $hits=New-Object Collections.Generic.List[int]
-  for($i=0;$i-le$d.Length-$pat.Bytes.Length;$i++){
-    if(-not(IsExec $i)){continue}
-    $ok=$true
-    for($j=0;$j-lt$pat.Bytes.Length;$j++){
-      if($d[$i+$j]-ne$pat.Bytes[$j]){$ok=$false;break}
-    }
-    if($ok){$hits.Add($i)}
-  }
+  $hits=[FastScan30V3]::FindPatternInRanges($d,$pat.Bytes,$execStarts,$execEnds)
   W ("{0}: hits={1}"-f$pat.Name,$hits.Count)
   foreach($h in $hits|Select-Object -First 80){
     W (" hit=0x{0:X8} prologue={1}"-f$h,(Fmt (NearestPrologue $h)))
@@ -202,18 +218,16 @@ foreach($pat in $patterns){
   W ""
 }
 
-# Direct callers of constructor's sole caller function too.
-$creator=0x00BA6FB0
 W "===== SINGLETON CREATION OWNER ====="
 W ("Function=0x{0:X8}"-f$creator)
 W (HexCtx $creator 32 256)
-$calls=@(DirectCallsTo $creator)
-W ("DirectCallers="+$calls.Count)
-foreach($c in $calls){W (" CALL=0x{0:X8} callerPrologue={1}"-f$c.Call,(Fmt $c.Prologue))}
+$creatorCalls=$callers[$creator]
+W ("DirectCallers="+$creatorCalls.Count)
+foreach($c in $creatorCalls){W (" CALL=0x{0:X8} callerPrologue={1}"-f$c.Call,(Fmt $c.Prologue))}
 
 $sb.ToString()|Set-Content -LiteralPath $out -Encoding UTF8
 Write-Host ""
 Write-Host "============================================================"
-Write-Host " PHASE 30 CONNECTIVITY SINGLETON READY" -ForegroundColor Green
+Write-Host " PHASE 30 CONNECTIVITY SINGLETON READY (v3 FAST)" -ForegroundColor Green
 Write-Host "============================================================"
 Write-Host ("Report: "+$out)
