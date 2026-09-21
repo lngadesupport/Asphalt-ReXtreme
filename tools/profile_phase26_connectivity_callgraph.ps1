@@ -197,7 +197,8 @@ foreach($off in $hits){
       W ("   PointerLevel2="+$p2.Count)
       foreach($b in $p2|Select-Object -First 64){
         $bVA=FileToVa $b
-        $pro=if(IsExec $b){NearestPrologue $b}else{-1}
+        $pro=-1
+        if(IsExec $b){$pro=NearestPrologue $b}
         W ("   P2 file={0} VA=0x{1:X8} section={2} exec={3} prologue={4}"-f(Fmt $b),$bVA,(SectionName $b),(IsExec $b),(Fmt $pro))
         if(IsExec $b){W (HexCtx $b 32 64)}
       }
