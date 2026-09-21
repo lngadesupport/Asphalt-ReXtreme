@@ -12,8 +12,6 @@ $report=Join-Path $game "PHASE21-INTERNAL-OFFLINE.json"
 
 if(-not(Test-Path -LiteralPath $ams -PathType Leaf)){throw "AMS.exe not found: $ams"}
 
-taskkill.exe /F /IM AMS.exe 2>$null | Out-Null
-Start-Sleep -Milliseconds 600
 
 function ReadB([int]$Offset,[int]$Count){
   $fs=[IO.File]::Open($ams,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite)
@@ -97,6 +95,7 @@ foreach($x in $checks){
 $after=(Get-FileHash -LiteralPath $ams -Algorithm SHA256).Hash.ToLowerInvariant()
 [ordered]@{
   Phase="21-internal-force-offline"
+  PatcherVersion="phase21-v2-no-native-taskkill-error"
   Strategy="internal-code-only"
   GlobalIsOnline="unchanged-false"
   BackendEmulator="not-required"
@@ -108,7 +107,7 @@ $after=(Get-FileHash -LiteralPath $ams -Algorithm SHA256).Hash.ToLowerInvariant(
 
 Write-Host ""
 Write-Host "============================================================"
-Write-Host " PHASE 21 INTERNAL OFFLINE PATCH APPLIED" -ForegroundColor Green
+Write-Host " PHASE 21 INTERNAL OFFLINE PATCH APPLIED (v2)" -ForegroundColor Green
 Write-Host "============================================================"
 Write-Host "Global IsOnline remains FALSE."
 Write-Host "Backend emulator is not required for this test."
