@@ -40,6 +40,15 @@ powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command ^
   "$bad=0;foreach($p in @('%TOOLS%\profile_phase20_local_online_gates.ps1','%TOOLS%\run_phase20_local_gates.ps1','%TOOLS%\rextreme_local_backend.ps1')){$e=$null;$t=$null;[void][System.Management.Automation.Language.Parser]::ParseFile($p,[ref]$t,[ref]$e);if($e.Count){$e|%%{Write-Host $_.Message -ForegroundColor Red};$bad=1}};if($bad){exit 1}else{Write-Host 'PowerShell OK' -ForegroundColor Green}"
 if errorlevel 1 goto :fail
 
+echo Encerrando qualquer instancia antiga do AMS.exe...
+taskkill /F /IM AMS.exe >nul 2>nul
+timeout /t 2 /nobreak >nul
+
+echo Verificando se AMS.exe ficou livre para escrita...
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$p='%ROOT%\\_PACKAGE_PHASE5\\AMS.exe';$ok=$false;for($i=0;$i -lt 20;$i++){try{$s=[IO.File]::Open($p,[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::Read);$s.Dispose();$ok=$true;break}catch{Start-Sleep -Milliseconds 500}};if(-not $ok){Write-Host 'AMS.exe continua bloqueado apos encerrar AMS.exe.' -ForegroundColor Red;Get-Process AMS -ErrorAction SilentlyContinue|Format-Table Id,ProcessName,Path -AutoSize;exit 21}else{Write-Host 'AMS.exe livre para escrita.' -ForegroundColor Green}"
+if errorlevel 1 goto :locked
+
 echo Aplicando Phase 20...
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass ^
   -File "%TOOLS%\profile_phase20_local_online_gates.ps1" ^
@@ -77,6 +86,14 @@ echo   _PACKAGE_PHASE5\_PHASE20_LOCAL_GATES_LOGS\LATEST-PHASE20.zip
 echo.
 pause
 exit /b 0
+
+:locked
+echo.
+echo [ERRO] AMS.exe ainda esta bloqueado.
+echo Feche o jogo e qualquer janela/launcher antiga e execute este CMD novamente.
+echo O save nao foi resetado.
+pause
+exit /b 21
 
 :fail
 echo.
