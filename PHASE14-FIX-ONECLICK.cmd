@@ -16,7 +16,8 @@ set "TOOLS=%ROOT%\tools"
 set "GAME=%ROOT%\_PACKAGE_PHASE5"
 set "PS1=%TOOLS%\profile_phase14_no_connection_ui.ps1"
 set "LAUNCH=%GAME%\RUN-PACKAGE-PHASE5.cmd"
-set "BASE=https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/campaign-edition-win32"
+set "PAYLOADCOMMIT=16bbff467ff9e48c70755226f17ac253deb48b3a"
+set "BASE=https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/%PAYLOADCOMMIT%"
 
 if not exist "%GAME%\AMS.exe" (
   echo [ERRO] AMS.exe nao encontrado:
@@ -47,7 +48,11 @@ if errorlevel 1 (
   exit /b 12
 )
 
-echo [2/4] Validando PowerShell...
+echo [2/4] Validando payload corrigido e PowerShell...
+findstr /c:"00746EDB" "%PS1%" >nul || (echo [ERRO] Payload antigo: 00746EDB ausente.& pause & exit /b 21)
+findstr /c:"008DA2B4" "%PS1%" >nul || (echo [ERRO] Payload antigo: 008DA2B4 ausente.& pause & exit /b 22)
+echo Offsets V2 confirmados: 00746EDB / 008DA2B4
+
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command ^
   "$e=$null;$t=$null;[void][System.Management.Automation.Language.Parser]::ParseFile('%PS1%',[ref]$t,[ref]$e);if($e.Count){$e|%%{Write-Host $_.Message -ForegroundColor Red};exit 1}else{Write-Host 'PowerShell OK' -ForegroundColor Green}"
 if errorlevel 1 (
