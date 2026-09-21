@@ -73,24 +73,24 @@ function Compare-LocalState($Old,$New) {
     }
 }
 
-function Get-NetworkState([int]$Pid) {
+function Get-NetworkState([int]$ProcessId) {
     $items = New-Object System.Collections.Generic.List[string]
     try {
-        Get-NetTCPConnection -OwningProcess $Pid -ErrorAction SilentlyContinue | ForEach-Object {
+        Get-NetTCPConnection -OwningProcess $ProcessId -ErrorAction SilentlyContinue | ForEach-Object {
             $items.Add(("TCP {0}:{1} -> {2}:{3} state={4}" -f $_.LocalAddress,$_.LocalPort,$_.RemoteAddress,$_.RemotePort,$_.State))
         }
     } catch {}
     try {
-        Get-NetUDPEndpoint -OwningProcess $Pid -ErrorAction SilentlyContinue | ForEach-Object {
+        Get-NetUDPEndpoint -OwningProcess $ProcessId -ErrorAction SilentlyContinue | ForEach-Object {
             $items.Add(("UDP {0}:{1}" -f $_.LocalAddress,$_.LocalPort))
         }
     } catch {}
     return @($items | Sort-Object -Unique)
 }
 
-function Write-ModuleSnapshot([int]$Pid) {
+function Write-ModuleSnapshot([int]$ProcessId) {
     try {
-        $p = Get-Process -Id $Pid -ErrorAction Stop
+        $p = Get-Process -Id $ProcessId -ErrorAction Stop
         foreach($m in @($p.Modules)) {
             try { Write-Log "MODULE" ("{0} | {1}" -f $m.ModuleName,$m.FileName) } catch {}
         }
