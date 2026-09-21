@@ -54,6 +54,8 @@ jobs:
             "tools/run_phase19_local_backend.ps1",
             "tools/run_phase20_local_gates.ps1",
             "tools/profile_phase21_internal_force_offline.ps1",
+            "tools/run_phase22_popup_trace.ps1",
+            "tools/profile_phase22_popup_tripwire.ps1",
             "tools/profile_phase20_local_online_gates.ps1",
             "tools/profile_phase19_local_backend_route.ps1",
             "tools/scan_backend_endpoints.ps1",
