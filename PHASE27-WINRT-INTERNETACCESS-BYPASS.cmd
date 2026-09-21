@@ -28,7 +28,7 @@ echo.
 
 echo [1/3] Baixando patch...
 curl.exe -fL --retry 3 --retry-delay 1 ^
-  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/ccdc196dbed6057e95bc21bc8c18972b427f17e4/tools/profile_phase27_winrt_internetaccess_bypass.ps1" ^
+  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/cb282667be1ae4161fe5a4e74fee0bfd5107dafa/tools/profile_phase27_winrt_internetaccess_bypass.ps1" ^
   -o "%PATCH%"
 if errorlevel 1 goto :fail
 
