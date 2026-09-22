@@ -81,8 +81,12 @@ function ScanRel([int]$start,[int]$len){
       $dstVa=[int64]$src+6+[int64]$rel;$dst=VaToFile $dstVa
       $r.Add(("JCC{0:X2} file=0x{1:X8} -> file={2} VA=0x{3:X8}"-f$d[$o+1],$o,$(if($dst-ge0){"0x{0:X8}"-f$dst}else{"N/A"}),$dstVa))
     }elseif($op-ge0x70 -and $op-le0x7F){
-      $src=FileToVa $o;$rel=[sbyte]$d[$o+1]
-      $dstVa=[int64]$src+2+[int64]$rel;$dst=VaToFile $dstVa
+      $src=FileToVa $o
+      # Windows PowerShell throws when casting Byte 128..255 directly to SByte.
+      # Decode rel8 manually as signed two's-complement.
+      $rel8=[int]$d[$o+1]
+      if($rel8-ge128){$rel8-=256}
+      $dstVa=[int64]$src+2+[int64]$rel8;$dst=VaToFile $dstVa
       $r.Add(("JCC{0:X2} file=0x{1:X8} -> file={2} VA=0x{3:X8}"-f$op,$o,$(if($dst-ge0){"0x{0:X8}"-f$dst}else{"N/A"}),$dstVa))
     }
   };return $r.ToArray()
@@ -134,7 +138,7 @@ function ScanLikelyWrites([int]$start,[int]$len){
 $sb=New-Object Text.StringBuilder
 function W([string]$s=""){[void]$sb.AppendLine($s)}
 W "============================================================"
-W " ReXtreme Phase 41 - Build State Focus Map"
+W " ReXtreme Phase 41 - Build State Focus Map v2"
 W "============================================================"
 W ("AMS_SHA256="+$hash)
 W "Expected stable Phase36-only hash=22fe7b0bd9c8c73e79c14efaef4cdc5dd4d4bbcabd17e855db312f0a776851cc"
@@ -175,6 +179,6 @@ W (AsciiAround 0x0113DEA0 0x280)
 $sb.ToString()|Set-Content -LiteralPath $out -Encoding UTF8
 Write-Host ""
 Write-Host "============================================================"
-Write-Host " PHASE 41 BUILD STATE MAP READY" -ForegroundColor Green
+Write-Host " PHASE 41 BUILD STATE MAP READY (v2)" -ForegroundColor Green
 Write-Host "============================================================"
 Write-Host ("Report: "+$out)
