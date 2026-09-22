@@ -15,7 +15,7 @@ if not exist "%ROOT%\_PACKAGE_PHASE5\AMS.exe" (
 if not exist "%TOOLS%" mkdir "%TOOLS%"
 
 echo ============================================================
-echo  ASPHALT ReXTREME - PHASE 41 BUILD STATE MAP
+echo  ASPHALT ReXTREME - PHASE 41 BUILD STATE MAP v2
 echo ============================================================
 echo.
 echo Mapeia apenas:
@@ -31,7 +31,7 @@ echo.
 
 echo [1/2] Baixando mapper...
 curl.exe -fL --retry 3 --retry-delay 1 ^
-  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/3112412f67eb8d4114251f2b91e17608354b74e2/tools/profile_phase41_build_state_map.ps1" ^
+  "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/ea7862bbb07d9db465478640761b3607d30eb936/tools/profile_phase41_build_state_map.ps1" ^
   -o "%SCRIPT%"
 if errorlevel 1 goto :fail
 
