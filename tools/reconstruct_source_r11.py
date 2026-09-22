@@ -167,6 +167,9 @@ class Stub:
         after=self.va+2;self.b+=bytes([op,0]);self.rel8.append((len(self.b)-1,after,label))
     def jmp_label32(self,label):
         after=self.va+5;self.b+=b"\xE9"+b"\0\0\0\0";self.rel32fix.append((len(self.b)-4,after,label))
+    def jcc32(self,op2,label):
+        # 0F 8x rel32
+        after=self.va+6;self.b+=bytes([0x0F,op2])+b"\0\0\0\0";self.rel32fix.append((len(self.b)-4,after,label))
     def call_abs(self,target):
         after=self.va+5;self.b+=b"\xE8"+rel32(after,target)
     def jmp_abs(self,target):
@@ -195,14 +198,13 @@ def build_stub(base,candidates):
     s.label("fallback")
     s.emit("8B 57 04")                      # mov edx,[edi+4] owner/base iface
     s.emit("85 D2")
-    s.jcc8(0x74,"cleanup")
+    s.jcc32(0x84,"cleanup")
     s.emit("8B 02")                         # eax=[owner] vtable
 
     # Dispatch by exact GS_Garage secondary vtable.
     for i,c in enumerate(candidates):
         s.emit("3D "+p32(c["vtable"]).hex(" "))   # cmp eax,vt
-        # jne next; je match_i via rel32 because table may be large
-        s.jcc8(0x74,f"match_{i}")
+        s.jcc32(0x84,f"match_{i}")
     s.jmp_label32("cleanup")
 
     for i,c in enumerate(candidates):
@@ -213,7 +215,7 @@ def build_stub(base,candidates):
             s.emit("81 E9 "+p32(off).hex(" "))   # sub ecx,offset -> primary GS
         s.emit("8B 01")                     # eax=[gs]
         s.emit("3D "+p32(GS_PRIMARY_VT).hex(" "))
-        s.jcc8(0x75,"cleanup")
+        s.jcc32(0x85,"cleanup")
         s.emit("FF 90 10 01 00 00")         # call [eax+110]
         s.jmp_label32("cleanup")
 
