@@ -349,6 +349,66 @@ def bfs_from_roots(roots,callees,max_nodes=1000000):
             if dst not in seen:q.append((dst,dep+1))
     return seen,depths
 
+
+def file_sha256(path,chunk=1024*1024):
+    h=hashlib.sha256()
+    with path.open("rb") as fp:
+        while True:
+            b=fp.read(chunk)
+            if not b:break
+            h.update(b)
+    return h.hexdigest()
+
+def scan_package_tree(package_root,outdir):
+    file_rows=[]
+    endpoint_rows=[]
+    text_rows=[]
+    files=[p for p in package_root.rglob("*") if p.is_file() and outdir not in p.parents]
+    total=len(files)
+    url_re=re.compile(rb"https?://[^\x00-\x20\"'<>]{4,512}",re.I)
+    php_re=re.compile(rb"[A-Za-z0-9_./-]{1,240}\.php(?:\?[A-Za-z0-9_=&%./:+-]{0,240})?",re.I)
+    script_re=re.compile(rb"(?:scripts|api)/[A-Za-z0-9_./-]{2,300}",re.I)
+    text_exts={".txt",".json",".xml",".csv",".ini",".cfg",".conf",".manifest",".appxmanifest",".html",".htm",".js",".lua",".py",".md",".yaml",".yml"}
+    for idx,p in enumerate(files,1):
+        try:
+            st=p.stat()
+            rel=str(p.relative_to(package_root)).replace("\\","/")
+            digest=file_sha256(p)
+            ext=p.suffix.lower()
+            file_rows.append([rel,ext,st.st_size,digest])
+            data=None
+            # Scan likely-text files fully and binary files up to 64 MiB for endpoint/path strings.
+            if ext in text_exts or st.st_size<=64*1024*1024:
+                data=p.read_bytes()
+                seen=set()
+                for kind,rx in (("url",url_re),("php",php_re),("script_path",script_re)):
+                    for m in rx.finditer(data):
+                        raw=m.group(0)
+                        try:txt=raw.decode("utf-8","replace")
+                        except:continue
+                        key=(kind,txt)
+                        if key in seen:continue
+                        seen.add(key)
+                        endpoint_rows.append([rel,kind,m.start(),txt])
+                if ext in text_exts and st.st_size<=16*1024*1024:
+                    try:txt=data.decode("utf-8")
+                    except:
+                        try:txt=data.decode("utf-16")
+                        except:txt=""
+                    if txt:
+                        for ln,line in enumerate(txt.splitlines(),1):
+                            lo=line.lower()
+                            if any(k in lo for k in NETWORK_KEYWORDS) or any(k in lo for k in GAMEPLAY_KEYWORDS):
+                                text_rows.append([rel,ln,line[:2000]])
+        except Exception as e:
+            file_rows.append([str(p),p.suffix.lower(),"ERROR",repr(e)])
+        if idx%250==0 or idx==total:
+            print(f"         package files {idx}/{total}",flush=True)
+    write_csv(outdir/"PACKAGE_FILES.csv",["relative_path","extension","size","sha256"],file_rows)
+    write_csv(outdir/"PACKAGE_ENDPOINT_REFS.csv",["relative_path","kind","byte_offset","text"],endpoint_rows)
+    write_csv(outdir/"PACKAGE_RELEVANT_TEXT.csv",["relative_path","line","text"],text_rows)
+    return len(file_rows),len(endpoint_rows),len(text_rows)
+
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--project-root",required=True)
@@ -428,7 +488,11 @@ def main():
     craft_seen,craft_depth=bfs_from_roots(craft_roots,callees,1000000)
     print(f"         garageReach={len(garage_seen)} craftReach={len(craft_seen)}",flush=True)
 
-    print("[13/14] Gravando atlas...",flush=True)
+    print("[13/15] Mapeando pacote inteiro (_PACKAGE_PHASE5)...",flush=True)
+    package_count,package_endpoint_count,package_text_count=scan_package_tree(root/"_PACKAGE_PHASE5",outdir)
+    print(f"         packageFiles={package_count} endpointRefs={package_endpoint_count} relevantText={package_text_count}",flush=True)
+
+    print("[14/15] Gravando atlas...",flush=True)
     # FUNCTIONS.csv
     frows=[]
     for fs,fe,va,sec in funcs:
@@ -535,13 +599,17 @@ def main():
         "endpoint_string_count":len(endpoints),
         "network_string_count":len(network),
         "gameplay_string_count":len(gameplay),
+        "package_file_count":package_count,
+        "package_endpoint_ref_count":package_endpoint_count,
+        "package_relevant_text_count":package_text_count,
         "garage_reachable_functions":len(garage_seen),
         "craft_reachable_functions":len(craft_seen),
         "known_anchors":anchors,
         "outputs":[
             "ATLAS-SUMMARY.txt","SUMMARY.json","FUNCTIONS.csv","CALL_GRAPH.csv","JUMP_GRAPH.csv",
             "IMPORTS.csv","STRINGS.csv","STRING_XREFS.csv","RTTI.csv","VTABLES.csv",
-            "ENDPOINT_STRINGS.csv","NETWORK_STRINGS.csv","GAMEPLAY_STRINGS.csv","KNOWN_ANCHORS.json"
+            "ENDPOINT_STRINGS.csv","NETWORK_STRINGS.csv","GAMEPLAY_STRINGS.csv","KNOWN_ANCHORS.json",
+            "PACKAGE_FILES.csv","PACKAGE_ENDPOINT_REFS.csv","PACKAGE_RELEVANT_TEXT.csv"
         ],
         "no_gameplay_bytes_changed":True,
         "global_isonline":"FALSE"
@@ -560,7 +628,7 @@ def main():
                 f.write("\n")
                 if idx%5000==0:print(f"         bodies {idx}/{len(funcs)}",flush=True)
 
-    print("[14/14] FULL GAME ATLAS MAX OK",flush=True)
+    print("[15/15] FULL GAME ATLAS MAX OK",flush=True)
     print("Output:",outdir,flush=True)
     print("Functions:",len(funcs),flush=True)
     print("Direct calls:",len(calls),flush=True)
