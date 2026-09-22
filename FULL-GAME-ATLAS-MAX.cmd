@@ -31,10 +31,10 @@ echo   - pacote _PACKAGE_PHASE5 inteiro
 echo   - dump HEX de TODOS os corpos de funcao indexados
 echo.
 echo Esta fase NAO altera nenhum byte do jogo.
-echo O processamento e grande, mas mostra progresso por etapas.
+echo O processamento e grande, mas usa indices otimizados e mostra progresso por etapas.
 echo.
 
-curl.exe -fL "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/451c3a114280561a4c91d95258d9710cf113b947/tools/full_game_atlas_max.py" -o "%MAP%"
+curl.exe -fL "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/01f7730e369c71f7345529fb06ef5d1e0c7a768c/tools/full_game_atlas_max.py" -o "%MAP%"
 if errorlevel 1 goto :fail
 
 where py.exe >nul 2>nul
