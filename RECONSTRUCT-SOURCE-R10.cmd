@@ -12,11 +12,12 @@ echo ================================================================
 echo.
 echo R10:
 echo   - NAO aplica patch neste comando
-echo   - procura code cave seguro em .text
+echo   - procura padding executavel seguro usando o tamanho EXATO do stub
 echo   - prepara trampoline no callback 0x00973C90
 echo   - preserva buildSignal original quando existir
 echo   - se buildSignal for NULL, testa GBBW+0x04
 echo   - so chama BuildCar se vtable == GS_Garage 0x0186A9CC
+echo   - aceita CC/90/00 somente sem referencias decodificadas
 echo   - gera APPLY e REVERT prontos
 echo.
 
@@ -34,7 +35,7 @@ if not exist "%ROOT%\_PACKAGE_PHASE5\_FULL_GAME_ATLAS_MAX\FUNCTIONS.csv" (
 
 if not exist "%TOOLS%" mkdir "%TOOLS%"
 
-curl.exe -fL "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/ff23300e51ee2e0096da259782d751640324e136/tools/reconstruct_source_r10.py" -o "%GEN%"
+curl.exe -fL "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/aaaea85d5dd4dd9b2624c21300788b456e4268e6/tools/reconstruct_source_r10.py" -o "%GEN%"
 if errorlevel 1 goto :fail
 
 where py.exe >nul 2>nul
