@@ -97,3 +97,7 @@ jobs:
           if (@($imports | Where-Object { $_.File -eq "platform.exe" -and $_.DLL }).Count -eq 0) {
             throw "PE import parser did not return imports for platform.exe"
           }
+
+
+      - name: Validate Phase 46 Python mapper
+        run: python -m py_compile tools/profile_phase46_craftcar_observer_map.py
