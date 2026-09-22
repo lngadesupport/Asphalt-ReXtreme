@@ -105,3 +105,7 @@ jobs:
 
       - name: Validate Phase 49 Python mapper
         run: python -m py_compile tools/profile_phase49_build_button_map.py
+
+
+      - name: Validate Phase 50 Python mapper
+        run: python -m py_compile tools/profile_phase50_build_button_state.py
