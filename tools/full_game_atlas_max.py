@@ -182,26 +182,30 @@ def build_function_ranges(d,pe,prologue_starts,call_targets,jump_targets):
     funcs.sort()
     return funcs
 
-def function_for_file(off,funcs):
-    starts=[x[0] for x in funcs]
+def make_function_index(funcs):
+    return [x[0] for x in funcs]
+
+def function_for_file(off,funcs,starts=None):
+    if starts is None:
+        starts=make_function_index(funcs)
     i=bisect.bisect_right(starts,off)-1
     if i<0:return None
     fs,fe,va,sec=funcs[i]
     if fs<=off<fe:return (fs,fe,va,sec)
     return None
 
-def build_call_graph(calls,funcs):
+def build_call_graph(calls,funcs,func_starts):
     edges=[]
     callers=defaultdict(list); callees=defaultdict(list)
-    for file_off,call_va,dst_va in calls:
-        src=function_for_file(file_off,funcs)
-        dst_file=None
-        # dst function may start exactly or land inside an indexed range
-        # use VA->file then containing function.
+    total=len(calls)
+    for idx,(file_off,call_va,dst_va) in enumerate(calls,1):
+        src=function_for_file(file_off,funcs,func_starts)
         edges.append((src[2] if src else None,dst_va,file_off,call_va))
         if src:
             callees[src[2]].append((dst_va,file_off))
             callers[dst_va].append((src[2],file_off))
+        if idx%100000==0 or idx==total:
+            print(f"         call graph {idx}/{total}",flush=True)
     return edges,callers,callees
 
 def extract_ascii_strings(d,pe,min_len=4):
@@ -240,19 +244,26 @@ def extract_utf16_strings(d,pe,min_chars=4):
             else:i+=2
     return out
 
-def build_immediate_xrefs(d,pe,values,funcs):
-    # Efficient reverse index for selected addresses only.
-    wanted={v:struct.pack("<I",v) for v in values if v is not None and 0<=v<=0xffffffff}
+def build_immediate_xrefs(d,pe,values,funcs,func_starts):
+    # MAX optimized: one linear pass over executable bytes instead of one full scan per string.
+    wanted={v for v in values if v is not None and 0<=v<=0xffffffff}
     xrefs=defaultdict(list)
-    for v,pat in wanted.items():
-        for s in executable_sections(pe):
-            a=s["raw"];b=min(len(d),a+s["rs"]);pos=a
-            while True:
-                p=d.find(pat,pos,b)
-                if p<0:break
-                fn=function_for_file(p,funcs)
+    if not wanted:return xrefs
+    total_bytes=sum(s["rs"] for s in executable_sections(pe))
+    done=0
+    for s in executable_sections(pe):
+        a=s["raw"];b=min(len(d),a+s["rs"])
+        # Any imm32/pointer can start at an unaligned byte.
+        p=a
+        stop=max(a,b-3)
+        while p<stop:
+            v=struct.unpack_from("<I",d,p)[0]
+            if v in wanted:
+                fn=function_for_file(p,funcs,func_starts)
                 xrefs[v].append((p,f2v(p,pe),fn[2] if fn else None))
-                pos=p+1
+            p+=1
+        done+=b-a
+        print(f"         xref scan bytes {done}/{total_bytes}",flush=True)
     return xrefs
 
 def parse_imports(d,pe):
@@ -419,7 +430,7 @@ def main():
     if not ams.is_file():raise SystemExit(f"AMS.exe not found: {ams}")
     d=ams.read_bytes()
 
-    print("[01/14] Verificando SHA/guards...",flush=True)
+    print("[01/15] Verificando SHA/guards...",flush=True)
     for n,o,e in GUARDS:
         if d[o:o+len(e)]!=e:raise SystemExit(f"{n} guard failed at 0x{o:08X}")
     cursha=sha256_bytes(d)
@@ -429,11 +440,11 @@ def main():
     outdir=root/"_PACKAGE_PHASE5"/"_FULL_GAME_ATLAS_MAX"
     outdir.mkdir(parents=True,exist_ok=True)
 
-    print("[02/14] Indexando prologos...",flush=True)
+    print("[02/15] Indexando prologos...",flush=True)
     prologues=build_prologue_index(d,pe)
     print(f"         prologos primarios={len(prologues)}",flush=True)
 
-    print("[03/14] Varredura global CALL/JMP...",flush=True)
+    print("[03/15] Varredura global CALL/JMP...",flush=True)
     calls,jumps,targets=scan_direct_transfers(d,pe)
     call_targets={v2f(x[2],pe) for x in calls}
     call_targets={x for x in call_targets if x is not None}
@@ -441,45 +452,46 @@ def main():
     jump_targets={x for x in jump_targets if x is not None}
     print(f"         calls={len(calls)} jumps={len(jumps)} uniqueTargets={len(targets)}",flush=True)
 
-    print("[04/14] Construindo mapa de funcoes (prologos + call/jump targets)...",flush=True)
+    print("[04/15] Construindo mapa de funcoes (prologos + call/jump targets)...",flush=True)
     funcs=build_function_ranges(d,pe,prologues,call_targets,jump_targets)
+    func_starts=make_function_index(funcs)
     print(f"         function starts={len(funcs)}",flush=True)
 
-    print("[05/14] Construindo call graph completo...",flush=True)
-    edges,callers,callees=build_call_graph(calls,funcs)
+    print("[05/15] Construindo call graph completo (indexado)...",flush=True)
+    edges,callers,callees=build_call_graph(calls,funcs,func_starts)
     print(f"         call edges={len(edges)}",flush=True)
 
-    print("[06/14] Imports...",flush=True)
+    print("[06/15] Imports...",flush=True)
     imports=parse_imports(d,pe)
     print(f"         imports={len(imports)}",flush=True)
 
-    print("[07/14] Strings ASCII...",flush=True)
+    print("[07/15] Strings ASCII...",flush=True)
     astr=extract_ascii_strings(d,pe,4)
     print(f"         ascii strings={len(astr)}",flush=True)
 
-    print("[08/14] Strings UTF-16...",flush=True)
+    print("[08/15] Strings UTF-16...",flush=True)
     wstr=extract_utf16_strings(d,pe,4)
     print(f"         utf16 strings={len(wstr)}",flush=True)
 
-    print("[09/14] RTTI...",flush=True)
+    print("[09/15] RTTI...",flush=True)
     rtti=extract_rtti_names(d,pe)
     print(f"         RTTI names={len(rtti)}",flush=True)
 
-    print("[10/14] Vtables candidatas...",flush=True)
+    print("[10/15] Vtables candidatas...",flush=True)
     func_vas=[x[2] for x in funcs]
     vtables=detect_vtables(d,pe,func_vas,3,512)
     print(f"         vtable runs={len(vtables)}",flush=True)
 
-    print("[11/14] XREFs de strings relevantes...",flush=True)
+    print("[11/15] XREFs de strings relevantes...",flush=True)
     interesting=[]
     for row in astr+wstr:
         cat=classify_string(row[3])
         if cat:interesting.append((row,cat))
     interesting=interesting[:20000]
-    string_xrefs=build_immediate_xrefs(d,pe,[x[0][1] for x in interesting],funcs)
+    string_xrefs=build_immediate_xrefs(d,pe,[x[0][1] for x in interesting],funcs,func_starts)
     print(f"         relevant strings={len(interesting)}",flush=True)
 
-    print("[12/14] Reachability sem limite pequeno...",flush=True)
+    print("[12/15] Reachability sem limite pequeno...",flush=True)
     global_roots=[x[2] for x in funcs]
     # all functions are already global; additionally compute subsystem reachability from known anchors.
     garage_roots=[KNOWN_ANCHORS.get("GS_Garage_ctor"),KNOWN_ANCHORS.get("GS_Garage_build_handler"),KNOWN_ANCHORS.get("GarageBottomBarWidget_ctor")]
@@ -557,7 +569,7 @@ def main():
     anchors={}
     for name,va in KNOWN_ANCHORS.items():
         f=v2f(va,pe)
-        fn=function_for_file(f,funcs) if f is not None else None
+        fn=function_for_file(f,funcs,func_starts) if f is not None else None
         anchors[name]={
             "va":f"0x{va:08X}",
             "file":f"0x{f:08X}" if f is not None else None,
@@ -588,6 +600,7 @@ def main():
         "image_base":f"0x{pe['image_base']:08X}",
         "entry_va":f"0x{pe['entry_va']:08X}",
         "function_count":len(funcs),
+        "mapping_engine":"indexed-binary-search + single-pass string-xrefs",
         "direct_call_count":len(calls),
         "direct_jump_count":len(jumps),
         "import_count":len(imports),
