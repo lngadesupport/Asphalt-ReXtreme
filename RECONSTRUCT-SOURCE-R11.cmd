@@ -34,7 +34,7 @@ if not exist "%ROOT%\_PACKAGE_PHASE5\AMS.exe" (
 
 if not exist "%TOOLS%" mkdir "%TOOLS%"
 
-curl.exe -fL "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/e112e2ccf96d173119843d76312a894183a6dce3/tools/reconstruct_source_r11.py" -o "%GEN%"
+curl.exe -fL "https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/c1637d4aafcf092566ea21b6871ff4fa4fdfad70/tools/reconstruct_source_r11.py" -o "%GEN%"
 if errorlevel 1 goto :fail
 
 where py.exe >nul 2>nul
