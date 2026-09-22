@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse,csv,hashlib,json,struct,shutil
 from pathlib import Path
 from capstone import Cs,CS_ARCH_X86,CS_MODE_32
-from capstone.x86_const import X86_OP_IMM
+from capstone.x86_const import X86_OP_IMM,X86_OP_MEM
 
 EXPECTED_SHA="7f257d1188285a821dda73ce4816757aa23cdc2537e43b8f53c6dc96b9bc39cb"
 
@@ -14,7 +14,7 @@ CONTINUE_VA=0x00973CCA
 SIGNAL_HELPER=0x00936BE0
 GS_VTABLE=0x0186A9CC
 GS_BUILD_SLOT=0x110
-MIN_CAVE=64
+MIN_CAVE=54
 
 def u16(b,o):return struct.unpack_from("<H",b,o)[0]
 def u32(b,o):return struct.unpack_from("<I",b,o)[0]
@@ -51,57 +51,101 @@ def v2f(va,ib,secs):
             if s["raw"]<=f<s["raw"]+s["rs"]:return f
     return None
 
-def direct_targets(md,d,ib,secs):
+def code_references(md,d,ib,secs):
+    """
+    Conservative reference set used only to reject padding caves.
+    Collects direct control-flow targets and absolute mapped addresses referenced
+    by executable instructions. False positives only make cave selection stricter.
+    """
     out=set()
     for s in secs:
         if not(s["ch"]&0x20000000):continue
         a=s["raw"];b=min(len(d),a+s["rs"]);va=ib+s["va"]
         for x in md.disasm(d[a:b],va):
-            if x.mnemonic not in ("call","jmp","je","jne","jz","jnz","ja","jae","jb","jbe","jg","jge","jl","jle"):
-                continue
-            if len(x.operands)==1 and x.operands[0].type==X86_OP_IMM:
-                out.add(x.operands[0].imm&0xffffffff)
+            if x.mnemonic in ("call","jmp","je","jne","jz","jnz","ja","jae","jb","jbe","jg","jge","jl","jle"):
+                if len(x.operands)==1 and x.operands[0].type==X86_OP_IMM:
+                    out.add(x.operands[0].imm&0xffffffff)
+            for op in x.operands:
+                ref=None
+                if op.type==X86_OP_IMM:
+                    ref=op.imm&0xffffffff
+                elif op.type==X86_OP_MEM and not op.mem.base and not op.mem.index:
+                    ref=op.mem.disp&0xffffffff
+                if ref is not None and v2f(ref,ib,secs) is not None:
+                    out.add(ref)
     return out
 
-def read_function_ranges(path):
-    rows=[]
-    if not path.is_file():return rows
-    with path.open("r",encoding="utf-8-sig",newline="") as f:
-        for r in csv.DictReader(f):
-            try:a=int(r.get("file_start",""),16);b=int(r.get("file_end",""),16)
-            except:continue
-            if b>a:rows.append((a,b))
-    return rows
+def _scan_uniform(d,a,b,byte_value,minlen,ib,secs,refs,tier,section):
+    out=[];p=a
+    while p<b:
+        if d[p]!=byte_value:
+            p+=1;continue
+        q=p
+        while q<b and d[q]==byte_value:q+=1
+        n=q-p
+        if n>=minlen:
+            va=f2v(p,ib,secs)
+            if va is not None and not any(va<=r<va+n for r in refs):
+                out.append({"file":p,"va":va,"length":n,"section":section,"tier":tier,
+                            "padding":f"{byte_value:02X}"})
+        p=max(q,p+1)
+    return out
 
-def overlaps_ranges(a,b,ranges):
-    # Do not reject cave merely because an atlas "function" spans padding;
-    # reject only if a function START lies inside the cave.
-    for x,y in ranges:
-        if a<=x<b:return True
-    return False
+def _scan_mixed(d,a,b,allowed,minlen,ib,secs,refs,tier,section):
+    out=[];p=a
+    while p<b:
+        if d[p] not in allowed:
+            p+=1;continue
+        q=p
+        while q<b and d[q] in allowed:q+=1
+        n=q-p
+        if n>=minlen:
+            va=f2v(p,ib,secs)
+            if va is not None and not any(va<=r<va+n for r in refs):
+                out.append({"file":p,"va":va,"length":n,"section":section,"tier":tier,
+                            "padding":"mixed-"+"/".join(f"{x:02X}" for x in sorted(allowed))})
+        p=max(q,p+1)
+    return out
 
-def find_cave(d,ib,secs,targets,function_ranges):
+def padding_diagnostics(d,secs,top=12):
+    runs=[]
+    for s in secs:
+        if not(s["ch"]&0x20000000):continue
+        a=s["raw"];b=min(len(d),a+s["rs"]);p=a
+        while p<b:
+            if d[p] not in (0xCC,0x90,0x00):
+                p+=1;continue
+            v=d[p];q=p
+            while q<b and d[q]==v:q+=1
+            if q-p>=8:runs.append((q-p,p,v,s["name"]))
+            p=max(q,p+1)
+    runs.sort(reverse=True)
+    return [{"length":n,"file":f"0x{p:08X}","byte":f"{v:02X}","section":sec} for n,p,v,sec in runs[:top]]
+
+def find_cave(d,ib,secs,refs,minlen):
+    """
+    Tiered executable-padding search.
+    R10 v1 wrongly rejected caves based on heuristic atlas function starts.
+    V2 ignores that over-approximation and rejects only actual decoded references.
+    """
     candidates=[]
     for s in secs:
         if not(s["ch"]&0x20000000):continue
         a=s["raw"];b=min(len(d),a+s["rs"])
-        p=a
-        while p<b:
-            if d[p]!=0xCC:
-                p+=1;continue
-            q=p
-            while q<b and d[q]==0xCC:q+=1
-            n=q-p
-            if n>=MIN_CAVE:
-                va=f2v(p,ib,secs)
-                if va is not None:
-                    target_inside=any(va<=t<va+n for t in targets)
-                    fn_start_inside=overlaps_ranges(p,q,function_ranges)
-                    if not target_inside and not fn_start_inside:
-                        candidates.append({"file":p,"va":va,"length":n,"section":s["name"]})
-            p=max(q,p+1)
-    # Prefer smallest sufficient cave to avoid consuming a huge region, then nearest to callback.
-    candidates.sort(key=lambda c:(c["length"],abs(c["va"]-PATCH_VA)))
+        candidates += _scan_uniform(d,a,b,0xCC,minlen,ib,secs,refs,1,s["name"])
+        candidates += _scan_uniform(d,a,b,0x90,minlen,ib,secs,refs,2,s["name"])
+        candidates += _scan_mixed(d,a,b,{0xCC,0x90},minlen,ib,secs,refs,3,s["name"])
+        # Last-resort executable padding: zero/INT3/NOP mixture.
+        # Still rejected when any decoded mapped reference points inside.
+        candidates += _scan_mixed(d,a,b,{0x00,0x90,0xCC},minlen,ib,secs,refs,4,s["name"])
+
+    # Exact duplicate starts can arise across tiers; keep safest tier per start.
+    best={}
+    for x in candidates:
+        k=(x["file"],x["va"])
+        if k not in best or x["tier"]<best[k]["tier"]:best[k]=x
+    candidates=list(best.values())
+    candidates.sort(key=lambda c:(c["tier"],c["length"],abs(c["va"]-PATCH_VA)))
     return candidates
 
 class Stub:
@@ -239,10 +283,17 @@ def main():
     if bytes(d[PATCH_FILE:PATCH_FILE+5])!=PATCH_ORIGINAL:
         raise SystemExit("guard falhou em 0x005730B4: "+bytes(d[PATCH_FILE:PATCH_FILE+5]).hex(" ").upper())
 
-    targets=direct_targets(md,d,ib,secs)
-    ranges=read_function_ranges(atlas/"FUNCTIONS.csv")
-    caves=find_cave(d,ib,secs,targets,ranges)
-    if not caves:raise SystemExit("nenhum code cave 0xCC seguro >=64 bytes encontrado")
+    # Stub length is position-independent. Use the exact required size instead
+    # of the old arbitrary 64-byte threshold.
+    stub_len=len(build_stub(PATCH_VA))
+    refs=code_references(md,d,ib,secs)
+    caves=find_cave(d,ib,secs,refs,stub_len)
+    if not caves:
+        diag=padding_diagnostics(d,secs)
+        print("[R10] Nenhum cave >=%d bytes passou os guards."%stub_len)
+        print("[R10] Maiores runs de padding executavel:")
+        for x in diag:print("         ",x)
+        raise SystemExit("nenhum code cave seguro encontrado; diagnostico impresso acima")
     cave=caves[0]
     stub=build_stub(cave["va"])
     if len(stub)>cave["length"]:raise SystemExit("stub maior que cave")
@@ -260,6 +311,8 @@ def main():
         "cave_file":f"0x{cave['file']:08X}",
         "cave_va":f"0x{cave['va']:08X}",
         "cave_length":cave["length"],
+        "cave_tier":cave["tier"],
+        "cave_padding":cave["padding"],
         "stub_length":len(stub),
         "cave_original":cave_orig.hex(" ").upper(),
         "stub_bytes":stub.hex(" ").upper(),
@@ -277,7 +330,7 @@ def main():
         state_path.write_text(json.dumps(state,indent=2),encoding="utf-8")
         write_cmds(root,"tools\\reconstruct_source_r10.py")
         print("[R10 PLAN] READY")
-        print("Cave file=0x%08X VA=0x%08X len=%d stub=%d"%(cave["file"],cave["va"],cave["length"],len(stub)))
+        print("Cave file=0x%08X VA=0x%08X len=%d stub=%d tier=%d padding=%s"%(cave["file"],cave["va"],cave["length"],len(stub),cave["tier"],cave["padding"]))
         print("Patch site original:",PATCH_ORIGINAL.hex(" ").upper())
         print("Patch site new     :",pbytes.hex(" ").upper())
         print("Generated:",state_path)
