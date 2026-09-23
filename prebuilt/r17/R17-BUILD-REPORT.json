@@ -1,0 +1,21 @@
+﻿{
+    "Phase":  "R17 Local Event Runtime",
+    "Architecture":  "x86",
+    "Host":  "IGPLib_x86.dll",
+    "BuildCarVA":  "0x00A87960",
+    "SelectedCarIdHelperVA":  "0x00D805F0",
+    "StateFile":  "%LOCALAPPDATA%\\ReXtremeLocal\\campaign.ini",
+    "RuntimeDll":  "D:\\a\\Asphalt-ReXtreme\\Asphalt-ReXtreme\\RUNTIME_STUBS\\IGPLib_x86.dll",
+    "SHA256":  "81ceea21169e6fc41127abc1b08ab3d46482dfce91b495763c0f1c7f36be6ca2",
+    "BinaryPatchToAMS":  false,
+    "ReplacesOriginalBuildCarAtRuntime":  true,
+    "OwnEventBus":  true,
+    "OwnStore":  true,
+    "OwnConsumers":  [
+                         "InventoryConsumer",
+                         "ProfileConsumer",
+                         "GarageConsumer",
+                         "PersistenceConsumer"
+                     ],
+    "OwnUI":  true
+}
