@@ -4,6 +4,7 @@
 #include "CampaignCore.h"
 #include "CampaignCatalog.h"
 #include "CampaignEventCatalog.h"
+#include "CampaignObjectiveCatalog.h"
 #include "CampaignUpgradeCatalog.h"
 #include "CampaignUpgradeUiMap.h"
 #include "CampaignStoreCatalog.h"
@@ -503,6 +504,55 @@ static int FinishEventRaceUnlocked(
 
     g_state.last_completed_race_session_id = session_id;
     return 1;
+}
+
+static int FinishEventRaceMetricsUnlocked(CampaignRaceMetrics* metrics) {
+    CampaignRaceSession* session = &g_race_session_buffer;
+    int32_t stars = 0;
+    int32_t mask = 0;
+    int finish_status;
+
+    if (!metrics) return 0;
+    if (metrics->size < (uint32_t)sizeof(CampaignRaceMetrics)) return 0;
+    if (metrics->version != CAMPAIGN_RACE_METRICS_VERSION) return 0;
+    if (metrics->session_id == 0) return 0;
+
+    metrics->stars_awarded = 0;
+    metrics->achieved_mask = 0;
+    metrics->credits_awarded = 0;
+    metrics->premium_awarded = 0;
+    metrics->completion_count = 0;
+
+    if (metrics->session_id == g_state.last_completed_race_session_id) {
+        return 2;
+    }
+
+    RecoverConsumingRaceSessionUnlocked();
+    if (!ReadRaceSessionFile(g_race_session_path, session)) return 0;
+    if (session->session_id != metrics->session_id) return 0;
+
+    if (!CampaignObjectiveEvaluate(
+            session->event_id,
+            metrics,
+            &stars,
+            &mask)) {
+        return 0;
+    }
+
+    metrics->stars_awarded = stars;
+    metrics->achieved_mask = mask;
+
+    finish_status = FinishEventRaceUnlocked(
+        metrics->session_id,
+        metrics->placement,
+        stars,
+        metrics->finish_time_ms,
+        &metrics->credits_awarded,
+        &metrics->premium_awarded,
+        &metrics->completion_count
+    );
+
+    return finish_status;
 }
 
 static int CancelEventRaceUnlocked(uint32_t session_id) {
@@ -1608,6 +1658,55 @@ static int ExecuteUnlocked(CampaignCommand* c) {
         c->status = 1;
         c->revision = g_state.revision;
         return 1;
+
+    case CAMPAIGN_OP_FINISH_EVENT_RACE_METRICS:
+        {
+            CampaignRaceMetrics* metrics;
+            int finish_status;
+
+            metrics = (CampaignRaceMetrics*)(uintptr_t)(uint32_t)c->a;
+            if (!metrics) return 0;
+
+            CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+            finish_status = FinishEventRaceMetricsUnlocked(metrics);
+
+            if (finish_status == 2) {
+                c->out0 = 0;
+                c->out1 = 0;
+                c->out2 = 0;
+                c->status = 1;
+                c->revision = g_state.revision;
+                return 1;
+            }
+
+            if (finish_status != 1) {
+                CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+                return 0;
+            }
+
+            result = CommitMutationUnlocked();
+            if (!result) {
+                CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+                metrics->stars_awarded = 0;
+                metrics->achieved_mask = 0;
+                metrics->credits_awarded = 0;
+                metrics->premium_awarded = 0;
+                metrics->completion_count = 0;
+                MoveFileExW(
+                    g_race_session_consuming_path,
+                    g_race_session_path,
+                    MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+                );
+                return 0;
+            }
+
+            DeleteFileW(g_race_session_consuming_path);
+
+            c->out0 = metrics->credits_awarded;
+            c->out1 = metrics->premium_awarded;
+            c->out2 = metrics->stars_awarded;
+        }
+        break;
 
     case CAMPAIGN_OP_PURCHASE_OFFER:
         {
