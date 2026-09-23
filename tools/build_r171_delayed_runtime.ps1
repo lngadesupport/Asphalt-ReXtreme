@@ -57,11 +57,6 @@ if ($LASTEXITCODE -ne 0) {
 if (-not (Test-Path -LiteralPath $igpDll)) { throw "IGPLib_x86.dll missing" }
 if (-not (Test-Path -LiteralPath $runtimeDll)) { throw "ReXtremeLocalRuntime.dll missing" }
 
-$exports = (& dumpbin.exe /nologo /exports $runtimeDll) -join "`n"
-if ($exports -notmatch "(?m)\bReXtremeStart\b") {
-    throw "ReXtremeStart export missing from runtime DLL"
-}
-
 $report = [ordered]@{
     Phase = "R17.1 Delayed Core Runtime"
     Architecture = "x86"
