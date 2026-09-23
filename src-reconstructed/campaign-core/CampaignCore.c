@@ -85,25 +85,20 @@ static int ResolveSelectedCarId(void* garage){
     return *(int32_t*)((unsigned char*)selected+0xC0);
 }
 
+extern void __cdecl CampaignInvokeGarageUi(void* widget);
+
 static void RefreshGarageUi(void* garage){
     unsigned char* gs=(unsigned char*)garage;
     void* widget;
-    void** vt;
-    void (__thiscall *refresh)(void*);
 
     if(!gs)return;
 
-    /* GS_Garage +0x35C is the original GarageBottomBarWidget shared-pair
-       object field.  Calling only its vtable slot 0 keeps the existing
-       garage presentation while Campaign Core remains authoritative. */
+    /* GS_Garage +0x35C stores the GarageBottomBarWidget object half of the
+       shared pair.  Assembly performs the UI-only thiscall using ECX. */
     widget=*(void**)(gs+0x35C);
     if(!widget)return;
 
-    vt=*(void***)widget;
-    if(!vt)return;
-
-    refresh=(void (__thiscall *)(void*))vt[0];
-    if(refresh)refresh(widget);
+    CampaignInvokeGarageUi(widget);
 }
 
 int __cdecl CampaignIsOwned(int32_t car_id){ int result;LockState();EnsureLoadedUnlocked();result=IsOwnedUnlocked(car_id);UnlockState();return result; }

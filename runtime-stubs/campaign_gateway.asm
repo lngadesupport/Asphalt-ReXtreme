@@ -38,4 +38,18 @@ campaign_owned:
     add esp, 4
     ret 4
 campaign_gateway ENDP
+
+PUBLIC _CampaignInvokeGarageUi
+_CampaignInvokeGarageUi PROC
+    mov ecx, DWORD PTR [esp+4]
+    test ecx, ecx
+    jz ui_done
+    mov eax, DWORD PTR [ecx]
+    test eax, eax
+    jz ui_done
+    call DWORD PTR [eax]
+ui_done:
+    ret
+_CampaignInvokeGarageUi ENDP
+
 END
