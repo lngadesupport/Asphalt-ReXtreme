@@ -15,9 +15,10 @@
     "V2Migration":  true,
     "VehicleCatalog":  "CampaignCatalog.dat",
     "EventCatalog":  "CampaignEvents.dat",
+    "ObjectiveCatalog":  "CampaignObjectives.dat",
     "UpgradeCatalog":  "CampaignUpgrades.dat",
     "UpgradeUiMap":  "CampaignUpgradeUiMap.dat",
     "StoreCatalog":  "CampaignStore.dat",
-    "Size":  22016,
-    "SHA256":  "164b7ee8e89152de6b3c6b36d0f0f682283bd86bfd17e697840d10f16e034e8d"
+    "Size":  23552,
+    "SHA256":  "924466639e8127406204f7dd3c5cd5392cef88f25eba113a2ec121b131504c4e"
 }
