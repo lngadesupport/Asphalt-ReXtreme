@@ -91,6 +91,8 @@ static WCHAR g_campaign_dir[1024];
 static WCHAR g_state_path[1024];
 static WCHAR g_tmp_path[1024];
 static WCHAR g_backup_path[1024];
+static WCHAR g_v1_path[1024];
+static WCHAR g_v1_archive_path[1024];
 
 static void LockState(void) {
     while (InterlockedCompareExchange(&g_lock, 1, 0) != 0) Sleep(0);
@@ -274,18 +276,17 @@ static int TryLoadV2(const WCHAR* path, CampaignStateV2* out) {
 }
 
 static int TryMigrateV1(void) {
-    WCHAR old_path[1024];
     HANDLE h;
     DWORD got = 0;
     CampaignStateV1* old = &g_v1_buffer;
     uint32_t i;
 
-    ZeroBytes(old_path, (uint32_t)sizeof(old_path));
-    if (!WideAppend(old_path, 1024, g_campaign_dir)) return 0;
-    if (!WideAppend(old_path, 1024, L"\\campaign_state.bin")) return 0;
+    ZeroBytes(g_v1_path, (uint32_t)sizeof(g_v1_path));
+    if (!WideAppend(g_v1_path, 1024, g_campaign_dir)) return 0;
+    if (!WideAppend(g_v1_path, 1024, L"\\campaign_state.bin")) return 0;
 
     ZeroBytes(old, (uint32_t)sizeof(*old));
-    h = CreateFileW(old_path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    h = CreateFileW(g_v1_path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     if (h == INVALID_HANDLE_VALUE) return 0;
 
     if (!ReadFile(h, old, (DWORD)sizeof(*old), &got, 0) || got != (DWORD)sizeof(*old)) {
@@ -317,14 +318,11 @@ static int TryMigrateV1(void) {
 
     if (!SaveStateUnlocked()) return 0;
 
-    {
-        WCHAR migrated_path[1024];
-        ZeroBytes(migrated_path, (uint32_t)sizeof(migrated_path));
-        if (WideAppend(migrated_path, 1024, g_campaign_dir) &&
-            WideAppend(migrated_path, 1024, L"\\campaign_state.v1.migrated")) {
-            DeleteFileW(migrated_path);
-            MoveFileExW(old_path, migrated_path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
-        }
+    ZeroBytes(g_v1_archive_path, (uint32_t)sizeof(g_v1_archive_path));
+    if (WideAppend(g_v1_archive_path, 1024, g_campaign_dir) &&
+        WideAppend(g_v1_archive_path, 1024, L"\\campaign_state.v1.migrated")) {
+        DeleteFileW(g_v1_archive_path);
+        MoveFileExW(g_v1_path, g_v1_archive_path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
     }
     return 1;
 }
