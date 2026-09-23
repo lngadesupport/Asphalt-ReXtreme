@@ -1,0 +1,3 @@
+LIBRARY ReXtremeLocalRuntime.dll
+EXPORTS
+ReXtremeStart=_ReXtremeStart
