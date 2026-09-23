@@ -22,6 +22,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: campaign-core-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-x86:
     runs-on: windows-latest
@@ -102,7 +106,7 @@ jobs:
           $size = (Get-Item $dll).Length
 
           [ordered]@{
-            Phase = "Campaign Core v2"
+            Phase = "Campaign Core v3"
             Architecture = "x86"
             NoEntry = $true
             StartupRuntime = $false
@@ -115,6 +119,10 @@ jobs:
             State = "LocalState\\CampaignEdition\\CampaignSave.dat"
             Backup = "LocalState\\CampaignEdition\\CampaignSave.bak"
             V1Migration = $true
+            V2Migration = $true
+            VehicleCatalog = "CampaignCatalog.dat"
+            EventCatalog = "CampaignEvents.dat"
+            UpgradeCatalog = "CampaignUpgrades.dat"
             Size = $size
             SHA256 = $hash
           } | ConvertTo-Json | Set-Content ".\prebuilt\campaign-core\CAMPAIGN-CORE-REPORT.json" -Encoding UTF8
@@ -124,13 +132,38 @@ jobs:
       - name: Publish
         shell: powershell
         run: |
+          $stage = Join-Path $env:RUNNER_TEMP "campaign-core-publish"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+
+          Copy-Item ".\prebuilt\campaign-core\IGPLib_x86.dll" $stage -Force
+          Copy-Item ".\prebuilt\campaign-core\CAMPAIGN-CORE-REPORT.json" $stage -Force
+          Copy-Item ".\prebuilt\campaign-core\DUMPBIN.txt" $stage -Force
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Rebase generated artifacts onto the newest branch head. This avoids
+          # losing the build when a source/docs commit lands during this job.
+          git fetch origin "$env:GITHUB_REF_NAME"
+          if ($LASTEXITCODE -ne 0) { throw "git fetch failed" }
+
+          git reset --hard "origin/$env:GITHUB_REF_NAME"
+          if ($LASTEXITCODE -ne 0) { throw "git reset failed" }
+
+          New-Item -ItemType Directory -Force -Path ".\prebuilt\campaign-core" | Out-Null
+          Copy-Item (Join-Path $stage "IGPLib_x86.dll") ".\prebuilt\campaign-core\IGPLib_x86.dll" -Force
+          Copy-Item (Join-Path $stage "CAMPAIGN-CORE-REPORT.json") ".\prebuilt\campaign-core\CAMPAIGN-CORE-REPORT.json" -Force
+          Copy-Item (Join-Path $stage "DUMPBIN.txt") ".\prebuilt\campaign-core\DUMPBIN.txt" -Force
+
           git add -f prebuilt/campaign-core/IGPLib_x86.dll prebuilt/campaign-core/CAMPAIGN-CORE-REPORT.json prebuilt/campaign-core/DUMPBIN.txt
           git diff --cached --quiet
           if ($LASTEXITCODE -eq 0) { exit 0 }
-          git commit -m "build: publish Campaign Core v2 [skip ci]"
+
+          git commit -m "build: publish Campaign Core v3 [skip ci]"
+          if ($LASTEXITCODE -ne 0) { throw "git commit failed" }
+
           git push origin "HEAD:$env:GITHUB_REF_NAME"
+          if ($LASTEXITCODE -ne 0) { throw "git push failed" }
 
       - uses: actions/upload-artifact@v4
         with:
