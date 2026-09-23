@@ -29,7 +29,6 @@ New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 $bootstrapC = Join-Path $SourceDir "runtime-stubs\r171_igp_bootstrap.c"
 $bootstrapDef = Join-Path $SourceDir "runtime-stubs\IGPLib_x86_r171.def"
 $runtimeCpp = Join-Path $SourceDir "src-reconstructed\local-runtime\LocalEventRuntimeR171.cpp"
-$runtimeDef = Join-Path $SourceDir "runtime-stubs\ReXtremeLocalRuntime.def"
 
 $bootstrapObj = Join-Path $outDir "r171_igp_bootstrap.obj"
 $igpDll = Join-Path $outDir "IGPLib_x86.dll"
@@ -46,7 +45,7 @@ $bootstrapCmd = @(
 $runtimeCmd = @(
     'cl.exe /nologo /std:c++17 /O2 /MT /EHsc /LD /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE',
     ('"{0}"' -f $runtimeCpp),
-    ('/link /MACHINE:X86 /DEF:"{0}" /OUT:"{1}" /PDB:"{2}" user32.lib gdi32.lib kernel32.lib' -f $runtimeDef,$runtimeDll,$runtimePdb)
+    ('/link /MACHINE:X86 /OUT:"{0}" /PDB:"{1}" user32.lib gdi32.lib kernel32.lib' -f $runtimeDll,$runtimePdb)
 ) -join ' '
 
 $cmd = ('call "{0}" x86 >nul && {1} && {2}' -f $vcvars,$bootstrapCmd,$runtimeCmd)
@@ -57,6 +56,11 @@ if ($LASTEXITCODE -ne 0) {
 
 if (-not (Test-Path -LiteralPath $igpDll)) { throw "IGPLib_x86.dll missing" }
 if (-not (Test-Path -LiteralPath $runtimeDll)) { throw "ReXtremeLocalRuntime.dll missing" }
+
+$exports = (& dumpbin.exe /nologo /exports $runtimeDll) -join "`n"
+if ($exports -notmatch "(?m)\bReXtremeStart\b") {
+    throw "ReXtremeStart export missing from runtime DLL"
+}
 
 $report = [ordered]@{
     Phase = "R17.1 Delayed Core Runtime"

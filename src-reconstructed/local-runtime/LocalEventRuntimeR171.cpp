@@ -740,7 +740,7 @@ extern "C" __declspec(naked) void ret_null(void) {
     __asm ret
 }
 
-extern "C" BOOL __cdecl ReXtremeStart() {
+extern "C" __declspec(dllexport) BOOL __cdecl ReXtremeStart() {
     return rextreme::local::Start(g.module) ? TRUE : FALSE;
 }
 
