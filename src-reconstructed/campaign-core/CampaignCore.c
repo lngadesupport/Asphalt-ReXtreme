@@ -3,14 +3,16 @@
 #include <stdint.h>
 #include "CampaignCore.h"
 #include "CampaignCatalog.h"
+#include "CampaignEventCatalog.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
-#define CAMPAIGN_VERSION 2u
+#define CAMPAIGN_VERSION 3u
 
 #define CAMPAIGN_MAX_OWNED 256u
 #define CAMPAIGN_MAX_INVENTORY 512u
 #define CAMPAIGN_MAX_VEHICLE_PARTS 768u
 #define CAMPAIGN_MAX_PROGRESS 512u
+#define CAMPAIGN_MAX_EVENT_STATE 512u
 
 #define CAMPAIGN_DEFAULT_CREDITS 50000
 #define CAMPAIGN_DEFAULT_PREMIUM 0
@@ -33,7 +35,53 @@ typedef struct CampaignProgressEntry {
     int32_t best_time_ms;
 } CampaignProgressEntry;
 
-typedef struct CampaignStateV2 {
+typedef struct CampaignEventStateEntry {
+    int32_t event_id;
+    uint32_t completion_count;
+    int16_t best_position;
+    int16_t best_stars;
+    int32_t best_time_ms;
+} CampaignEventStateEntry;
+
+typedef struct CampaignStateV3 {
+    uint32_t magic;
+    uint32_t version;
+    uint32_t revision;
+    uint32_t flags;
+
+    int32_t credits;
+    int32_t premium_currency;
+    int32_t selected_car_id;
+    int32_t last_acquired_car_id;
+
+    uint32_t craft_count;
+    uint32_t race_count;
+    uint32_t total_stars;
+    uint32_t reserved0;
+
+    uint32_t owned_count;
+    int32_t owned_car_ids[CAMPAIGN_MAX_OWNED];
+
+    uint32_t inventory_count;
+    CampaignInventoryEntry inventory[CAMPAIGN_MAX_INVENTORY];
+
+    uint32_t upgrade_count;
+    CampaignVehiclePartEntry upgrades[CAMPAIGN_MAX_VEHICLE_PARTS];
+
+    uint32_t prokit_count;
+    CampaignVehiclePartEntry prokits[CAMPAIGN_MAX_VEHICLE_PARTS];
+
+    uint32_t progress_count;
+    CampaignProgressEntry progress[CAMPAIGN_MAX_PROGRESS];
+
+    uint32_t event_state_count;
+    CampaignEventStateEntry event_states[CAMPAIGN_MAX_EVENT_STATE];
+
+    uint32_t checksum;
+} CampaignStateV3;
+
+/* Exact v2 layout for one-time migration. */
+typedef struct CampaignStateV2Legacy {
     uint32_t magic;
     uint32_t version;
     uint32_t revision;
@@ -65,7 +113,7 @@ typedef struct CampaignStateV2 {
     CampaignProgressEntry progress[CAMPAIGN_MAX_PROGRESS];
 
     uint32_t checksum;
-} CampaignStateV2;
+} CampaignStateV2Legacy;
 
 /* Exact v1 layout for one-time migration. */
 typedef struct CampaignStateV1 {
@@ -81,9 +129,10 @@ typedef struct CampaignStateV1 {
 #define CAMPAIGN_V1_MAGIC 0x45435852u
 #define CAMPAIGN_V1_VERSION 1u
 
-static CampaignStateV2 g_state;
-static CampaignStateV2 g_tx_backup;
-static CampaignStateV2 g_load_buffer;
+static CampaignStateV3 g_state;
+static CampaignStateV3 g_tx_backup;
+static CampaignStateV3 g_load_buffer;
+static CampaignStateV2Legacy g_v2_buffer;
 static CampaignStateV1 g_v1_buffer;
 static volatile LONG g_lock;
 static volatile LONG g_loaded;
@@ -94,6 +143,7 @@ static WCHAR g_tmp_path[1024];
 static WCHAR g_backup_path[1024];
 static WCHAR g_v1_path[1024];
 static WCHAR g_v1_archive_path[1024];
+static WCHAR g_v2_archive_path[1024];
 
 static void LockState(void) {
     while (InterlockedCompareExchange(&g_lock, 1, 0) != 0) Sleep(0);
@@ -144,15 +194,19 @@ static uint32_t Fnv1a(const unsigned char* data, uint32_t count) {
     return h;
 }
 
-static uint32_t StateChecksumV2(const CampaignStateV2* s) {
-    return Fnv1a((const unsigned char*)s, (uint32_t)(sizeof(CampaignStateV2) - sizeof(uint32_t)));
+static uint32_t StateChecksumV3(const CampaignStateV3* s) {
+    return Fnv1a((const unsigned char*)s, (uint32_t)(sizeof(CampaignStateV3) - sizeof(uint32_t)));
+}
+
+static uint32_t StateChecksumV2Legacy(const CampaignStateV2Legacy* s) {
+    return Fnv1a((const unsigned char*)s, (uint32_t)(sizeof(CampaignStateV2Legacy) - sizeof(uint32_t)));
 }
 
 static uint32_t StateChecksumV1(const CampaignStateV1* s) {
     return Fnv1a((const unsigned char*)s, (uint32_t)(sizeof(CampaignStateV1) - sizeof(uint32_t)));
 }
 
-static void InitDefaultState(CampaignStateV2* s) {
+static void InitDefaultState(CampaignStateV3* s) {
     ZeroBytes(s, (uint32_t)sizeof(*s));
     s->magic = CAMPAIGN_MAGIC;
     s->version = CAMPAIGN_VERSION;
@@ -161,7 +215,7 @@ static void InitDefaultState(CampaignStateV2* s) {
     s->premium_currency = CAMPAIGN_DEFAULT_PREMIUM;
     s->selected_car_id = -1;
     s->last_acquired_car_id = -1;
-    s->checksum = StateChecksumV2(s);
+    s->checksum = StateChecksumV3(s);
 }
 
 static int BuildPaths(void) {
@@ -218,7 +272,7 @@ static int SaveStateUnlocked(void) {
 
     g_state.magic = CAMPAIGN_MAGIC;
     g_state.version = CAMPAIGN_VERSION;
-    g_state.checksum = StateChecksumV2(&g_state);
+    g_state.checksum = StateChecksumV3(&g_state);
 
     if (!WriteWholeFile(g_tmp_path, &g_state, (DWORD)sizeof(g_state))) return 0;
 
@@ -243,7 +297,7 @@ static int SaveStateUnlocked(void) {
     return 1;
 }
 
-static int ValidateStateV2(const CampaignStateV2* s) {
+static int ValidateStateV3(const CampaignStateV3* s) {
     if (!s) return 0;
     if (s->magic != CAMPAIGN_MAGIC || s->version != CAMPAIGN_VERSION) return 0;
     if (s->owned_count > CAMPAIGN_MAX_OWNED) return 0;
@@ -251,14 +305,27 @@ static int ValidateStateV2(const CampaignStateV2* s) {
     if (s->upgrade_count > CAMPAIGN_MAX_VEHICLE_PARTS) return 0;
     if (s->prokit_count > CAMPAIGN_MAX_VEHICLE_PARTS) return 0;
     if (s->progress_count > CAMPAIGN_MAX_PROGRESS) return 0;
-    if (s->checksum != StateChecksumV2(s)) return 0;
+    if (s->event_state_count > CAMPAIGN_MAX_EVENT_STATE) return 0;
+    if (s->checksum != StateChecksumV3(s)) return 0;
     return 1;
 }
 
-static int TryLoadV2(const WCHAR* path, CampaignStateV2* out) {
+static int ValidateStateV2Legacy(const CampaignStateV2Legacy* s) {
+    if (!s) return 0;
+    if (s->magic != CAMPAIGN_MAGIC || s->version != 2u) return 0;
+    if (s->owned_count > CAMPAIGN_MAX_OWNED) return 0;
+    if (s->inventory_count > CAMPAIGN_MAX_INVENTORY) return 0;
+    if (s->upgrade_count > CAMPAIGN_MAX_VEHICLE_PARTS) return 0;
+    if (s->prokit_count > CAMPAIGN_MAX_VEHICLE_PARTS) return 0;
+    if (s->progress_count > CAMPAIGN_MAX_PROGRESS) return 0;
+    if (s->checksum != StateChecksumV2Legacy(s)) return 0;
+    return 1;
+}
+
+static int TryLoadV3(const WCHAR* path, CampaignStateV3* out) {
     HANDLE h;
     DWORD got = 0;
-    CampaignStateV2* tmp = &g_load_buffer;
+    CampaignStateV3* tmp = &g_load_buffer;
 
     ZeroBytes(tmp, (uint32_t)sizeof(*tmp));
 
@@ -271,8 +338,64 @@ static int TryLoadV2(const WCHAR* path, CampaignStateV2* out) {
     }
     CloseHandle(h);
 
-    if (!ValidateStateV2(tmp)) return 0;
+    if (!ValidateStateV3(tmp)) return 0;
     CopyBytes(out, tmp, (uint32_t)sizeof(*tmp));
+    return 1;
+}
+
+static int TryMigrateV2(void) {
+    HANDLE h;
+    DWORD got = 0;
+    CampaignStateV2Legacy* old = &g_v2_buffer;
+    uint32_t i;
+
+    ZeroBytes(old, (uint32_t)sizeof(*old));
+
+    h = CreateFileW(g_state_path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    if (h == INVALID_HANDLE_VALUE) return 0;
+
+    if (!ReadFile(h, old, (DWORD)sizeof(*old), &got, 0) || got != (DWORD)sizeof(*old)) {
+        CloseHandle(h);
+        return 0;
+    }
+    CloseHandle(h);
+
+    if (!ValidateStateV2Legacy(old)) return 0;
+
+    InitDefaultState(&g_state);
+    g_state.revision = old->revision + 1;
+    g_state.flags = old->flags;
+    g_state.credits = old->credits;
+    g_state.premium_currency = old->premium_currency;
+    g_state.selected_car_id = old->selected_car_id;
+    g_state.last_acquired_car_id = old->last_acquired_car_id;
+    g_state.craft_count = old->craft_count;
+    g_state.race_count = old->race_count;
+    g_state.total_stars = old->total_stars;
+
+    g_state.owned_count = old->owned_count;
+    for (i = 0; i < old->owned_count; ++i) g_state.owned_car_ids[i] = old->owned_car_ids[i];
+
+    g_state.inventory_count = old->inventory_count;
+    for (i = 0; i < old->inventory_count; ++i) g_state.inventory[i] = old->inventory[i];
+
+    g_state.upgrade_count = old->upgrade_count;
+    for (i = 0; i < old->upgrade_count; ++i) g_state.upgrades[i] = old->upgrades[i];
+
+    g_state.prokit_count = old->prokit_count;
+    for (i = 0; i < old->prokit_count; ++i) g_state.prokits[i] = old->prokits[i];
+
+    g_state.progress_count = old->progress_count;
+    for (i = 0; i < old->progress_count; ++i) g_state.progress[i] = old->progress[i];
+
+    if (!SaveStateUnlocked()) return 0;
+
+    ZeroBytes(g_v2_archive_path, (uint32_t)sizeof(g_v2_archive_path));
+    if (WideAppend(g_v2_archive_path, 1024, g_campaign_dir) &&
+        WideAppend(g_v2_archive_path, 1024, L"\\CampaignSave.v2.migrated")) {
+        DeleteFileW(g_v2_archive_path);
+        MoveFileExW(g_backup_path, g_v2_archive_path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+    }
     return 1;
 }
 
@@ -337,13 +460,18 @@ static void EnsureLoadedUnlocked(void) {
         return;
     }
 
-    if (TryLoadV2(g_state_path, &g_state)) {
+    if (TryLoadV3(g_state_path, &g_state)) {
         InterlockedExchange(&g_loaded, 1);
         return;
     }
 
-    if (TryLoadV2(g_backup_path, &g_state)) {
+    if (TryLoadV3(g_backup_path, &g_state)) {
         SaveStateUnlocked();
+        InterlockedExchange(&g_loaded, 1);
+        return;
+    }
+
+    if (TryMigrateV2()) {
         InterlockedExchange(&g_loaded, 1);
         return;
     }
