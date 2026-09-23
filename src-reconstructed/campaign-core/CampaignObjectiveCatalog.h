@@ -66,6 +66,12 @@ typedef struct CampaignRaceMetrics {
     int32_t nitro_all_in;
     int32_t nitro_chain;
     int32_t nitro_normal;
+
+    int32_t stars_awarded;
+    int32_t achieved_mask;
+    int32_t credits_awarded;
+    int32_t premium_awarded;
+    int32_t completion_count;
 } CampaignRaceMetrics;
 
 #define CAMPAIGN_RACE_METRICS_VERSION 1u
