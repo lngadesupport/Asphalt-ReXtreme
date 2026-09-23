@@ -27,6 +27,7 @@ static WCHAR g_campaign_dir[1024];
 static void LockState(void){ while(InterlockedCompareExchange(&g_lock,1,0)!=0) Sleep(0); }
 static void UnlockState(void){ InterlockedExchange(&g_lock,0); }
 static void ZeroBytes(void* p,uint32_t count){ volatile unsigned char* q=(volatile unsigned char*)p; uint32_t i; for(i=0;i<count;++i)q[i]=0; }
+static void CopyBytes(void* dst,const void* src,uint32_t count){ volatile unsigned char* d=(volatile unsigned char*)dst; const volatile unsigned char* q=(const volatile unsigned char*)src; uint32_t i; for(i=0;i<count;++i)d[i]=q[i]; }
 static uint32_t WideLen(const WCHAR* s){ uint32_t n=0;if(!s)return 0;while(s[n])++n;return n; }
 static int WideAppend(WCHAR* dst,uint32_t cap,const WCHAR* src){ uint32_t a=WideLen(dst),b=0;if(!src||a>=cap)return 0;while(src[b]){if(a+b+1>=cap)return 0;dst[a+b]=src[b];++b;}dst[a+b]=0;return 1; }
 static uint32_t Fnv1a(const unsigned char* data,uint32_t count){ uint32_t h=2166136261u,i;for(i=0;i<count;++i){h^=data[i];h*=16777619u;}return h; }
@@ -66,7 +67,7 @@ static void EnsureLoadedUnlocked(void){
         ZeroBytes(&tmp,(uint32_t)sizeof(tmp));
         h=CreateFileW(g_state_path,GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE,0,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0);
         if(h!=INVALID_HANDLE_VALUE){
-            if(ReadFile(h,&tmp,(DWORD)sizeof(tmp),&got,0)&&got==(DWORD)sizeof(tmp)&&tmp.magic==CAMPAIGN_MAGIC&&tmp.version==CAMPAIGN_VERSION&&tmp.owned_count<=CAMPAIGN_MAX_OWNED&&tmp.inventory_count<=CAMPAIGN_MAX_INVENTORY&&tmp.checksum==StateChecksum(&tmp))g_state=tmp;
+            if(ReadFile(h,&tmp,(DWORD)sizeof(tmp),&got,0)&&got==(DWORD)sizeof(tmp)&&tmp.magic==CAMPAIGN_MAGIC&&tmp.version==CAMPAIGN_VERSION&&tmp.owned_count<=CAMPAIGN_MAX_OWNED&&tmp.inventory_count<=CAMPAIGN_MAX_INVENTORY&&tmp.checksum==StateChecksum(&tmp))CopyBytes(&g_state,&tmp,(uint32_t)sizeof(tmp));
             CloseHandle(h);
         }else SaveStateUnlocked();
     }
@@ -77,24 +78,18 @@ static int IsOwnedUnlocked(int32_t car_id){ uint32_t i;if(car_id<=0)return 0;for
 static int AddOwnedUnlocked(int32_t car_id){ if(IsOwnedUnlocked(car_id))return 1;if(g_state.owned_count>=CAMPAIGN_MAX_OWNED)return 0;g_state.owned_car_ids[g_state.owned_count++]=car_id;g_state.last_car_id=car_id;++g_state.craft_count;++g_state.revision;return SaveStateUnlocked(); }
 
 static int ResolveSelectedCarId(void* garage){
-    int32_t id=-1;
-    __try{
-        unsigned char* gs=(unsigned char*)garage;void* holder;void* selected;
-        if(!gs)return -1;
-        holder=*(void**)(gs+0x2D4);if(!holder)return -1;
-        selected=*(void**)holder;if(!selected)return -1;
-        id=*(int32_t*)((unsigned char*)selected+0xC0);
-    }__except(EXCEPTION_EXECUTE_HANDLER){return -1;}
-    return id;
+    unsigned char* gs=(unsigned char*)garage;void* holder;void* selected;
+    if(!gs)return -1;
+    holder=*(void**)(gs+0x2D4);if(!holder)return -1;
+    selected=*(void**)holder;if(!selected)return -1;
+    return *(int32_t*)((unsigned char*)selected+0xC0);
 }
 
 static void RefreshGarageUi(void* garage){
-    __try{
-        void*** obj=(void***)garage;void** vt;void (__thiscall *refresh)(void*);
-        if(!obj)return;vt=*obj;if(!vt)return;
-        refresh=(void (__thiscall *)(void*))vt[0x50/4];
-        if(refresh)refresh(garage);
-    }__except(EXCEPTION_EXECUTE_HANDLER){return;}
+    void*** obj=(void***)garage;void** vt;void (__thiscall *refresh)(void*);
+    if(!obj)return;vt=*obj;if(!vt)return;
+    refresh=(void (__thiscall *)(void*))vt[0x50/4];
+    if(refresh)refresh(garage);
 }
 
 int __cdecl CampaignIsOwned(int32_t car_id){ int result;LockState();EnsureLoadedUnlocked();result=IsOwnedUnlocked(car_id);UnlockState();return result; }
