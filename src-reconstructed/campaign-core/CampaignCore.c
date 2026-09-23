@@ -436,7 +436,13 @@ static int BeginEventRaceUnlocked(
     RecoverConsumingRaceSessionUnlocked();
 
     if (GetFileAttributesW(g_race_session_path) != INVALID_FILE_ATTRIBUTES) {
-        return 0;
+        CampaignRaceSession* active = &g_race_session_buffer;
+
+        if (!ReadRaceSessionFile(g_race_session_path, active)) return 0;
+        if (active->event_id != event_id || active->car_id != car_id) return 0;
+
+        if (session_id) *session_id = active->session_id;
+        return 1;
     }
 
     ZeroBytes(&session, (uint32_t)sizeof(session));
@@ -465,12 +471,12 @@ static int FinishEventRaceUnlocked(
     CampaignRaceSession* session = &g_race_session_buffer;
     const CampaignEventDefinition* def;
 
-    if (session_id == 0 || position <= 0 || stars < 0 || finish_time_ms < 0) return 0;
+    if (position <= 0 || stars < 0 || finish_time_ms < 0) return 0;
 
     RecoverConsumingRaceSessionUnlocked();
 
     if (!ReadRaceSessionFile(g_race_session_path, session)) {
-        if (session_id == g_state.last_completed_race_session_id) {
+        if (session_id != 0 && session_id == g_state.last_completed_race_session_id) {
             if (credits_awarded) *credits_awarded = 0;
             if (premium_awarded) *premium_awarded = 0;
             if (completion_count) *completion_count = 0;
@@ -479,6 +485,7 @@ static int FinishEventRaceUnlocked(
         return 0;
     }
 
+    if (session_id == 0) session_id = session->session_id;
     if (session->session_id != session_id) return 0;
 
     def = CampaignEventCatalogFind(session->event_id);
