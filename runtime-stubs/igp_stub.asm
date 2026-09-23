@@ -21,3 +21,5 @@ ret_null PROC
 ret_null ENDP
 
 END
+
+; R17 SAFE BOOT build input
