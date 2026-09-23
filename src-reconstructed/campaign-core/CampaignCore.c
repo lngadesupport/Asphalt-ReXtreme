@@ -5,6 +5,7 @@
 #include "CampaignCatalog.h"
 #include "CampaignEventCatalog.h"
 #include "CampaignUpgradeCatalog.h"
+#include "CampaignUpgradeUiMap.h"
 #include "CampaignStoreCatalog.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
@@ -1084,6 +1085,52 @@ static int ApplyUpgradeDefinitionUnlocked(
     );
 }
 
+static int ApplyUpgradeUiActionUnlocked(
+    int32_t car_id,
+    int32_t ui_action_id,
+    int32_t* target_level,
+    int32_t* before_value,
+    int32_t* after_value
+) {
+    const CampaignUpgradeUiEntry* map;
+    const CampaignUpgradeDefinition* def;
+    CampaignVehiclePartEntry* entries;
+    uint32_t count;
+    int current;
+    int next;
+
+    if (car_id <= 0 || ui_action_id <= 0) return 0;
+
+    map = CampaignUpgradeUiMapFind(ui_action_id);
+    if (!map) return 0;
+
+    if (map->kind == CAMPAIGN_UPGRADE_KIND_STANDARD) {
+        entries = g_state.upgrades;
+        count = g_state.upgrade_count;
+    } else if (map->kind == CAMPAIGN_UPGRADE_KIND_PROKIT) {
+        entries = g_state.prokits;
+        count = g_state.prokit_count;
+    } else {
+        return 0;
+    }
+
+    current = VehiclePartGet(entries, count, car_id, (int16_t)map->part_slot);
+    if (current < 0 || current >= 0x7FFF) return 0;
+    next = current + 1;
+
+    def = CampaignUpgradeCatalogFind(
+        car_id,
+        map->kind,
+        map->part_slot,
+        next
+    );
+    if (!def) return 0;
+
+    if (!ApplyUpgradeDefinitionUnlocked(def, before_value, after_value)) return 0;
+    if (target_level) *target_level = next;
+    return 1;
+}
+
 static int AcquireCatalogRecipeUnlocked(
     const CampaignVehicleRecipe* recipe,
     int32_t* before_value,
@@ -1385,6 +1432,24 @@ static int ExecuteUnlocked(CampaignCommand* c) {
                 CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
                 return 0;
             }
+            result = CommitMutationUnlocked();
+        }
+        break;
+
+    case CAMPAIGN_OP_APPLY_UPGRADE_UI:
+        {
+            CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+
+            if (!ApplyUpgradeUiActionUnlocked(
+                    c->a,
+                    c->b,
+                    &c->out0,
+                    &c->out1,
+                    &c->out2)) {
+                CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+                return 0;
+            }
+
             result = CommitMutationUnlocked();
         }
         break;
