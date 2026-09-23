@@ -4,6 +4,8 @@
 EXTERN _CampaignCraftInvoke:PROC
 EXTERN _CampaignIsOwned:PROC
 EXTERN _CampaignExecuteCommand:PROC
+EXTERN _CampaignBeginCareerFromPreRequest:PROC
+EXTERN _CampaignFinishCareerFromPostRequest:PROC
 EXTERN _CampaignBeginRaceFromGui:PROC
 EXTERN _CampaignFinishRaceFromGui:PROC
 EXTERN _CampaignBeginRaceAdapter:PROC
