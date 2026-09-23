@@ -19,6 +19,6 @@
     "UpgradeCatalog":  "CampaignUpgrades.dat",
     "UpgradeUiMap":  "CampaignUpgradeUiMap.dat",
     "StoreCatalog":  "CampaignStore.dat",
-    "Size":  25088,
-    "SHA256":  "2837b39469f58c5e3a450fd22c8560df7791fe62cb5dd871de076d0d1e55149f"
+    "Size":  25600,
+    "SHA256":  "8fcd385b374f78d6f5088ea5163e5b38a8262e1ced8e14a1f43069c52c9453ef"
 }
