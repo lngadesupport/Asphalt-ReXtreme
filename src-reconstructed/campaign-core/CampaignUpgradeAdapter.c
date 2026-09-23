@@ -31,7 +31,7 @@ int __cdecl CampaignApplyLegacyUpgradeSelection(
     uint32_t bytes;
     uint32_t count;
     uint32_t i;
-    unsigned char* q;
+    volatile unsigned char* q;
 
     if (!args) return 0;
 
@@ -52,7 +52,7 @@ int __cdecl CampaignApplyLegacyUpgradeSelection(
     count = bytes >> 3;
     if (count == 0 || count > CAMPAIGN_UPGRADE_BATCH_MAX) return 0;
 
-    q = (unsigned char*)&batch;
+    q = (volatile unsigned char*)&batch;
     for (i = 0; i < (uint32_t)sizeof(batch); ++i) q[i] = 0;
 
     batch.size = (uint32_t)sizeof(batch);
