@@ -8,6 +8,8 @@ on:
     paths:
       - "src-reconstructed/campaign-core/CampaignCore.c"
       - "src-reconstructed/campaign-core/CampaignCore.h"
+      - "src-reconstructed/campaign-core/CampaignCatalog.c"
+      - "src-reconstructed/campaign-core/CampaignCatalog.h"
       - "runtime-stubs/campaign_gateway.asm"
       - "runtime-stubs/IGPLib_x86_campaign.def"
       - "docs/CAMPAIGN-CORE-V2.md"
