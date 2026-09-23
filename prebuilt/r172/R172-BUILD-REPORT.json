@@ -1,0 +1,15 @@
+﻿{
+    "Phase":  "R17.2 Single DLL Deferred",
+    "Architecture":  "x86",
+    "Host":  "IGPLib_x86.dll",
+    "SecondaryLoadLibrary":  false,
+    "DllMainStartsRuntime":  false,
+    "Trigger":  "IGPLib::InitBridgeClass",
+    "DelayedStartMilliseconds":  2000,
+    "OverlayUIEnabled":  false,
+    "HardenedPEValidation":  true,
+    "RequireModuleName":  "AMS.exe",
+    "BuildCarVA":  "0x00A87960",
+    "SelectedCarIdHelperVA":  "0x00D805F0",
+    "SHA256":  "01c981fa59371c3a7af9d41b880dbad11767d80a0424e55013bb93417e73ba4b"
+}
