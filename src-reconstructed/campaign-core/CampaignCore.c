@@ -5,6 +5,7 @@
 #include "CampaignCatalog.h"
 #include "CampaignEventCatalog.h"
 #include "CampaignUpgradeCatalog.h"
+#include "CampaignStoreCatalog.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
 #define CAMPAIGN_VERSION 3u
@@ -887,6 +888,45 @@ static int AcquireCatalogRecipeUnlocked(
     return 1;
 }
 
+static int PurchaseStoreOfferUnlocked(
+    const CampaignStoreOffer* offer,
+    int32_t* balance_before,
+    int32_t* balance_after
+) {
+    if (!offer || offer->offer_id <= 0 || offer->item_id <= 0 ||
+        offer->quantity <= 0 || offer->price < 0) return 0;
+
+    if (!ProgressGateUnlocked(offer->unlock_node_id)) return 0;
+
+    if (balance_before) *balance_before = 0;
+    if (balance_after) *balance_after = 0;
+
+    switch (offer->currency_type) {
+    case CAMPAIGN_STORE_CURRENCY_CREDITS:
+        if (g_state.credits < offer->price) return 0;
+        if (balance_before) *balance_before = g_state.credits;
+        g_state.credits -= offer->price;
+        if (balance_after) *balance_after = g_state.credits;
+        break;
+
+    case CAMPAIGN_STORE_CURRENCY_PREMIUM:
+        if (g_state.premium_currency < offer->price) return 0;
+        if (balance_before) *balance_before = g_state.premium_currency;
+        g_state.premium_currency -= offer->price;
+        if (balance_after) *balance_after = g_state.premium_currency;
+        break;
+
+    case CAMPAIGN_STORE_CURRENCY_FREE:
+        if (offer->price != 0) return 0;
+        break;
+
+    default:
+        return 0;
+    }
+
+    return InventoryAddNoSave(offer->item_id, offer->quantity);
+}
+
 static int CommitMutationUnlocked(void) {
     ++g_state.revision;
     return SaveStateUnlocked();
@@ -1199,6 +1239,23 @@ static int ExecuteUnlocked(CampaignCommand* c) {
                 CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
                 return 0;
             }
+            result = CommitMutationUnlocked();
+        }
+        break;
+
+    case CAMPAIGN_OP_PURCHASE_OFFER:
+        {
+            const CampaignStoreOffer* offer = CampaignStoreCatalogFind(c->a);
+            if (!offer) return 0;
+
+            CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+            c->out0 = offer->item_id;
+
+            if (!PurchaseStoreOfferUnlocked(offer, &c->out1, &c->out2)) {
+                CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+                return 0;
+            }
+
             result = CommitMutationUnlocked();
         }
         break;
