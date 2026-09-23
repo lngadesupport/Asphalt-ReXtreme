@@ -16,7 +16,8 @@
     "VehicleCatalog":  "CampaignCatalog.dat",
     "EventCatalog":  "CampaignEvents.dat",
     "UpgradeCatalog":  "CampaignUpgrades.dat",
+    "UpgradeUiMap":  "CampaignUpgradeUiMap.dat",
     "StoreCatalog":  "CampaignStore.dat",
-    "Size":  20480,
-    "SHA256":  "2f21214b6b456991e08cdf9b1f51b1c1f920b76ad946c14a75585d63608f8a3b"
+    "Size":  22016,
+    "SHA256":  "5987122be46f99837d6e79f79bba24e29e77509e64e778d19b6b6d70e279429d"
 }
