@@ -9,7 +9,7 @@ from pathlib import Path
 
 MAGIC = 0x55435852
 VERSION = 1
-MAX = 2048
+MAX = 4096
 HEADER = struct.Struct("<4I")
 ENTRY = struct.Struct("<10i")
 
