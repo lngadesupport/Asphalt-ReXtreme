@@ -19,6 +19,9 @@
 #define CAMPAIGN_DEFAULT_CREDITS 50000
 #define CAMPAIGN_DEFAULT_PREMIUM 0
 
+#define CAMPAIGN_RACE_SESSION_MAGIC 0x53525852u /* RXRS */
+#define CAMPAIGN_RACE_SESSION_VERSION 1u
+
 typedef struct CampaignInventoryEntry {
     int32_t item_id;
     int32_t amount;
@@ -45,6 +48,16 @@ typedef struct CampaignEventStateEntry {
     int32_t best_time_ms;
 } CampaignEventStateEntry;
 
+typedef struct CampaignRaceSession {
+    uint32_t magic;
+    uint32_t version;
+    uint32_t session_id;
+    int32_t event_id;
+    int32_t car_id;
+    uint32_t start_revision;
+    uint32_t checksum;
+} CampaignRaceSession;
+
 typedef struct CampaignStateV3 {
     uint32_t magic;
     uint32_t version;
@@ -59,7 +72,7 @@ typedef struct CampaignStateV3 {
     uint32_t craft_count;
     uint32_t race_count;
     uint32_t total_stars;
-    uint32_t reserved0;
+    uint32_t last_completed_race_session_id;
 
     uint32_t owned_count;
     int32_t owned_car_ids[CAMPAIGN_MAX_OWNED];
@@ -146,6 +159,10 @@ static WCHAR g_backup_path[1024];
 static WCHAR g_v1_path[1024];
 static WCHAR g_v1_archive_path[1024];
 static WCHAR g_v2_archive_path[1024];
+static WCHAR g_race_session_path[1024];
+static WCHAR g_race_session_tmp_path[1024];
+static WCHAR g_race_session_consuming_path[1024];
+static CampaignRaceSession g_race_session_buffer;
 
 static void LockState(void) {
     while (InterlockedCompareExchange(&g_lock, 1, 0) != 0) Sleep(0);
@@ -208,6 +225,10 @@ static uint32_t StateChecksumV1(const CampaignStateV1* s) {
     return Fnv1a((const unsigned char*)s, (uint32_t)(sizeof(CampaignStateV1) - sizeof(uint32_t)));
 }
 
+static uint32_t RaceSessionChecksum(const CampaignRaceSession* s) {
+    return Fnv1a((const unsigned char*)s, (uint32_t)(sizeof(CampaignRaceSession) - sizeof(uint32_t)));
+}
+
 static void InitDefaultState(CampaignStateV3* s) {
     ZeroBytes(s, (uint32_t)sizeof(*s));
     s->magic = CAMPAIGN_MAGIC;
@@ -229,6 +250,9 @@ static int BuildPaths(void) {
     ZeroBytes(g_state_path, (uint32_t)sizeof(g_state_path));
     ZeroBytes(g_tmp_path, (uint32_t)sizeof(g_tmp_path));
     ZeroBytes(g_backup_path, (uint32_t)sizeof(g_backup_path));
+    ZeroBytes(g_race_session_path, (uint32_t)sizeof(g_race_session_path));
+    ZeroBytes(g_race_session_tmp_path, (uint32_t)sizeof(g_race_session_tmp_path));
+    ZeroBytes(g_race_session_consuming_path, (uint32_t)sizeof(g_race_session_consuming_path));
 
     n = GetEnvironmentVariableW(L"LOCALAPPDATA", local, 512);
     if (n == 0 || n >= 512) return 0;
@@ -245,6 +269,15 @@ static int BuildPaths(void) {
 
     if (!WideAppend(g_backup_path, 1024, g_campaign_dir)) return 0;
     if (!WideAppend(g_backup_path, 1024, L"\\CampaignSave.bak")) return 0;
+
+    if (!WideAppend(g_race_session_path, 1024, g_campaign_dir)) return 0;
+    if (!WideAppend(g_race_session_path, 1024, L"\\CampaignRaceSession.dat")) return 0;
+
+    if (!WideAppend(g_race_session_tmp_path, 1024, g_campaign_dir)) return 0;
+    if (!WideAppend(g_race_session_tmp_path, 1024, L"\\CampaignRaceSession.tmp")) return 0;
+
+    if (!WideAppend(g_race_session_consuming_path, 1024, g_campaign_dir)) return 0;
+    if (!WideAppend(g_race_session_consuming_path, 1024, L"\\CampaignRaceSession.consuming")) return 0;
 
     return 1;
 }
@@ -265,6 +298,207 @@ static int WriteWholeFile(const WCHAR* path, const void* data, DWORD size) {
     FlushFileBuffers(h);
     CloseHandle(h);
     return 1;
+}
+
+static int ValidateRaceSession(const CampaignRaceSession* session) {
+    if (!session) return 0;
+    if (session->magic != CAMPAIGN_RACE_SESSION_MAGIC) return 0;
+    if (session->version != CAMPAIGN_RACE_SESSION_VERSION) return 0;
+    if (session->session_id == 0 || session->event_id <= 0) return 0;
+    if (session->checksum != RaceSessionChecksum(session)) return 0;
+    return 1;
+}
+
+static int ReadRaceSessionFile(const WCHAR* path, CampaignRaceSession* out) {
+    HANDLE h;
+    DWORD got = 0;
+
+    if (!path || !out) return 0;
+    ZeroBytes(out, (uint32_t)sizeof(*out));
+
+    h = CreateFileW(
+        path,
+        GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        0,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        0
+    );
+    if (h == INVALID_HANDLE_VALUE) return 0;
+
+    if (!ReadFile(h, out, (DWORD)sizeof(*out), &got, 0) ||
+        got != (DWORD)sizeof(*out)) {
+        CloseHandle(h);
+        ZeroBytes(out, (uint32_t)sizeof(*out));
+        return 0;
+    }
+    CloseHandle(h);
+
+    if (!ValidateRaceSession(out)) {
+        ZeroBytes(out, (uint32_t)sizeof(*out));
+        return 0;
+    }
+    return 1;
+}
+
+static int WriteRaceSessionUnlocked(const CampaignRaceSession* source) {
+    CampaignRaceSession session;
+
+    if (!source || !g_race_session_path[0]) return 0;
+    CopyBytes(&session, source, (uint32_t)sizeof(session));
+    session.magic = CAMPAIGN_RACE_SESSION_MAGIC;
+    session.version = CAMPAIGN_RACE_SESSION_VERSION;
+    session.checksum = RaceSessionChecksum(&session);
+
+    DeleteFileW(g_race_session_tmp_path);
+    if (!WriteWholeFile(g_race_session_tmp_path, &session, (DWORD)sizeof(session))) return 0;
+
+    if (!MoveFileExW(
+            g_race_session_tmp_path,
+            g_race_session_path,
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        DeleteFileW(g_race_session_tmp_path);
+        return 0;
+    }
+    return 1;
+}
+
+static void RecoverConsumingRaceSessionUnlocked(void) {
+    CampaignRaceSession* session = &g_race_session_buffer;
+
+    if (!g_race_session_consuming_path[0]) return;
+    if (!ReadRaceSessionFile(g_race_session_consuming_path, session)) return;
+
+    if (session->session_id == g_state.last_completed_race_session_id) {
+        DeleteFileW(g_race_session_consuming_path);
+        return;
+    }
+
+    if (GetFileAttributesW(g_race_session_path) == INVALID_FILE_ATTRIBUTES) {
+        MoveFileExW(
+            g_race_session_consuming_path,
+            g_race_session_path,
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+        );
+    }
+}
+
+static uint32_t NewRaceSessionIdUnlocked(int32_t event_id) {
+    uint32_t id;
+    id = GetTickCount();
+    id ^= (g_state.revision * 2654435761u);
+    id ^= ((uint32_t)event_id * 2246822519u);
+    id ^= (g_state.race_count * 3266489917u);
+    id &= 0x7FFFFFFFu;
+    if (id == 0) id = 1;
+    if (id == g_state.last_completed_race_session_id) {
+        ++id;
+        if (id == 0) id = 1;
+    }
+    return id;
+}
+
+static int BeginEventRaceUnlocked(
+    int32_t event_id,
+    int32_t car_id,
+    uint32_t* session_id
+) {
+    const CampaignEventDefinition* def;
+    CampaignRaceSession session;
+
+    if (event_id <= 0) return 0;
+    def = CampaignEventCatalogFind(event_id);
+    if (!def) return 0;
+    if (!ProgressGateUnlocked(def->required_node_id)) return 0;
+    if (car_id > 0 && !IsOwnedUnlocked(car_id)) return 0;
+
+    RecoverConsumingRaceSessionUnlocked();
+
+    if (GetFileAttributesW(g_race_session_path) != INVALID_FILE_ATTRIBUTES) {
+        return 0;
+    }
+
+    ZeroBytes(&session, (uint32_t)sizeof(session));
+    session.magic = CAMPAIGN_RACE_SESSION_MAGIC;
+    session.version = CAMPAIGN_RACE_SESSION_VERSION;
+    session.session_id = NewRaceSessionIdUnlocked(event_id);
+    session.event_id = event_id;
+    session.car_id = car_id;
+    session.start_revision = g_state.revision;
+    session.checksum = RaceSessionChecksum(&session);
+
+    if (!WriteRaceSessionUnlocked(&session)) return 0;
+    if (session_id) *session_id = session.session_id;
+    return 1;
+}
+
+static int FinishEventRaceUnlocked(
+    uint32_t session_id,
+    int32_t position,
+    int32_t stars,
+    int32_t finish_time_ms,
+    int32_t* credits_awarded,
+    int32_t* premium_awarded,
+    int32_t* completion_count
+) {
+    CampaignRaceSession* session = &g_race_session_buffer;
+    const CampaignEventDefinition* def;
+
+    if (session_id == 0 || position <= 0 || stars < 0 || finish_time_ms < 0) return 0;
+
+    RecoverConsumingRaceSessionUnlocked();
+
+    if (!ReadRaceSessionFile(g_race_session_path, session)) {
+        if (session_id == g_state.last_completed_race_session_id) {
+            if (credits_awarded) *credits_awarded = 0;
+            if (premium_awarded) *premium_awarded = 0;
+            if (completion_count) *completion_count = 0;
+            return 2;
+        }
+        return 0;
+    }
+
+    if (session->session_id != session_id) return 0;
+
+    def = CampaignEventCatalogFind(session->event_id);
+    if (!def) return 0;
+
+    DeleteFileW(g_race_session_consuming_path);
+    if (!MoveFileExW(
+            g_race_session_path,
+            g_race_session_consuming_path,
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        return 0;
+    }
+
+    if (!RecordEventUnlocked(
+            def,
+            position,
+            stars,
+            finish_time_ms,
+            credits_awarded,
+            premium_awarded,
+            completion_count)) {
+        MoveFileExW(
+            g_race_session_consuming_path,
+            g_race_session_path,
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+        );
+        return 0;
+    }
+
+    g_state.last_completed_race_session_id = session_id;
+    return 1;
+}
+
+static int CancelEventRaceUnlocked(uint32_t session_id) {
+    CampaignRaceSession* session = &g_race_session_buffer;
+
+    RecoverConsumingRaceSessionUnlocked();
+    if (!ReadRaceSessionFile(g_race_session_path, session)) return 1;
+    if (session_id != 0 && session->session_id != session_id) return 0;
+    return DeleteFileW(g_race_session_path) ? 1 : 0;
 }
 
 static int SaveStateUnlocked(void) {
@@ -1242,6 +1476,61 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             result = CommitMutationUnlocked();
         }
         break;
+
+    case CAMPAIGN_OP_BEGIN_EVENT_RACE:
+        {
+            uint32_t session_id = 0;
+            if (!BeginEventRaceUnlocked(c->a, c->b, &session_id)) return 0;
+            c->out0 = (int32_t)session_id;
+            c->status = 1;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_FINISH_EVENT_RACE:
+        {
+            int finish_status;
+
+            CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+            finish_status = FinishEventRaceUnlocked(
+                (uint32_t)c->a,
+                c->b,
+                c->c,
+                c->d,
+                &c->out0,
+                &c->out1,
+                &c->out2
+            );
+
+            if (finish_status == 2) {
+                c->status = 1;
+                c->revision = g_state.revision;
+                return 1;
+            }
+            if (finish_status != 1) {
+                CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+                return 0;
+            }
+
+            result = CommitMutationUnlocked();
+            if (!result) {
+                CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+                MoveFileExW(
+                    g_race_session_consuming_path,
+                    g_race_session_path,
+                    MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+                );
+                return 0;
+            }
+
+            DeleteFileW(g_race_session_consuming_path);
+        }
+        break;
+
+    case CAMPAIGN_OP_CANCEL_EVENT_RACE:
+        if (!CancelEventRaceUnlocked((uint32_t)c->a)) return 0;
+        c->status = 1;
+        c->revision = g_state.revision;
+        return 1;
 
     case CAMPAIGN_OP_PURCHASE_OFFER:
         {
