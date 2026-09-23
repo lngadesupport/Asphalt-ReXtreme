@@ -10,7 +10,8 @@ $pf86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
 $vswhere = Join-Path $pf86 "Microsoft Visual Studio\Installer\vswhere.exe"
 
 function Resolve-VcVars {
-    if (Get-Command cl.exe -ErrorAction SilentlyContinue) {
+    if ((Get-Command cl.exe -ErrorAction SilentlyContinue) -and
+        $env:VSCMD_ARG_TGT_ARCH -eq "x86") {
         return $null
     }
 

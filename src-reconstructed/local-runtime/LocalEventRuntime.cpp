@@ -27,6 +27,7 @@ struct RuntimeState {
     HWND ui_window = nullptr;
     HWND local_build_button = nullptr;
     HANDLE thread = nullptr;
+    DWORD thread_id = 0;
     volatile LONG stopping = 0;
 
     std::uint32_t revision = 0;
@@ -674,7 +675,7 @@ bool Start(HINSTANCE module) {
         RuntimeThread,
         nullptr,
         0,
-        nullptr);
+        &g.thread_id);
 
     return g.thread != nullptr;
 }
@@ -682,8 +683,8 @@ bool Start(HINSTANCE module) {
 void Stop() {
     InterlockedExchange(&g.stopping, 1);
 
-    if (g.ui_window) {
-        PostMessageW(g.ui_window, WM_QUIT, 0, 0);
+    if (g.thread_id) {
+        PostThreadMessageW(g.thread_id, WM_QUIT, 0, 0);
     }
 }
 
