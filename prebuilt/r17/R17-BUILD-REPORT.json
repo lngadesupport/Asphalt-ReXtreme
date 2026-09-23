@@ -6,7 +6,7 @@
     "SelectedCarIdHelperVA":  "0x00D805F0",
     "StateFile":  "%LOCALAPPDATA%\\ReXtremeLocal\\campaign.ini",
     "RuntimeDll":  "D:\\a\\Asphalt-ReXtreme\\Asphalt-ReXtreme\\RUNTIME_STUBS\\IGPLib_x86.dll",
-    "SHA256":  "2c99f0c34cb71047265611992a55cf29eac74ee7ed03089bda44b8d021658e6d",
+    "SHA256":  "008047cedf748ab72f0fc1419bff1b63ea8779fac568d0bc2e79d10df2c7618b",
     "BinaryPatchToAMS":  false,
     "ReplacesOriginalBuildCarAtRuntime":  true,
     "OwnEventBus":  true,
