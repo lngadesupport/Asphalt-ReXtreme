@@ -82,3 +82,41 @@ python tools\campaign_msvc_rtti_map.py _PACKAGE_PHASE5\AMS.exe ^
 ```
 
 The mapper reads x86 MSVC TypeDescriptor / CompleteObjectLocator / vftable relationships and returns executable method addresses without requiring debug symbols.
+
+
+## Correction: GarageUpgradeWidget +0x14
+
+Verified direct callers of `GarageUpgradeWidget::0x00978B50`:
+
+- `0x00978E97`
+- `0x00AD3A15`
+
+The caller at `0x00AD3A15` resolves the currently selected car with `0x00D805F0` and pushes that returned value directly into `0x00978B50`.
+
+Therefore:
+
+`GarageUpgradeWidget + 0x14 = car_id`
+
+It is **not** a part slot, target level or legacy upgrade item id.
+
+The second caller at `0x00978E97` simply reuses the widget's own `+0x14`, consistent with the same interpretation.
+
+## Upgrade action abstraction
+
+Because the legacy request serializes multiple unrelated ids (`up_id`, `bp_id`, `tu_id`) and does not expose a clean part-slot ABI, Campaign Edition now uses:
+
+`CampaignUpgradeUiMap.dat`
+
+The preserved UI adapter will submit only:
+
+- Campaign `car_id`;
+- verified visual `ui_action_id`.
+
+Campaign Core resolves that id to:
+
+- standard upgrade or pro-kit;
+- Campaign `part_slot`.
+
+It then computes `target_level = current Campaign level + 1` and resolves cost/gates from `CampaignUpgrades.dat`.
+
+No original request price/balance fields become Campaign authority.
