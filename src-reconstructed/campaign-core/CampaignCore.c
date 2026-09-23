@@ -4,6 +4,7 @@
 #include "CampaignCore.h"
 #include "CampaignCatalog.h"
 #include "CampaignEventCatalog.h"
+#include "CampaignUpgradeCatalog.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
 #define CAMPAIGN_VERSION 3u
@@ -745,6 +746,88 @@ static int RecordEventUnlocked(
     return 1;
 }
 
+static int SpendUpgradeCostUnlocked(
+    const CampaignUpgradeDefinition* def,
+    int32_t* before_value,
+    int32_t* after_value
+) {
+    if (!def || def->cost < 0) return 0;
+
+    if (before_value) *before_value = 0;
+    if (after_value) *after_value = 0;
+
+    switch (def->cost_type) {
+    case CAMPAIGN_COST_CREDITS:
+        if (g_state.credits < def->cost) return 0;
+        if (before_value) *before_value = g_state.credits;
+        g_state.credits -= def->cost;
+        if (after_value) *after_value = g_state.credits;
+        return 1;
+
+    case CAMPAIGN_COST_PREMIUM:
+        if (g_state.premium_currency < def->cost) return 0;
+        if (before_value) *before_value = g_state.premium_currency;
+        g_state.premium_currency -= def->cost;
+        if (after_value) *after_value = g_state.premium_currency;
+        return 1;
+
+    case CAMPAIGN_COST_INVENTORY:
+        if (before_value) *before_value = InventoryGetUnlocked(def->item_id);
+        if (!InventorySpendNoSave(def->item_id, def->cost)) return 0;
+        if (after_value) *after_value = InventoryGetUnlocked(def->item_id);
+        return 1;
+
+    case CAMPAIGN_COST_FREE:
+        return 1;
+
+    default:
+        return 0;
+    }
+}
+
+static int ApplyUpgradeDefinitionUnlocked(
+    const CampaignUpgradeDefinition* def,
+    int32_t* before_value,
+    int32_t* after_value
+) {
+    CampaignVehiclePartEntry* entries;
+    uint32_t* count;
+    int current;
+
+    if (!def || def->car_id <= 0 || def->part_slot < 0 || def->target_level <= 0) return 0;
+    if (!IsOwnedUnlocked(def->car_id)) return 0;
+    if (!ProgressGateUnlocked(def->unlock_node_id)) return 0;
+
+    if (def->kind == CAMPAIGN_UPGRADE_KIND_STANDARD) {
+        entries = g_state.upgrades;
+        count = &g_state.upgrade_count;
+    } else if (def->kind == CAMPAIGN_UPGRADE_KIND_PROKIT) {
+        entries = g_state.prokits;
+        count = &g_state.prokit_count;
+    } else {
+        return 0;
+    }
+
+    current = VehiclePartGet(entries, *count, def->car_id, (int16_t)def->part_slot);
+
+    if (current >= def->target_level) {
+        if (before_value) *before_value = 0;
+        if (after_value) *after_value = 0;
+        return 1;
+    }
+
+    if (current + 1 != def->target_level) return 0;
+    if (!SpendUpgradeCostUnlocked(def, before_value, after_value)) return 0;
+
+    return VehiclePartSet(
+        entries,
+        count,
+        def->car_id,
+        (int16_t)def->part_slot,
+        (int16_t)def->target_level
+    );
+}
+
 static int AcquireCatalogRecipeUnlocked(
     const CampaignVehicleRecipe* recipe,
     int32_t* before_value,
@@ -990,6 +1073,27 @@ static int ExecuteUnlocked(CampaignCommand* c) {
         result = CommitMutationUnlocked();
         break;
 
+    case CAMPAIGN_OP_APPLY_UPGRADE:
+        {
+            const CampaignUpgradeDefinition* def = CampaignUpgradeCatalogFind(
+                c->a,
+                CAMPAIGN_UPGRADE_KIND_STANDARD,
+                c->b,
+                c->c
+            );
+            if (!def) return 0;
+
+            c->out0 = def->target_level;
+            CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+
+            if (!ApplyUpgradeDefinitionUnlocked(def, &c->out1, &c->out2)) {
+                CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+                return 0;
+            }
+            result = CommitMutationUnlocked();
+        }
+        break;
+
     case CAMPAIGN_OP_GET_PROKIT:
         c->out0 = VehiclePartGet(g_state.prokits, g_state.prokit_count, c->a, (int16_t)c->b);
         c->status = 1;
@@ -999,6 +1103,27 @@ static int ExecuteUnlocked(CampaignCommand* c) {
         CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
         if (!VehiclePartSet(g_state.prokits, &g_state.prokit_count, c->a, (int16_t)c->b, (int16_t)c->c)) return 0;
         result = CommitMutationUnlocked();
+        break;
+
+    case CAMPAIGN_OP_APPLY_PROKIT:
+        {
+            const CampaignUpgradeDefinition* def = CampaignUpgradeCatalogFind(
+                c->a,
+                CAMPAIGN_UPGRADE_KIND_PROKIT,
+                c->b,
+                c->c
+            );
+            if (!def) return 0;
+
+            c->out0 = def->target_level;
+            CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+
+            if (!ApplyUpgradeDefinitionUnlocked(def, &c->out1, &c->out2)) {
+                CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+                return 0;
+            }
+            result = CommitMutationUnlocked();
+        }
         break;
 
     case CAMPAIGN_OP_GET_PROGRESS:
