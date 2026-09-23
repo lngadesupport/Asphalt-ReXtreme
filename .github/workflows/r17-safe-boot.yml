@@ -1,0 +1,61 @@
+name: R17 Safe Boot Stub
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - campaign-edition-win32
+    paths:
+      - ".github/workflows/r17-safe-boot.yml"
+      - "runtime-stubs/igp_stub.asm"
+      - "runtime-stubs/IGPLib_x86.def"
+
+permissions:
+  contents: write
+
+jobs:
+  build-safe-x86:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build exact no-entry IGP stub
+        shell: cmd
+        run: |
+          call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars32.bat" || call "%ProgramFiles%\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvars32.bat" || call "%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars32.bat" || call "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars32.bat"
+          if errorlevel 1 exit /b 1
+
+          if not exist prebuilt\r17-safe mkdir prebuilt\r17-safe
+          ml.exe /nologo /c /coff /Fo"prebuilt\r17-safe\igp_stub.obj" "runtime-stubs\igp_stub.asm"
+          if errorlevel 1 exit /b 1
+
+          link.exe /nologo /dll /noentry /machine:x86 /def:"runtime-stubs\IGPLib_x86.def" /out:"prebuilt\r17-safe\IGPLib_x86.dll" "prebuilt\r17-safe\igp_stub.obj"
+          if errorlevel 1 exit /b 1
+
+          del /q "prebuilt\r17-safe\igp_stub.obj" 2>nul
+
+      - name: Verify safe DLL
+        shell: powershell
+        run: |
+          $dll = ".\prebuilt\r17-safe\IGPLib_x86.dll"
+          if (-not (Test-Path $dll)) { throw "safe DLL missing" }
+          Get-FileHash -Algorithm SHA256 $dll
+          $size = (Get-Item $dll).Length
+          if ($size -gt 32768) { throw "safe stub unexpectedly large: $size bytes" }
+
+      - name: Publish safe prebuilt
+        shell: powershell
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f prebuilt/r17-safe/IGPLib_x86.dll
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) { exit 0 }
+          git commit -m "build: publish R17 safe boot stub [skip ci]"
+          git push origin "HEAD:$env:GITHUB_REF_NAME"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: R17-Safe-Boot-x86
+          path: prebuilt/r17-safe/IGPLib_x86.dll
+          if-no-files-found: error
