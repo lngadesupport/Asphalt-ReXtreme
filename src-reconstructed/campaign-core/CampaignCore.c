@@ -613,6 +613,138 @@ static int ProgressGateUnlocked(int32_t node_id) {
     return g_state.progress[i].state > 0 ? 1 : 0;
 }
 
+static int FindEventStateIndex(int32_t event_id) {
+    uint32_t i;
+    for (i = 0; i < g_state.event_state_count; ++i) {
+        if (g_state.event_states[i].event_id == event_id) return (int)i;
+    }
+    return -1;
+}
+
+static CampaignEventStateEntry* GetOrCreateEventState(int32_t event_id) {
+    int i;
+    if (event_id <= 0) return 0;
+
+    i = FindEventStateIndex(event_id);
+    if (i >= 0) return &g_state.event_states[i];
+
+    if (g_state.event_state_count >= CAMPAIGN_MAX_EVENT_STATE) return 0;
+
+    i = (int)g_state.event_state_count++;
+    g_state.event_states[i].event_id = event_id;
+    g_state.event_states[i].completion_count = 0;
+    g_state.event_states[i].best_position = 0;
+    g_state.event_states[i].best_stars = 0;
+    g_state.event_states[i].best_time_ms = 0;
+    return &g_state.event_states[i];
+}
+
+static int32_t RepeatMultiplierPermille(uint32_t completion_count) {
+    uint32_t after_grace;
+    int32_t value;
+
+    if (completion_count <= 10u) return 1000;
+
+    after_grace = completion_count - 10u;
+    if (after_grace >= 10u) return 980;
+
+    value = 1000 - (int32_t)(after_grace * 2u);
+    if (value < 980) value = 980;
+    return value;
+}
+
+static int32_t ScaleReward(int32_t amount, int32_t permille) {
+    int64_t scaled;
+    if (amount <= 0) return 0;
+    scaled = ((int64_t)amount * (int64_t)permille) + 500;
+    scaled /= 1000;
+    if (scaled > 0x7FFFFFFF) return 0x7FFFFFFF;
+    return (int32_t)scaled;
+}
+
+static int RecordEventUnlocked(
+    const CampaignEventDefinition* def,
+    int32_t position,
+    int32_t stars,
+    int32_t finish_time_ms,
+    int32_t* credits_awarded,
+    int32_t* premium_awarded,
+    int32_t* completion_count
+) {
+    CampaignEventStateEntry* state;
+    CampaignProgressEntry* progress = 0;
+    int32_t placement_bonus = 0;
+    int32_t multiplier;
+    int32_t credits;
+    int32_t premium;
+    int32_t capped_stars;
+    int32_t previous_stars = 0;
+
+    if (!def || def->event_id <= 0) return 0;
+    if (position <= 0) return 0;
+    if (stars < 0 || finish_time_ms < 0) return 0;
+    if (!ProgressGateUnlocked(def->required_node_id)) return 0;
+
+    state = GetOrCreateEventState(def->event_id);
+    if (!state) return 0;
+
+    ++state->completion_count;
+
+    if (state->best_position <= 0 || position < state->best_position) {
+        state->best_position = (int16_t)position;
+    }
+    if (finish_time_ms > 0 &&
+        (state->best_time_ms <= 0 || finish_time_ms < state->best_time_ms)) {
+        state->best_time_ms = finish_time_ms;
+    }
+
+    capped_stars = stars;
+    if (capped_stars > def->max_stars) capped_stars = def->max_stars;
+    if (capped_stars < 0) capped_stars = 0;
+
+    if (def->completion_node_id > 0) {
+        progress = GetOrCreateProgress(def->completion_node_id);
+        if (!progress) return 0;
+        previous_stars = progress->stars;
+        progress->state = 1;
+        if (capped_stars > progress->stars) progress->stars = (int16_t)capped_stars;
+        if (finish_time_ms > 0 &&
+            (progress->best_time_ms <= 0 || finish_time_ms < progress->best_time_ms)) {
+            progress->best_time_ms = finish_time_ms;
+        }
+    } else {
+        previous_stars = state->best_stars;
+    }
+
+    if (capped_stars > state->best_stars) state->best_stars = (int16_t)capped_stars;
+    if (capped_stars > previous_stars) {
+        g_state.total_stars += (uint32_t)(capped_stars - previous_stars);
+    }
+
+    switch (position) {
+    case 1: placement_bonus = def->position1_credits; break;
+    case 2: placement_bonus = def->position2_credits; break;
+    case 3: placement_bonus = def->position3_credits; break;
+    default: placement_bonus = 0; break;
+    }
+
+    multiplier = RepeatMultiplierPermille(state->completion_count);
+    credits = ScaleReward(def->participation_credits + placement_bonus, multiplier);
+    premium = ScaleReward(def->premium_reward, multiplier);
+
+    if (g_state.credits > 0x7FFFFFFF - credits) return 0;
+    if (g_state.premium_currency > 0x7FFFFFFF - premium) return 0;
+
+    g_state.credits += credits;
+    g_state.premium_currency += premium;
+    ++g_state.race_count;
+
+    if (credits_awarded) *credits_awarded = credits;
+    if (premium_awarded) *premium_awarded = premium;
+    if (completion_count) *completion_count = (int32_t)state->completion_count;
+    return 1;
+}
+
 static int AcquireCatalogRecipeUnlocked(
     const CampaignVehicleRecipe* recipe,
     int32_t* before_value,
@@ -911,6 +1043,30 @@ static int ExecuteUnlocked(CampaignCommand* c) {
         g_state.total_stars += (uint32_t)c->c;
         ++g_state.race_count;
         result = CommitMutationUnlocked();
+        break;
+
+    case CAMPAIGN_OP_RECORD_EVENT:
+        /*
+          a = event_id
+          b = placement (1 = first)
+          c = stars earned
+          d = finish time in milliseconds
+
+          out0 = credits awarded
+          out1 = premium currency awarded
+          out2 = persistent completion count for this event
+        */
+        {
+            const CampaignEventDefinition* def = CampaignEventCatalogFind(c->a);
+            if (!def) return 0;
+
+            CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+            if (!RecordEventUnlocked(def, c->b, c->c, c->d, &c->out0, &c->out1, &c->out2)) {
+                CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+                return 0;
+            }
+            result = CommitMutationUnlocked();
+        }
         break;
 
     case CAMPAIGN_OP_SAVE:
