@@ -2139,6 +2139,69 @@ static int ExecuteUnlocked(CampaignCommand* c) {
     return 1;
 }
 
+int __cdecl CampaignBeginRaceAdapter(const CampaignRaceBeginArgs* args) {
+    uint32_t session_id = 0;
+    int result;
+
+    if (!args || args->event_id <= 0) return 0;
+
+    LockState();
+    EnsureLoadedUnlocked();
+    result = BeginEventRaceUnlocked(args->event_id, args->car_id, &session_id);
+    UnlockState();
+
+    return result;
+}
+
+int __cdecl CampaignFinishRaceAdapter(const CampaignRaceFinishArgs* args) {
+    int result;
+    int finish_status;
+
+    if (!args || args->position <= 0 || args->stars < 0 || args->finish_time_ms < 0) return 0;
+
+    LockState();
+    EnsureLoadedUnlocked();
+
+    CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+
+    finish_status = FinishEventRaceUnlocked(
+        0,
+        args->position,
+        args->stars,
+        args->finish_time_ms,
+        0,
+        0,
+        0
+    );
+
+    if (finish_status == 2) {
+        UnlockState();
+        return 1;
+    }
+
+    if (finish_status != 1) {
+        CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+        UnlockState();
+        return 0;
+    }
+
+    result = CommitMutationUnlocked();
+    if (!result) {
+        CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+        MoveFileExW(
+            g_race_session_consuming_path,
+            g_race_session_path,
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+        );
+        UnlockState();
+        return 0;
+    }
+
+    DeleteFileW(g_race_session_consuming_path);
+    UnlockState();
+    return 1;
+}
+
 int __cdecl CampaignExecuteCommand(CampaignCommand* command) {
     int result;
 
