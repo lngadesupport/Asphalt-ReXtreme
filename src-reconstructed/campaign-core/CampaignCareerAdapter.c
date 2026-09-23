@@ -27,6 +27,12 @@
 
 #define AMS_OBFUSCATION_KEY_RVA 0x0153A1C8u
 
+static void ZeroBytes(void* p, uint32_t count) {
+    volatile unsigned char* q = (volatile unsigned char*)p;
+    uint32_t i;
+    for (i = 0; i < count; ++i) q[i] = 0;
+}
+
 static int32_t ReadI32(const void* base, uint32_t off) {
     const unsigned char* p = (const unsigned char*)base;
     return *(const int32_t*)(p + off);
@@ -66,7 +72,7 @@ int __cdecl CampaignBeginCareerFromPreRequest(void* pre_request) {
     car_id = ReadI32(pre_request, 0x44);
     if (event_id <= 0) return 0;
 
-    ZeroMemory(&cmd, sizeof(cmd));
+    ZeroBytes(&cmd, (uint32_t)sizeof(cmd));
     cmd.size = sizeof(cmd);
     cmd.op = CAMPAIGN_OP_BEGIN_EVENT_RACE;
     cmd.a = event_id;
@@ -94,7 +100,7 @@ int __cdecl CampaignFinishCareerFromPostRequest(void* post_request) {
 
     if (position <= 0 || race_time < 0) return 0;
 
-    ZeroMemory(&cmd, sizeof(cmd));
+    ZeroBytes(&cmd, (uint32_t)sizeof(cmd));
     cmd.size = sizeof(cmd);
     cmd.op = CAMPAIGN_OP_FINISH_EVENT_RACE;
     cmd.a = 0; /* resolve active CampaignRaceSession.dat */
