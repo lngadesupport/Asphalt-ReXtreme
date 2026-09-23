@@ -655,12 +655,20 @@ static int32_t RepeatMultiplierPermille(uint32_t completion_count) {
 }
 
 static int32_t ScaleReward(int32_t amount, int32_t permille) {
-    int64_t scaled;
-    if (amount <= 0) return 0;
-    scaled = ((int64_t)amount * (int64_t)permille) + 500;
-    scaled /= 1000;
-    if (scaled > 0x7FFFFFFF) return 0x7FFFFFFF;
-    return (int32_t)scaled;
+    int32_t whole;
+    int32_t remainder;
+    int32_t scaled;
+
+    if (amount <= 0 || permille <= 0) return 0;
+    if (permille > 1000) permille = 1000;
+
+    whole = amount / 1000;
+    remainder = amount % 1000;
+
+    /* Overflow-safe because whole*permille <= amount and remainder < 1000. */
+    scaled = whole * permille;
+    scaled += ((remainder * permille) + 500) / 1000;
+    return scaled;
 }
 
 static int RecordEventUnlocked(
@@ -730,6 +738,7 @@ static int RecordEventUnlocked(
     }
 
     multiplier = RepeatMultiplierPermille(state->completion_count);
+    if (def->participation_credits > 0x7FFFFFFF - placement_bonus) return 0;
     credits = ScaleReward(def->participation_credits + placement_bonus, multiplier);
     premium = ScaleReward(def->premium_reward, multiplier);
 
