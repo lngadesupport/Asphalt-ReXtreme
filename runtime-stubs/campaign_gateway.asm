@@ -4,10 +4,14 @@
 EXTERN _CampaignCraftInvoke:PROC
 EXTERN _CampaignIsOwned:PROC
 EXTERN _CampaignExecuteCommand:PROC
+EXTERN _CampaignBeginRaceFromGui:PROC
+EXTERN _CampaignFinishRaceFromGui:PROC
 
 CAMPAIGN_CRAFT_MAGIC   EQU 0C0DEC0DEh
 CAMPAIGN_OWNED_MAGIC   EQU 0C0DE0A11h
-CAMPAIGN_COMMAND_MAGIC EQU 0C0DECA11h
+CAMPAIGN_COMMAND_MAGIC     EQU 0C0DECA11h
+CAMPAIGN_RACE_BEGIN_MAGIC  EQU 0C0DEB001h
+CAMPAIGN_RACE_FINISH_MAGIC EQU 0C0DEF001h
 
 .code
 
@@ -36,6 +40,7 @@ ret_null ENDP
 ;   CRAFT   -> GS_Garage*
 ;   OWNED   -> car_id
 ;   COMMAND -> CampaignCommand*
+;   RACE BEGIN/FINISH -> GameModeGUIBase*
 campaign_gateway PROC
     mov eax, DWORD PTR [esp+4]
 
@@ -47,6 +52,12 @@ campaign_gateway PROC
 
     cmp eax, CAMPAIGN_COMMAND_MAGIC
     je campaign_command
+
+    cmp eax, CAMPAIGN_RACE_BEGIN_MAGIC
+    je campaign_race_begin
+
+    cmp eax, CAMPAIGN_RACE_FINISH_MAGIC
+    je campaign_race_finish
 
     xor eax, eax
     ret 4
@@ -66,6 +77,18 @@ campaign_owned:
 campaign_command:
     push ecx
     call _CampaignExecuteCommand
+    add esp, 4
+    ret 4
+
+campaign_race_begin:
+    push ecx
+    call _CampaignBeginRaceFromGui
+    add esp, 4
+    ret 4
+
+campaign_race_finish:
+    push ecx
+    call _CampaignFinishRaceFromGui
     add esp, 4
     ret 4
 campaign_gateway ENDP
