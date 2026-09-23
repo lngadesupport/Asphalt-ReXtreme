@@ -12,6 +12,8 @@ on:
       - "src-reconstructed/campaign-core/CampaignCatalog.h"
       - "src-reconstructed/campaign-core/CampaignEventCatalog.c"
       - "src-reconstructed/campaign-core/CampaignEventCatalog.h"
+      - "src-reconstructed/campaign-core/CampaignUpgradeCatalog.c"
+      - "src-reconstructed/campaign-core/CampaignUpgradeCatalog.h"
       - "runtime-stubs/campaign_gateway.asm"
       - "runtime-stubs/IGPLib_x86_campaign.def"
       - "docs/CAMPAIGN-CORE-V2.md"
@@ -52,10 +54,13 @@ jobs:
           cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignEventCatalog.obj" "src-reconstructed\campaign-core\CampaignEventCatalog.c"
           if errorlevel 1 exit /b 17
 
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignUpgradeCatalog.obj" "src-reconstructed\campaign-core\CampaignUpgradeCatalog.c"
+          if errorlevel 1 exit /b 18
+
           ml.exe /nologo /c /coff /Fo"prebuilt\campaign-core\campaign_gateway.obj" "runtime-stubs\campaign_gateway.asm"
           if errorlevel 1 exit /b 13
 
-          link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:"runtime-stubs\IGPLib_x86_campaign.def" /out:"prebuilt\campaign-core\IGPLib_x86.dll" "prebuilt\campaign-core\CampaignCore.obj" "prebuilt\campaign-core\CampaignCatalog.obj" "prebuilt\campaign-core\CampaignEventCatalog.obj" "prebuilt\campaign-core\campaign_gateway.obj" kernel32.lib
+          link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:"runtime-stubs\IGPLib_x86_campaign.def" /out:"prebuilt\campaign-core\IGPLib_x86.dll" "prebuilt\campaign-core\CampaignCore.obj" "prebuilt\campaign-core\CampaignCatalog.obj" "prebuilt\campaign-core\CampaignEventCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeCatalog.obj" "prebuilt\campaign-core\campaign_gateway.obj" kernel32.lib
           if errorlevel 1 exit /b 14
 
           dumpbin.exe /headers /imports "prebuilt\campaign-core\IGPLib_x86.dll" > "prebuilt\campaign-core\DUMPBIN.txt"
@@ -71,6 +76,7 @@ jobs:
           Remove-Item ".\prebuilt\campaign-core\CampaignCore.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignCatalog.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignEventCatalog.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignUpgradeCatalog.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\campaign_gateway.obj" -ErrorAction SilentlyContinue
           Remove-Item $batPath -ErrorAction SilentlyContinue
 
