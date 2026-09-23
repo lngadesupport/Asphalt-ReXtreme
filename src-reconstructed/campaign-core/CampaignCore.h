@@ -66,6 +66,19 @@ typedef struct CampaignCommand {
     uint32_t revision;
 } CampaignCommand;
 
+#define CAMPAIGN_UPGRADE_BATCH_MAX 16u
+
+typedef struct CampaignUpgradeBatchArgs {
+    uint32_t size;
+    int32_t car_id;
+    uint32_t count;
+    int32_t ui_action_ids[CAMPAIGN_UPGRADE_BATCH_MAX];
+
+    int32_t status;
+    int32_t applied_count;
+    uint32_t revision;
+} CampaignUpgradeBatchArgs;
+
 typedef struct CampaignRaceBeginArgs {
     int32_t event_id;
     int32_t car_id;
@@ -80,6 +93,7 @@ typedef struct CampaignRaceFinishArgs {
 int __cdecl CampaignBeginRaceAdapter(const CampaignRaceBeginArgs* args);
 int __cdecl CampaignFinishRaceAdapter(const CampaignRaceFinishArgs* args);
 
+int __cdecl CampaignApplyUpgradeBatch(CampaignUpgradeBatchArgs* args);
 int __cdecl CampaignExecuteCommand(CampaignCommand* command);
 int __cdecl CampaignIsOwned(int32_t car_id);
 int __cdecl CampaignCraftInvoke(void* garage);
