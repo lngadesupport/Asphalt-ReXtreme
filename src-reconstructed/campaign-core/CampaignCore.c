@@ -1364,9 +1364,47 @@ static uint32_t CampaignDecodeU32(void* address, uint32_t key) {
     return encoded ^ (uint32_t)(uintptr_t)address ^ key;
 }
 
-static int32_t CampaignRoundPositiveFloat(float value) {
-    if (!(value > 0.0f)) return 0;
-    return (int32_t)(value + 0.5f);
+static int32_t CampaignRoundPositiveFloatBits(uint32_t bits) {
+    uint32_t exponent;
+    uint32_t mantissa;
+    int32_t e;
+    uint32_t shift;
+    uint32_t integer_part;
+    uint32_t remainder;
+    uint32_t half;
+
+    /* Negative, zero, subnormal, infinity and NaN are not valid distances. */
+    if (bits & 0x80000000u) return 0;
+
+    exponent = (bits >> 23) & 0xFFu;
+    if (exponent == 0u || exponent == 0xFFu) return 0;
+
+    e = (int32_t)exponent - 127;
+    mantissa = (bits & 0x007FFFFFu) | 0x00800000u;
+
+    if (e < -1) return 0;
+    if (e == -1) return 1;
+
+    if (e >= 31) return 0x7FFFFFFF;
+
+    if (e >= 23) {
+        uint32_t left = (uint32_t)(e - 23);
+        if (left >= 8u || mantissa > (0x7FFFFFFFu >> left)) {
+            return 0x7FFFFFFF;
+        }
+        return (int32_t)(mantissa << left);
+    }
+
+    shift = (uint32_t)(23 - e);
+    integer_part = mantissa >> shift;
+    remainder = mantissa & ((1u << shift) - 1u);
+    half = 1u << (shift - 1u);
+
+    if (remainder >= half && integer_part < 0x7FFFFFFFu) {
+        ++integer_part;
+    }
+
+    return (int32_t)integer_part;
 }
 
 static void* CampaignResolveGameModeFromGui(void* game_mode_gui) {
@@ -1489,7 +1527,6 @@ static int CampaignExtractRaceMetrics(
     uint32_t key_u32;
     uint32_t key_float;
     uint32_t drift_bits;
-    float drift_value;
 
     if (!game_mode_gui || !metrics) return 0;
 
@@ -1522,8 +1559,7 @@ static int CampaignExtractRaceMetrics(
       old serializer and does not trust its reward/star decisions.
     */
     drift_bits = CampaignDecodeU32((unsigned char*)stats + 0x64, key_float);
-    CopyBytes(&drift_value, &drift_bits, (uint32_t)sizeof(drift_value));
-    metrics->drift_meters = CampaignRoundPositiveFloat(drift_value);
+    metrics->drift_meters = CampaignRoundPositiveFloatBits(drift_bits);
 
     metrics->air_time_ms = (int32_t)CampaignDecodeU32(
         (unsigned char*)stats + 0x70, key_u32
