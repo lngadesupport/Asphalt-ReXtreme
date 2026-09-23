@@ -20,19 +20,24 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build exact no-entry IGP stub
-        shell: cmd
+        shell: powershell
         run: |
-          call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars32.bat" || call "%ProgramFiles%\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvars32.bat" || call "%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars32.bat" || call "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars32.bat"
-          if errorlevel 1 exit /b 1
+          $vswhere = Join-Path ([Environment]::GetEnvironmentVariable("ProgramFiles(x86)")) "Microsoft Visual Studio\Installer\vswhere.exe"
+          if (-not (Test-Path $vswhere)) { throw "vswhere.exe not found" }
 
-          if not exist prebuilt\r17-safe mkdir prebuilt\r17-safe
-          ml.exe /nologo /c /coff /Fo"prebuilt\r17-safe\igp_stub.obj" "runtime-stubs\igp_stub.asm"
-          if errorlevel 1 exit /b 1
+          $install = (& $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath).Trim()
+          if (-not $install) { throw "MSVC x86 toolchain not found" }
 
-          link.exe /nologo /dll /noentry /machine:x86 /def:"runtime-stubs\IGPLib_x86.def" /out:"prebuilt\r17-safe\IGPLib_x86.dll" "prebuilt\r17-safe\igp_stub.obj"
-          if errorlevel 1 exit /b 1
+          $vcvars = Join-Path $install "VC\Auxiliary\Build\vcvarsall.bat"
+          if (-not (Test-Path $vcvars)) { throw "vcvarsall.bat not found: $vcvars" }
 
-          del /q "prebuilt\r17-safe\igp_stub.obj" 2>nul
+          New-Item -ItemType Directory -Force -Path ".\prebuilt\r17-safe" | Out-Null
+
+          $cmd = 'call "' + $vcvars + '" x86 >nul && ml.exe /nologo /c /coff /Fo"prebuilt\r17-safe\igp_stub.obj" "runtime-stubs\igp_stub.asm" && link.exe /nologo /dll /noentry /machine:x86 /def:"runtime-stubs\IGPLib_x86.def" /out:"prebuilt\r17-safe\IGPLib_x86.dll" "prebuilt\r17-safe\igp_stub.obj"'
+          & cmd.exe /d /s /c $cmd
+          if ($LASTEXITCODE -ne 0) { throw "safe stub build failed: $LASTEXITCODE" }
+
+          Remove-Item ".\prebuilt\r17-safe\igp_stub.obj" -ErrorAction SilentlyContinue
 
       - name: Verify safe DLL
         shell: powershell
