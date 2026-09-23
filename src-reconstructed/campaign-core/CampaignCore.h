@@ -66,6 +66,20 @@ typedef struct CampaignCommand {
     uint32_t revision;
 } CampaignCommand;
 
+typedef struct CampaignRaceBeginArgs {
+    int32_t event_id;
+    int32_t car_id;
+} CampaignRaceBeginArgs;
+
+typedef struct CampaignRaceFinishArgs {
+    int32_t position;
+    int32_t stars;
+    int32_t finish_time_ms;
+} CampaignRaceFinishArgs;
+
+int __cdecl CampaignBeginRaceAdapter(const CampaignRaceBeginArgs* args);
+int __cdecl CampaignFinishRaceAdapter(const CampaignRaceFinishArgs* args);
+
 int __cdecl CampaignExecuteCommand(CampaignCommand* command);
 int __cdecl CampaignIsOwned(int32_t car_id);
 int __cdecl CampaignCraftInvoke(void* garage);
