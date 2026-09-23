@@ -70,6 +70,10 @@ int __cdecl CampaignExecuteCommand(CampaignCommand* command);
 int __cdecl CampaignIsOwned(int32_t car_id);
 int __cdecl CampaignCraftInvoke(void* garage);
 
+/* Thin read-only adapters for the preserved race engine/UI boundary. */
+int __cdecl CampaignBeginRaceFromGui(void* game_mode_gui);
+int __cdecl CampaignFinishRaceFromGui(void* game_mode_gui);
+
 #ifdef __cplusplus
 }
 #endif
