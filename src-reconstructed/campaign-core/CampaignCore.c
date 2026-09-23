@@ -315,7 +315,15 @@ static int TryMigrateV1(void) {
 
     if (!SaveStateUnlocked()) return 0;
 
-    MoveFileExW(old_path, L"", 0);
+    {
+        WCHAR migrated_path[1024];
+        ZeroBytes(migrated_path, (uint32_t)sizeof(migrated_path));
+        if (WideAppend(migrated_path, 1024, g_campaign_dir) &&
+            WideAppend(migrated_path, 1024, L"\\campaign_state.v1.migrated")) {
+            DeleteFileW(migrated_path);
+            MoveFileExW(old_path, migrated_path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+        }
+    }
     return 1;
 }
 
