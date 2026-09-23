@@ -19,37 +19,74 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Build no-entry Campaign Core
         shell: powershell
         run: |
           $vswhere = Join-Path ([Environment]::GetEnvironmentVariable("ProgramFiles(x86)")) "Microsoft Visual Studio\Installer\vswhere.exe"
           if (-not (Test-Path $vswhere)) { throw "vswhere.exe not found" }
+
           $install = (& $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath).Trim()
           if (-not $install) { throw "MSVC x86 toolchain not found" }
+
           $vcvars = Join-Path $install "VC\Auxiliary\Build\vcvarsall.bat"
           New-Item -ItemType Directory -Force -Path ".\prebuilt\campaign-core" | Out-Null
-          $cmd = @(
-            'call "' + $vcvars + '" x86 >nul',
-            'cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignCore.obj" "src-reconstructed\campaign-core\CampaignCore.c"',
-            'ml.exe /nologo /c /coff /Fo"prebuilt\campaign-core\campaign_gateway.obj" "runtime-stubs\campaign_gateway.asm"',
-            'link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:"runtime-stubs\IGPLib_x86_campaign.def" /out:"prebuilt\campaign-core\IGPLib_x86.dll" "prebuilt\campaign-core\CampaignCore.obj" "prebuilt\campaign-core\campaign_gateway.obj" kernel32.lib'
-          ) -join ' && '
-          & cmd.exe /d /s /c $cmd
+
+          $bat = @"
+          @echo off
+          call "$vcvars" x86
+          if errorlevel 1 exit /b 11
+
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignCore.obj" "src-reconstructed\campaign-core\CampaignCore.c"
+          if errorlevel 1 exit /b 12
+
+          ml.exe /nologo /c /coff /Fo"prebuilt\campaign-core\campaign_gateway.obj" "runtime-stubs\campaign_gateway.asm"
+          if errorlevel 1 exit /b 13
+
+          link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:"runtime-stubs\IGPLib_x86_campaign.def" /out:"prebuilt\campaign-core\IGPLib_x86.dll" "prebuilt\campaign-core\CampaignCore.obj" "prebuilt\campaign-core\campaign_gateway.obj" kernel32.lib
+          if errorlevel 1 exit /b 14
+
+          dumpbin.exe /headers /imports "prebuilt\campaign-core\IGPLib_x86.dll" > "prebuilt\campaign-core\DUMPBIN.txt"
+          if errorlevel 1 exit /b 15
+          exit /b 0
+          "@
+
+          $batPath = Join-Path $PWD "build-campaign-core.cmd"
+          Set-Content -LiteralPath $batPath -Value $bat -Encoding ASCII
+          & cmd.exe /d /c $batPath
           if ($LASTEXITCODE -ne 0) { throw "Campaign Core build failed: $LASTEXITCODE" }
+
           Remove-Item ".\prebuilt\campaign-core\CampaignCore.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\campaign_gateway.obj" -ErrorAction SilentlyContinue
+          Remove-Item $batPath -ErrorAction SilentlyContinue
+
       - name: Verify
         shell: powershell
         run: |
           $dll = ".\prebuilt\campaign-core\IGPLib_x86.dll"
           if (-not (Test-Path $dll)) { throw "Campaign Core DLL missing" }
+
+          [byte[]]$d = [IO.File]::ReadAllBytes($dll)
+          if ($d[0] -ne 0x4D -or $d[1] -ne 0x5A) { throw "not MZ" }
+          $pe = [BitConverter]::ToInt32($d, 0x3C)
+          if ([BitConverter]::ToUInt16($d, $pe + 4) -ne 0x014C) { throw "not x86" }
+          $opt = $pe + 24
+          if ([BitConverter]::ToUInt16($d, $opt) -ne 0x010B) { throw "not PE32" }
+          $entry = [BitConverter]::ToUInt32($d, $opt + 16)
+          if ($entry -ne 0) { throw ("DLL has entry point RVA 0x{0:X8}" -f $entry) }
+
+          $dump = Get-Content ".\prebuilt\campaign-core\DUMPBIN.txt" -Raw
+          if ($dump -match "VCRUNTIME|MSVCP|ucrtbase") { throw "CRT dependency detected" }
+
           $hash = (Get-FileHash -Algorithm SHA256 $dll).Hash.ToLowerInvariant()
           $size = (Get-Item $dll).Length
+
           [ordered]@{
             Phase = "Campaign Core v1"
             Architecture = "x86"
             NoEntry = $true
             StartupRuntime = $false
+            CRTDependency = $false
             Host = "IGPLib_x86.dll"
             Trigger = "GS_Garage::BuildCar -> private IGP gateway"
             Ownership = "owned-id membership -> CampaignIsOwned"
@@ -57,21 +94,25 @@ jobs:
             Size = $size
             SHA256 = $hash
           } | ConvertTo-Json | Set-Content ".\prebuilt\campaign-core\CAMPAIGN-CORE-REPORT.json" -Encoding UTF8
+
           Get-Content ".\prebuilt\campaign-core\CAMPAIGN-CORE-REPORT.json"
+
       - name: Publish
         shell: powershell
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f prebuilt/campaign-core/IGPLib_x86.dll prebuilt/campaign-core/CAMPAIGN-CORE-REPORT.json
+          git add -f prebuilt/campaign-core/IGPLib_x86.dll prebuilt/campaign-core/CAMPAIGN-CORE-REPORT.json prebuilt/campaign-core/DUMPBIN.txt
           git diff --cached --quiet
           if ($LASTEXITCODE -eq 0) { exit 0 }
           git commit -m "build: publish Campaign Core v1 [skip ci]"
           git push origin "HEAD:$env:GITHUB_REF_NAME"
+
       - uses: actions/upload-artifact@v4
         with:
           name: Campaign-Core-x86
           path: |
             prebuilt/campaign-core/IGPLib_x86.dll
             prebuilt/campaign-core/CAMPAIGN-CORE-REPORT.json
+            prebuilt/campaign-core/DUMPBIN.txt
           if-no-files-found: error
