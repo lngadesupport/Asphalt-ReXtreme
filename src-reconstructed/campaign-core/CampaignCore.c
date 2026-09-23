@@ -82,6 +82,8 @@ typedef struct CampaignStateV1 {
 
 static CampaignStateV2 g_state;
 static CampaignStateV2 g_tx_backup;
+static CampaignStateV2 g_load_buffer;
+static CampaignStateV1 g_v1_buffer;
 static volatile LONG g_lock;
 static volatile LONG g_loaded;
 
@@ -253,21 +255,21 @@ static int ValidateStateV2(const CampaignStateV2* s) {
 static int TryLoadV2(const WCHAR* path, CampaignStateV2* out) {
     HANDLE h;
     DWORD got = 0;
-    CampaignStateV2 tmp;
+    CampaignStateV2* tmp = &g_load_buffer;
 
-    ZeroBytes(&tmp, (uint32_t)sizeof(tmp));
+    ZeroBytes(tmp, (uint32_t)sizeof(*tmp));
 
     h = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     if (h == INVALID_HANDLE_VALUE) return 0;
 
-    if (!ReadFile(h, &tmp, (DWORD)sizeof(tmp), &got, 0) || got != (DWORD)sizeof(tmp)) {
+    if (!ReadFile(h, tmp, (DWORD)sizeof(*tmp), &got, 0) || got != (DWORD)sizeof(*tmp)) {
         CloseHandle(h);
         return 0;
     }
     CloseHandle(h);
 
-    if (!ValidateStateV2(&tmp)) return 0;
-    CopyBytes(out, &tmp, (uint32_t)sizeof(tmp));
+    if (!ValidateStateV2(tmp)) return 0;
+    CopyBytes(out, tmp, (uint32_t)sizeof(*tmp));
     return 1;
 }
 
@@ -275,43 +277,43 @@ static int TryMigrateV1(void) {
     WCHAR old_path[1024];
     HANDLE h;
     DWORD got = 0;
-    CampaignStateV1 old;
+    CampaignStateV1* old = &g_v1_buffer;
     uint32_t i;
 
     ZeroBytes(old_path, (uint32_t)sizeof(old_path));
     if (!WideAppend(old_path, 1024, g_campaign_dir)) return 0;
     if (!WideAppend(old_path, 1024, L"\\campaign_state.bin")) return 0;
 
-    ZeroBytes(&old, (uint32_t)sizeof(old));
+    ZeroBytes(old, (uint32_t)sizeof(*old));
     h = CreateFileW(old_path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     if (h == INVALID_HANDLE_VALUE) return 0;
 
-    if (!ReadFile(h, &old, (DWORD)sizeof(old), &got, 0) || got != (DWORD)sizeof(old)) {
+    if (!ReadFile(h, old, (DWORD)sizeof(*old), &got, 0) || got != (DWORD)sizeof(*old)) {
         CloseHandle(h);
         return 0;
     }
     CloseHandle(h);
 
-    if (old.magic != CAMPAIGN_V1_MAGIC ||
-        old.version != CAMPAIGN_V1_VERSION ||
-        old.owned_count > 256u ||
-        old.inventory_count > 256u ||
-        old.checksum != StateChecksumV1(&old)) {
+    if (old->magic != CAMPAIGN_V1_MAGIC ||
+        old->version != CAMPAIGN_V1_VERSION ||
+        old->owned_count > 256u ||
+        old->inventory_count > 256u ||
+        old->checksum != StateChecksumV1(old)) {
         return 0;
     }
 
     InitDefaultState(&g_state);
-    g_state.revision = old.revision + 1;
-    g_state.credits = old.credits;
-    g_state.premium_currency = old.premium_currency;
-    g_state.last_acquired_car_id = old.last_car_id;
-    g_state.craft_count = old.craft_count;
+    g_state.revision = old->revision + 1;
+    g_state.credits = old->credits;
+    g_state.premium_currency = old->premium_currency;
+    g_state.last_acquired_car_id = old->last_car_id;
+    g_state.craft_count = old->craft_count;
 
-    g_state.owned_count = old.owned_count;
-    for (i = 0; i < old.owned_count; ++i) g_state.owned_car_ids[i] = old.owned_car_ids[i];
+    g_state.owned_count = old->owned_count;
+    for (i = 0; i < old->owned_count; ++i) g_state.owned_car_ids[i] = old->owned_car_ids[i];
 
-    g_state.inventory_count = old.inventory_count;
-    for (i = 0; i < old.inventory_count; ++i) g_state.inventory[i] = old.inventory[i];
+    g_state.inventory_count = old->inventory_count;
+    for (i = 0; i < old->inventory_count; ++i) g_state.inventory[i] = old->inventory[i];
 
     if (!SaveStateUnlocked()) return 0;
 
