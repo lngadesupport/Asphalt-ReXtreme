@@ -19,8 +19,9 @@
     "UpgradeCatalog":  "CampaignUpgrades.dat",
     "UpgradeUiMap":  "CampaignUpgradeUiMap.dat",
     "StoreCatalog":  "CampaignStore.dat",
+    "StoreLegacySelector":  "0xC0DE5501",
     "CareerPreSelector":  "0xC0DECA72",
     "CareerPostSelector":  "0xC0DECA73",
-    "Size":  26112,
-    "SHA256":  "34eec6078606bd30743268dd60255c0429cc1ccf6889449ad5ec03ff09e929a4"
+    "Size":  26624,
+    "SHA256":  "7d2ad4dfda82404156826cb1cf73e6a6e22db69b7fa7b3ceb9dc6504cc94be51"
 }
