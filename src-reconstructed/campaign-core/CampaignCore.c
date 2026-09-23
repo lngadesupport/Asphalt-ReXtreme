@@ -24,6 +24,12 @@
 #define CAMPAIGN_RACE_SESSION_MAGIC 0x53525852u /* RXRS */
 #define CAMPAIGN_RACE_SESSION_VERSION 1u
 
+/* Verified x86 client adapter RVAs, relative to AMS.exe image base. */
+#define CAMPAIGN_AMS_RVA_CURRENT_RACE_MANAGER 0x0153AC20u
+#define CAMPAIGN_AMS_RVA_RESOLVE_CURRENT_RACE 0x00A42100u
+#define CAMPAIGN_AMS_RVA_XOR_KEY_U32          0x0153A1C8u
+#define CAMPAIGN_AMS_RVA_XOR_KEY_FLOAT        0x0153CC3Cu
+
 typedef struct CampaignInventoryEntry {
     int32_t item_id;
     int32_t amount;
@@ -1306,6 +1312,259 @@ static void RefreshGarageUi(void* garage) {
     CampaignInvokeGarageUi(widget);
 }
 
+static void* CampaignCallVirtual0(void* object, uint32_t slot_offset) {
+    void* result = 0;
+
+    if (!object) return 0;
+
+    __asm {
+        mov ecx, object
+        mov eax, [ecx]
+        mov edx, slot_offset
+        call dword ptr [eax+edx]
+        mov result, eax
+    }
+    return result;
+}
+
+static void* CampaignCallVirtual1(void* object, uint32_t slot_offset, void* arg0) {
+    void* result = 0;
+
+    if (!object) return 0;
+
+    __asm {
+        mov ecx, object
+        mov eax, [ecx]
+        mov edx, slot_offset
+        push arg0
+        call dword ptr [eax+edx]
+        mov result, eax
+    }
+    return result;
+}
+
+static void* CampaignCallAmsThis0(void* function_address, void* object) {
+    void* result = 0;
+
+    if (!function_address || !object) return 0;
+
+    __asm {
+        mov ecx, object
+        mov eax, function_address
+        call eax
+        mov result, eax
+    }
+    return result;
+}
+
+static uint32_t CampaignDecodeU32(void* address, uint32_t key) {
+    uint32_t encoded;
+    if (!address) return 0;
+    encoded = *(volatile uint32_t*)address;
+    return encoded ^ (uint32_t)(uintptr_t)address ^ key;
+}
+
+static int32_t CampaignRoundPositiveFloat(float value) {
+    if (!(value > 0.0f)) return 0;
+    return (int32_t)(value + 0.5f);
+}
+
+static void* CampaignResolveGameModeFromGui(void* game_mode_gui) {
+    if (!game_mode_gui) return 0;
+    return *(void**)((unsigned char*)game_mode_gui + 0x14);
+}
+
+static int32_t CampaignResolveEventIdFromGameMode(void* game_mode) {
+    void* event_source;
+    void* id_holder;
+
+    if (!game_mode) return 0;
+
+    /* Verified equivalent of 0x00CBFC20 after GameModeBase vfunc +0x24. */
+    event_source = CampaignCallVirtual0(game_mode, 0x24);
+    if (!event_source) return 0;
+
+    id_holder = *(void**)((unsigned char*)event_source + 0xC0);
+    if (!id_holder) return 0;
+
+    return *(volatile int32_t*)id_holder;
+}
+
+static void* CampaignResolveRaceStats(void* game_mode) {
+    void* player_token;
+    void* entry;
+    void* root;
+
+    if (!game_mode) return 0;
+
+    /*
+      Verified read-only path from 0x00F0D880:
+        token = GameModeBase::vfunc(+0x70)
+        entry = GameModeBase::vfunc(+0xCC, token)
+        root  = entry->+0x08
+        stats = root+0xBC
+    */
+    player_token = CampaignCallVirtual0(game_mode, 0x70);
+    if (!player_token) return 0;
+
+    entry = CampaignCallVirtual1(game_mode, 0xCC, player_token);
+    if (!entry) return 0;
+
+    root = *(void**)((unsigned char*)entry + 0x08);
+    if (!root) return 0;
+
+    return (unsigned char*)root + 0xBC;
+}
+
+static int32_t CampaignResolvePlacement(void* ams_base) {
+    void* manager;
+    void* race_container;
+    void* result_source;
+    void* player;
+    void* result;
+
+    if (!ams_base) return 0;
+
+    manager = *(void**)((unsigned char*)ams_base + CAMPAIGN_AMS_RVA_CURRENT_RACE_MANAGER);
+    if (!manager) return 0;
+
+    race_container = CampaignCallAmsThis0(
+        (unsigned char*)ams_base + CAMPAIGN_AMS_RVA_RESOLVE_CURRENT_RACE,
+        manager
+    );
+    if (!race_container) return 0;
+
+    result_source = CampaignCallVirtual0(race_container, 0x40);
+    if (!result_source) return 0;
+
+    player = CampaignCallVirtual0(result_source, 0x70);
+    if (!player) return 0;
+
+    result = CampaignCallVirtual1(result_source, 0x40, player);
+    return (int32_t)(uintptr_t)result;
+}
+
+static int32_t CampaignResolveFinishTimeMs(
+    void* game_mode,
+    uint32_t xor_key
+) {
+    void* address;
+    uint32_t value;
+    void* fallback_entry;
+    int32_t fallback_token;
+
+    if (!game_mode) return 0;
+
+    address = (unsigned char*)game_mode + 0x98;
+    value = CampaignDecodeU32(address, xor_key);
+    if ((int32_t)value > 0) return (int32_t)value;
+
+    /*
+      Verified fallback from 0x00F0D880:
+        entry = GameModeBase::vfunc(+0xCC, *(game_mode+0x8C))
+        timer = decode(entry+0x3C)
+    */
+    fallback_token = *(volatile int32_t*)((unsigned char*)game_mode + 0x8C);
+    fallback_entry = CampaignCallVirtual1(
+        game_mode,
+        0xCC,
+        (void*)(uintptr_t)(uint32_t)fallback_token
+    );
+    if (!fallback_entry) return 0;
+
+    value = CampaignDecodeU32(
+        (unsigned char*)fallback_entry + 0x3C,
+        xor_key
+    );
+    return (int32_t)value;
+}
+
+static int CampaignExtractRaceMetrics(
+    void* game_mode_gui,
+    CampaignRaceMetrics* metrics
+) {
+    void* ams_base;
+    void* game_mode;
+    void* stats;
+    uint32_t key_u32;
+    uint32_t key_float;
+    uint32_t drift_bits;
+    float drift_value;
+
+    if (!game_mode_gui || !metrics) return 0;
+
+    ZeroBytes(metrics, (uint32_t)sizeof(*metrics));
+    metrics->size = (uint32_t)sizeof(*metrics);
+    metrics->version = CAMPAIGN_RACE_METRICS_VERSION;
+
+    ams_base = (void*)GetModuleHandleW(0);
+    if (!ams_base) return 0;
+
+    game_mode = CampaignResolveGameModeFromGui(game_mode_gui);
+    if (!game_mode) return 0;
+
+    key_u32 = *(volatile uint32_t*)(
+        (unsigned char*)ams_base + CAMPAIGN_AMS_RVA_XOR_KEY_U32
+    );
+    key_float = *(volatile uint32_t*)(
+        (unsigned char*)ams_base + CAMPAIGN_AMS_RVA_XOR_KEY_FLOAT
+    );
+
+    metrics->placement = CampaignResolvePlacement(ams_base);
+    metrics->finish_time_ms = CampaignResolveFinishTimeMs(game_mode, key_u32);
+
+    stats = CampaignResolveRaceStats(game_mode);
+    if (!stats) return 0;
+
+    /*
+      Verified source offsets behind the 0x00F0D880 telemetry producer.
+      They are read-only engine counters. Campaign logic does not call the
+      old serializer and does not trust its reward/star decisions.
+    */
+    drift_bits = CampaignDecodeU32((unsigned char*)stats + 0x64, key_float);
+    CopyBytes(&drift_value, &drift_bits, (uint32_t)sizeof(drift_value));
+    metrics->drift_meters = CampaignRoundPositiveFloat(drift_value);
+
+    metrics->air_time_ms = (int32_t)CampaignDecodeU32(
+        (unsigned char*)stats + 0x70, key_u32
+    );
+    metrics->nitro_time_ms = (int32_t)CampaignDecodeU32(
+        (unsigned char*)stats + 0x90, key_u32
+    );
+    metrics->obstacles_broken = (int32_t)CampaignDecodeU32(
+        (unsigned char*)stats + 0x30, key_u32
+    );
+    metrics->flat_spins = (int32_t)CampaignDecodeU32(
+        (unsigned char*)stats + 0x50, key_u32
+    );
+    metrics->barrel_rolls = (int32_t)CampaignDecodeU32(
+        (unsigned char*)stats + 0xB4, key_u32
+    );
+    metrics->nitro_all_in = (int32_t)CampaignDecodeU32(
+        (unsigned char*)stats + 0x88, key_u32
+    );
+    metrics->nitro_chain = (int32_t)CampaignDecodeU32(
+        (unsigned char*)stats + 0x84, key_u32
+    );
+    metrics->nitro_normal = (int32_t)CampaignDecodeU32(
+        (unsigned char*)stats + 0xB8, key_u32
+    );
+    metrics->wrecked_cars = (int32_t)CampaignDecodeU32(
+        (unsigned char*)stats + 0xC0, key_u32
+    );
+    metrics->wrecked_environment = (int32_t)CampaignDecodeU32(
+        (unsigned char*)stats + 0xC4, key_u32
+    );
+    metrics->wrecks_made = (int32_t)CampaignDecodeU32(
+        (unsigned char*)stats + 0x00, key_u32
+    );
+
+    if (metrics->placement <= 0 || metrics->placement > 7) return 0;
+    if (metrics->finish_time_ms < 0) return 0;
+
+    return 1;
+}
+
 int __cdecl CampaignIsOwned(int32_t car_id) {
     int result;
     LockState();
@@ -1338,6 +1597,92 @@ int __cdecl CampaignCraftInvoke(void* garage) {
 
     if (ok) RefreshGarageUi(garage);
     return ok;
+}
+
+int __cdecl CampaignBeginRaceFromGui(void* game_mode_gui) {
+    void* game_mode;
+    int32_t event_id;
+    uint32_t session_id = 0;
+    int result = 0;
+
+    game_mode = CampaignResolveGameModeFromGui(game_mode_gui);
+    event_id = CampaignResolveEventIdFromGameMode(game_mode);
+    if (event_id <= 0) return 0;
+
+    LockState();
+    EnsureLoadedUnlocked();
+
+    RecoverConsumingRaceSessionUnlocked();
+
+    /*
+      Constructor re-entry for the same still-active event is idempotent.
+      A different active event is treated as an abandoned previous race.
+    */
+    if (ReadRaceSessionFile(g_race_session_path, &g_race_session_buffer)) {
+        if (g_race_session_buffer.event_id == event_id) {
+            session_id = g_race_session_buffer.session_id;
+            result = 1;
+        } else {
+            DeleteFileW(g_race_session_path);
+        }
+    }
+
+    if (!result) {
+        result = BeginEventRaceUnlocked(event_id, 0, &session_id);
+    }
+
+    UnlockState();
+    return result ? (int)session_id : 0;
+}
+
+int __cdecl CampaignFinishRaceFromGui(void* game_mode_gui) {
+    CampaignRaceMetrics metrics;
+    int finish_status;
+    int result = 0;
+
+    LockState();
+    EnsureLoadedUnlocked();
+
+    RecoverConsumingRaceSessionUnlocked();
+
+    if (!ReadRaceSessionFile(g_race_session_path, &g_race_session_buffer)) {
+        UnlockState();
+        return 0;
+    }
+
+    if (!CampaignExtractRaceMetrics(game_mode_gui, &metrics)) {
+        UnlockState();
+        return 0;
+    }
+
+    metrics.session_id = g_race_session_buffer.session_id;
+
+    CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+    finish_status = FinishEventRaceMetricsUnlocked(&metrics);
+
+    if (finish_status == 2) {
+        UnlockState();
+        return 1;
+    }
+
+    if (finish_status == 1) {
+        result = CommitMutationUnlocked();
+        if (result) {
+            DeleteFileW(g_race_session_consuming_path);
+        } else {
+            CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+            MoveFileExW(
+                g_race_session_consuming_path,
+                g_race_session_path,
+                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+            );
+        }
+    } else {
+        CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+    }
+
+    UnlockState();
+    return result;
 }
 
 static int ExecuteUnlocked(CampaignCommand* c) {
