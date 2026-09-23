@@ -2202,6 +2202,66 @@ int __cdecl CampaignFinishRaceAdapter(const CampaignRaceFinishArgs* args) {
     return 1;
 }
 
+int __cdecl CampaignApplyUpgradeBatch(CampaignUpgradeBatchArgs* args) {
+    uint32_t i;
+    uint32_t j;
+    int result;
+
+    if (!args || args->size < (uint32_t)sizeof(CampaignUpgradeBatchArgs)) return 0;
+
+    args->status = 0;
+    args->applied_count = 0;
+    args->revision = 0;
+
+    if (args->car_id <= 0 ||
+        args->count == 0 ||
+        args->count > CAMPAIGN_UPGRADE_BATCH_MAX) {
+        return 0;
+    }
+
+    /* One visual action id may appear only once in a transaction. */
+    for (i = 0; i < args->count; ++i) {
+        if (args->ui_action_ids[i] <= 0) return 0;
+        for (j = 0; j < i; ++j) {
+            if (args->ui_action_ids[i] == args->ui_action_ids[j]) return 0;
+        }
+    }
+
+    LockState();
+    EnsureLoadedUnlocked();
+
+    CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+
+    for (i = 0; i < args->count; ++i) {
+        if (!ApplyUpgradeUiActionUnlocked(
+                args->car_id,
+                args->ui_action_ids[i],
+                0,
+                0,
+                0)) {
+            CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+            args->revision = g_state.revision;
+            UnlockState();
+            return 0;
+        }
+        ++args->applied_count;
+    }
+
+    result = CommitMutationUnlocked();
+    if (!result) {
+        CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+        args->applied_count = 0;
+        args->revision = g_state.revision;
+        UnlockState();
+        return 0;
+    }
+
+    args->status = 1;
+    args->revision = g_state.revision;
+    UnlockState();
+    return 1;
+}
+
 int __cdecl CampaignExecuteCommand(CampaignCommand* command) {
     int result;
 
