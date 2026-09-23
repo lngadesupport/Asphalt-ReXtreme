@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <stdint.h>
 #include "CampaignCore.h"
+#include "CampaignCatalog.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
 #define CAMPAIGN_VERSION 2u
@@ -476,6 +477,64 @@ static CampaignProgressEntry* GetOrCreateProgress(int32_t node_id) {
     return &g_state.progress[i];
 }
 
+static int ProgressGateUnlocked(int32_t node_id) {
+    int i;
+    if (node_id <= 0) return 1;
+    i = FindProgressIndex(node_id);
+    if (i < 0) return 0;
+    return g_state.progress[i].state > 0 ? 1 : 0;
+}
+
+static int AcquireCatalogRecipeUnlocked(
+    const CampaignVehicleRecipe* recipe,
+    int32_t* before_value,
+    int32_t* after_value
+) {
+    if (!recipe || recipe->car_id <= 0 || recipe->cost < 0) return 0;
+    if (!ProgressGateUnlocked(recipe->unlock_node_id)) return 0;
+
+    if (IsOwnedUnlocked(recipe->car_id)) {
+        if (before_value) *before_value = 0;
+        if (after_value) *after_value = 0;
+        return 1;
+    }
+
+    if (before_value) *before_value = 0;
+    if (after_value) *after_value = 0;
+
+    switch (recipe->acquisition_type) {
+    case CAMPAIGN_ACQUIRE_BLUEPRINT:
+        if (before_value) *before_value = InventoryGetUnlocked(recipe->item_id);
+        if (!InventorySpendNoSave(recipe->item_id, recipe->cost)) return 0;
+        if (after_value) *after_value = InventoryGetUnlocked(recipe->item_id);
+        break;
+
+    case CAMPAIGN_ACQUIRE_CREDITS:
+        if (g_state.credits < recipe->cost) return 0;
+        if (before_value) *before_value = g_state.credits;
+        g_state.credits -= recipe->cost;
+        if (after_value) *after_value = g_state.credits;
+        break;
+
+    case CAMPAIGN_ACQUIRE_PREMIUM:
+        if (g_state.premium_currency < recipe->cost) return 0;
+        if (before_value) *before_value = g_state.premium_currency;
+        g_state.premium_currency -= recipe->cost;
+        if (after_value) *after_value = g_state.premium_currency;
+        break;
+
+    case CAMPAIGN_ACQUIRE_FREE:
+        break;
+
+    default:
+        return 0;
+    }
+
+    if (!AddOwnedNoSave(recipe->car_id)) return 0;
+    ++g_state.craft_count;
+    return 1;
+}
+
 static int CommitMutationUnlocked(void) {
     ++g_state.revision;
     return SaveStateUnlocked();
@@ -523,6 +582,7 @@ int __cdecl CampaignIsOwned(int32_t car_id) {
 
 int __cdecl CampaignCraftInvoke(void* garage) {
     int32_t id = ResolveSelectedCarId(garage);
+    const CampaignVehicleRecipe* recipe;
     int ok = 0;
 
     if (id <= 0) return 0;
@@ -530,12 +590,14 @@ int __cdecl CampaignCraftInvoke(void* garage) {
     LockState();
     EnsureLoadedUnlocked();
 
-    CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
-    if (AddOwnedNoSave(id)) {
-        ++g_state.craft_count;
-        ok = CommitMutationUnlocked();
+    recipe = CampaignCatalogFind(id);
+    if (recipe) {
+        CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+        if (AcquireCatalogRecipeUnlocked(recipe, 0, 0)) {
+            ok = CommitMutationUnlocked();
+        }
+        if (!ok) CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
     }
-    if (!ok) CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
 
     UnlockState();
 
@@ -641,6 +703,19 @@ static int ExecuteUnlocked(CampaignCommand* c) {
         if (result) {
             c->out0 = 1;
             c->out2 = InventoryGetUnlocked(c->b);
+        }
+        break;
+
+    case CAMPAIGN_OP_ACQUIRE_CATALOG:
+        {
+            const CampaignVehicleRecipe* recipe = CampaignCatalogFind(c->a);
+            if (!recipe) return 0;
+
+            c->out0 = recipe->acquisition_type;
+            CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+
+            if (!AcquireCatalogRecipeUnlocked(recipe, &c->out1, &c->out2)) return 0;
+            result = CommitMutationUnlocked();
         }
         break;
 
