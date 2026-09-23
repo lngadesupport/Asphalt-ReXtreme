@@ -35,14 +35,11 @@ static uint32_t StateChecksum(const CampaignState* s){ return Fnv1a((const unsig
 static void InitDefaultState(CampaignState* s){ ZeroBytes(s,(uint32_t)sizeof(*s));s->magic=CAMPAIGN_MAGIC;s->version=CAMPAIGN_VERSION;s->revision=1;s->credits=50000;s->last_car_id=-1;s->checksum=StateChecksum(s); }
 
 static int BuildStatePath(void){
-    WCHAR local[512],family[256]; UINT32 family_len=256; DWORD n;
-    ZeroBytes(local,(uint32_t)sizeof(local));ZeroBytes(family,(uint32_t)sizeof(family));ZeroBytes(g_state_path,(uint32_t)sizeof(g_state_path));ZeroBytes(g_campaign_dir,(uint32_t)sizeof(g_campaign_dir));
+    WCHAR local[512]; DWORD n;
+    ZeroBytes(local,(uint32_t)sizeof(local));ZeroBytes(g_state_path,(uint32_t)sizeof(g_state_path));ZeroBytes(g_campaign_dir,(uint32_t)sizeof(g_campaign_dir));
     n=GetEnvironmentVariableW(L"LOCALAPPDATA",local,512);if(n==0||n>=512)return 0;
-    if(GetCurrentPackageFamilyName(&family_len,family)!=ERROR_SUCCESS)return 0;
     if(!WideAppend(g_campaign_dir,1024,local))return 0;
-    if(!WideAppend(g_campaign_dir,1024,L"\\Packages\\"))return 0;
-    if(!WideAppend(g_campaign_dir,1024,family))return 0;
-    if(!WideAppend(g_campaign_dir,1024,L"\\LocalState\\CampaignEdition"))return 0;
+    if(!WideAppend(g_campaign_dir,1024,L"\\Packages\\A278AB0D.AsphaltXtreme_h6adky7gbf63m\\LocalState\\CampaignEdition"))return 0;
     CreateDirectoryW(g_campaign_dir,0);
     if(!WideAppend(g_state_path,1024,g_campaign_dir))return 0;
     if(!WideAppend(g_state_path,1024,L"\\campaign_state.bin"))return 0;
