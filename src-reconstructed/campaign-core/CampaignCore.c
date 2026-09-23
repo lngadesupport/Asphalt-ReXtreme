@@ -86,10 +86,24 @@ static int ResolveSelectedCarId(void* garage){
 }
 
 static void RefreshGarageUi(void* garage){
-    void*** obj=(void***)garage;void** vt;void (__thiscall *refresh)(void*);
-    if(!obj)return;vt=*obj;if(!vt)return;
-    refresh=(void (__thiscall *)(void*))vt[0x50/4];
-    if(refresh)refresh(garage);
+    unsigned char* gs=(unsigned char*)garage;
+    void* widget;
+    void** vt;
+    void (__thiscall *refresh)(void*);
+
+    if(!gs)return;
+
+    /* GS_Garage +0x35C is the original GarageBottomBarWidget shared-pair
+       object field.  Calling only its vtable slot 0 keeps the existing
+       garage presentation while Campaign Core remains authoritative. */
+    widget=*(void**)(gs+0x35C);
+    if(!widget)return;
+
+    vt=*(void***)widget;
+    if(!vt)return;
+
+    refresh=(void (__thiscall *)(void*))vt[0];
+    if(refresh)refresh(widget);
 }
 
 int __cdecl CampaignIsOwned(int32_t car_id){ int result;LockState();EnsureLoadedUnlocked();result=IsOwnedUnlocked(car_id);UnlockState();return result; }
