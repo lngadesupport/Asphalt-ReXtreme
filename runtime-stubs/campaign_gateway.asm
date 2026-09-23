@@ -4,6 +4,7 @@
 EXTERN _CampaignCraftInvoke:PROC
 EXTERN _CampaignIsOwned:PROC
 EXTERN _CampaignExecuteCommand:PROC
+EXTERN _CampaignApplyUpgradeBatch:PROC
 EXTERN _CampaignBeginCareerFromPreRequest:PROC
 EXTERN _CampaignFinishCareerFromPostRequest:PROC
 EXTERN _CampaignBeginRaceFromGui:PROC
@@ -16,6 +17,7 @@ CAMPAIGN_COMMAND_MAGIC     EQU 0C0DECA11h
 CAMPAIGN_RACE_BEGIN_MAGIC  EQU 0C0DEB001h
 CAMPAIGN_RACE_FINISH_MAGIC EQU 0C0DEF001h
 CAMPAIGN_CAREER_BEGIN_MAGIC EQU 0C0DEB072h
+CAMPAIGN_UPGRADE_BATCH_MAGIC EQU 0C0DE4401h
 
 .code
 
@@ -44,6 +46,7 @@ ret_null ENDP
 ;   CRAFT   -> GS_Garage*
 ;   OWNED   -> car_id
 ;   COMMAND -> CampaignCommand*
+;   UPGRADE BATCH -> CampaignUpgradeBatchArgs*
 ;   RACE BEGIN/FINISH -> GameModeGUIBase*
 campaign_gateway PROC
     mov eax, DWORD PTR [esp+4]
@@ -65,6 +68,9 @@ campaign_gateway PROC
 
     cmp eax, CAMPAIGN_CAREER_BEGIN_MAGIC
     je campaign_career_begin
+
+    cmp eax, CAMPAIGN_UPGRADE_BATCH_MAGIC
+    je campaign_upgrade_batch
 
     xor eax, eax
     ret 4
@@ -102,6 +108,12 @@ campaign_race_finish:
 campaign_career_begin:
     push ecx
     call _CampaignBeginRaceAdapter
+    add esp, 4
+    ret 4
+
+campaign_upgrade_batch:
+    push ecx
+    call _CampaignApplyUpgradeBatch
     add esp, 4
     ret 4
 campaign_gateway ENDP
