@@ -1,0 +1,13 @@
+﻿{
+    "Phase":  "Campaign Core v1",
+    "Architecture":  "x86",
+    "NoEntry":  true,
+    "StartupRuntime":  false,
+    "CRTDependency":  false,
+    "Host":  "IGPLib_x86.dll",
+    "Trigger":  "GS_Garage::BuildCar -\u003e private IGP gateway",
+    "Ownership":  "owned-id membership -\u003e CampaignIsOwned",
+    "State":  "LocalState\\\\CampaignEdition\\\\campaign_state.bin",
+    "Size":  5632,
+    "SHA256":  "94b52cbc06613cba06b6f016d09af18fa3805ecf0ad87428ae12d7e79617c728"
+}
