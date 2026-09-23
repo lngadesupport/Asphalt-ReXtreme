@@ -29,6 +29,14 @@ def fnv1a(data: bytes) -> int:
     return h
 
 
+def offer_key_hash(key: str) -> int:
+    raw = key.encode("utf-8")
+    if not raw or len(raw) > 512 or b"\\x00" in raw:
+        raise ValueError("offer_key must be 1..512 UTF-8 bytes without NUL")
+    h = fnv1a(raw) & 0x7FFFFFFF
+    return h or 1
+
+
 def load(path: Path) -> list[dict]:
     obj = json.loads(path.read_text(encoding="utf-8-sig"))
     if int(obj.get("schema", 0)) != 1:
@@ -44,7 +52,10 @@ def encode(offers: list[dict]) -> bytes:
     seen = set()
 
     for raw in offers:
-        offer_id = int(raw["offer_id"])
+        if "offer_key" in raw:
+            offer_id = offer_key_hash(str(raw["offer_key"]))
+        else:
+            offer_id = int(raw["offer_id"])
         item_id = int(raw["item_id"])
         quantity = int(raw["quantity"])
         currency_name = str(raw["currency"]).lower()
@@ -63,7 +74,7 @@ def encode(offers: list[dict]) -> bytes:
         if currency_type == CURRENCY["free"] and price != 0:
             raise ValueError("free offers must have price=0")
         if offer_id in seen:
-            raise ValueError(f"duplicate offer_id {offer_id}")
+            raise ValueError(f"duplicate/colliding offer_id {offer_id}")
         seen.add(offer_id)
 
         rows.append((

@@ -6,6 +6,7 @@ EXTERN _CampaignIsOwned:PROC
 EXTERN _CampaignExecuteCommand:PROC
 EXTERN _CampaignApplyUpgradeBatch:PROC
 EXTERN _CampaignApplyLegacyUpgradeSelection:PROC
+EXTERN _CampaignPurchaseLegacyStore:PROC
 EXTERN _CampaignBeginCareerFromPreRequest:PROC
 EXTERN _CampaignFinishCareerFromPostRequest:PROC
 EXTERN _CampaignBeginRaceFromGui:PROC
@@ -20,6 +21,7 @@ CAMPAIGN_RACE_FINISH_MAGIC EQU 0C0DEF001h
 CAMPAIGN_CAREER_BEGIN_MAGIC EQU 0C0DEB072h
 CAMPAIGN_UPGRADE_BATCH_MAGIC EQU 0C0DE4401h
 CAMPAIGN_UPGRADE_LEGACY_MAGIC EQU 0C0DE4402h
+CAMPAIGN_STORE_LEGACY_MAGIC EQU 0C0DE5501h
 
 .code
 
@@ -77,6 +79,9 @@ campaign_gateway PROC
     cmp eax, CAMPAIGN_UPGRADE_LEGACY_MAGIC
     je campaign_upgrade_legacy
 
+    cmp eax, CAMPAIGN_STORE_LEGACY_MAGIC
+    je campaign_store_legacy
+
     xor eax, eax
     ret 4
 
@@ -125,6 +130,12 @@ campaign_upgrade_batch:
 campaign_upgrade_legacy:
     push ecx
     call _CampaignApplyLegacyUpgradeSelection
+    add esp, 4
+    ret 4
+
+campaign_store_legacy:
+    push ecx
+    call _CampaignPurchaseLegacyStore
     add esp, 4
     ret 4
 campaign_gateway ENDP
