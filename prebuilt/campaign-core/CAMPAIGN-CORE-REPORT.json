@@ -1,5 +1,5 @@
 ﻿{
-    "Phase":  "Campaign Core v2",
+    "Phase":  "Campaign Core v3",
     "Architecture":  "x86",
     "NoEntry":  true,
     "StartupRuntime":  false,
@@ -12,6 +12,10 @@
     "State":  "LocalState\\\\CampaignEdition\\\\CampaignSave.dat",
     "Backup":  "LocalState\\\\CampaignEdition\\\\CampaignSave.bak",
     "V1Migration":  true,
+    "V2Migration":  true,
+    "VehicleCatalog":  "CampaignCatalog.dat",
+    "EventCatalog":  "CampaignEvents.dat",
+    "UpgradeCatalog":  "CampaignUpgrades.dat",
     "Size":  17408,
-    "SHA256":  "8900c389e4b8d00c95d553a812067f9f2d071c59bedb3984381dff7229129ca2"
+    "SHA256":  "bf10c9de126b5c8eac76245b567f37fb6edf2e7555946871800fafead93d3491"
 }
