@@ -1,0 +1,15 @@
+﻿{
+    "Phase":  "R17.1 Delayed Core Runtime",
+    "Architecture":  "x86",
+    "Bootstrap":  "IGPLib_x86.dll",
+    "BootstrapNoEntry":  true,
+    "Trigger":  "IGPLib::InitBridgeClass",
+    "Runtime":  "ReXtremeLocalRuntime.dll",
+    "DllMainStartsRuntime":  false,
+    "DelayedStartMilliseconds":  1500,
+    "OverlayUIEnabled":  false,
+    "BuildCarVA":  "0x00A87960",
+    "SelectedCarIdHelperVA":  "0x00D805F0",
+    "BootstrapSHA256":  "23ab77532a1880a8dcecde6031d814898f0e6fd3be8cc0ab2e1c3402051d7952",
+    "RuntimeSHA256":  "129bc4d21dcf9ae24763436d6d159da9facdf49f029963b6d7f2d28f9d760d9d"
+}
