@@ -7,8 +7,10 @@ on:
       - campaign-edition-win32
     paths:
       - "src-reconstructed/campaign-core/CampaignCore.c"
+      - "src-reconstructed/campaign-core/CampaignCore.h"
       - "runtime-stubs/campaign_gateway.asm"
       - "runtime-stubs/IGPLib_x86_campaign.def"
+      - "docs/CAMPAIGN-CORE-V2.md"
       - ".github/workflows/campaign-core.yml"
 
 permissions:
@@ -82,15 +84,19 @@ jobs:
           $size = (Get-Item $dll).Length
 
           [ordered]@{
-            Phase = "Campaign Core v1"
+            Phase = "Campaign Core v2"
             Architecture = "x86"
             NoEntry = $true
             StartupRuntime = $false
             CRTDependency = $false
+            SecondaryLoadLibrary = $false
             Host = "IGPLib_x86.dll"
-            Trigger = "GS_Garage::BuildCar -> private IGP gateway"
-            Ownership = "owned-id membership -> CampaignIsOwned"
-            State = "LocalState\\CampaignEdition\\campaign_state.bin"
+            CommandSelector = "0xC0DECA11"
+            CraftSelector = "0xC0DEC0DE"
+            OwnershipSelector = "0xC0DE0A11"
+            State = "LocalState\\CampaignEdition\\CampaignSave.dat"
+            Backup = "LocalState\\CampaignEdition\\CampaignSave.bak"
+            V1Migration = $true
             Size = $size
             SHA256 = $hash
           } | ConvertTo-Json | Set-Content ".\prebuilt\campaign-core\CAMPAIGN-CORE-REPORT.json" -Encoding UTF8
@@ -105,12 +111,12 @@ jobs:
           git add -f prebuilt/campaign-core/IGPLib_x86.dll prebuilt/campaign-core/CAMPAIGN-CORE-REPORT.json prebuilt/campaign-core/DUMPBIN.txt
           git diff --cached --quiet
           if ($LASTEXITCODE -eq 0) { exit 0 }
-          git commit -m "build: publish Campaign Core v1 [skip ci]"
+          git commit -m "build: publish Campaign Core v2 [skip ci]"
           git push origin "HEAD:$env:GITHUB_REF_NAME"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Campaign-Core-x86
+          name: Campaign-Core-v2-x86
           path: |
             prebuilt/campaign-core/IGPLib_x86.dll
             prebuilt/campaign-core/CAMPAIGN-CORE-REPORT.json

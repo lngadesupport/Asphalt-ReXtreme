@@ -1,102 +1,742 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <stdint.h>
+#include "CampaignCore.h"
 
-#define CAMPAIGN_MAGIC 0x45435852u
-#define CAMPAIGN_VERSION 1u
+#define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
+#define CAMPAIGN_VERSION 2u
+
 #define CAMPAIGN_MAX_OWNED 256u
-#define CAMPAIGN_MAX_INVENTORY 256u
+#define CAMPAIGN_MAX_INVENTORY 512u
+#define CAMPAIGN_MAX_VEHICLE_PARTS 768u
+#define CAMPAIGN_MAX_PROGRESS 512u
 
-typedef struct CampaignInventoryEntry { int32_t item_id; int32_t amount; } CampaignInventoryEntry;
-typedef struct CampaignState {
+#define CAMPAIGN_DEFAULT_CREDITS 50000
+#define CAMPAIGN_DEFAULT_PREMIUM 0
+
+typedef struct CampaignInventoryEntry {
+    int32_t item_id;
+    int32_t amount;
+} CampaignInventoryEntry;
+
+typedef struct CampaignVehiclePartEntry {
+    int32_t car_id;
+    int16_t slot;
+    int16_t level;
+} CampaignVehiclePartEntry;
+
+typedef struct CampaignProgressEntry {
+    int32_t node_id;
+    int16_t state;
+    int16_t stars;
+    int32_t best_time_ms;
+} CampaignProgressEntry;
+
+typedef struct CampaignStateV2 {
+    uint32_t magic;
+    uint32_t version;
+    uint32_t revision;
+    uint32_t flags;
+
+    int32_t credits;
+    int32_t premium_currency;
+    int32_t selected_car_id;
+    int32_t last_acquired_car_id;
+
+    uint32_t craft_count;
+    uint32_t race_count;
+    uint32_t total_stars;
+    uint32_t reserved0;
+
+    uint32_t owned_count;
+    int32_t owned_car_ids[CAMPAIGN_MAX_OWNED];
+
+    uint32_t inventory_count;
+    CampaignInventoryEntry inventory[CAMPAIGN_MAX_INVENTORY];
+
+    uint32_t upgrade_count;
+    CampaignVehiclePartEntry upgrades[CAMPAIGN_MAX_VEHICLE_PARTS];
+
+    uint32_t prokit_count;
+    CampaignVehiclePartEntry prokits[CAMPAIGN_MAX_VEHICLE_PARTS];
+
+    uint32_t progress_count;
+    CampaignProgressEntry progress[CAMPAIGN_MAX_PROGRESS];
+
+    uint32_t checksum;
+} CampaignStateV2;
+
+/* Exact v1 layout for one-time migration. */
+typedef struct CampaignStateV1 {
     uint32_t magic, version, revision, craft_count;
     int32_t credits, premium_currency, last_car_id;
     uint32_t owned_count;
-    int32_t owned_car_ids[CAMPAIGN_MAX_OWNED];
+    int32_t owned_car_ids[256];
     uint32_t inventory_count;
-    CampaignInventoryEntry inventory[CAMPAIGN_MAX_INVENTORY];
+    CampaignInventoryEntry inventory[256];
     uint32_t checksum;
-} CampaignState;
+} CampaignStateV1;
 
-static CampaignState g_state;
+#define CAMPAIGN_V1_MAGIC 0x45435852u
+#define CAMPAIGN_V1_VERSION 1u
+
+static CampaignStateV2 g_state;
+static CampaignStateV2 g_tx_backup;
 static volatile LONG g_lock;
 static volatile LONG g_loaded;
-static WCHAR g_state_path[1024];
+
 static WCHAR g_campaign_dir[1024];
+static WCHAR g_state_path[1024];
+static WCHAR g_tmp_path[1024];
+static WCHAR g_backup_path[1024];
 
-static void LockState(void){ while(InterlockedCompareExchange(&g_lock,1,0)!=0) Sleep(0); }
-static void UnlockState(void){ InterlockedExchange(&g_lock,0); }
-static void ZeroBytes(void* p,uint32_t count){ volatile unsigned char* q=(volatile unsigned char*)p; uint32_t i; for(i=0;i<count;++i)q[i]=0; }
-static void CopyBytes(void* dst,const void* src,uint32_t count){ volatile unsigned char* d=(volatile unsigned char*)dst; const volatile unsigned char* q=(const volatile unsigned char*)src; uint32_t i; for(i=0;i<count;++i)d[i]=q[i]; }
-static uint32_t WideLen(const WCHAR* s){ uint32_t n=0;if(!s)return 0;while(s[n])++n;return n; }
-static int WideAppend(WCHAR* dst,uint32_t cap,const WCHAR* src){ uint32_t a=WideLen(dst),b=0;if(!src||a>=cap)return 0;while(src[b]){if(a+b+1>=cap)return 0;dst[a+b]=src[b];++b;}dst[a+b]=0;return 1; }
-static uint32_t Fnv1a(const unsigned char* data,uint32_t count){ uint32_t h=2166136261u,i;for(i=0;i<count;++i){h^=data[i];h*=16777619u;}return h; }
-static uint32_t StateChecksum(const CampaignState* s){ return Fnv1a((const unsigned char*)s,(uint32_t)(sizeof(CampaignState)-sizeof(uint32_t))); }
-static void InitDefaultState(CampaignState* s){ ZeroBytes(s,(uint32_t)sizeof(*s));s->magic=CAMPAIGN_MAGIC;s->version=CAMPAIGN_VERSION;s->revision=1;s->credits=50000;s->last_car_id=-1;s->checksum=StateChecksum(s); }
+static void LockState(void) {
+    while (InterlockedCompareExchange(&g_lock, 1, 0) != 0) Sleep(0);
+}
 
-static int BuildStatePath(void){
-    WCHAR local[512]; DWORD n;
-    ZeroBytes(local,(uint32_t)sizeof(local));ZeroBytes(g_state_path,(uint32_t)sizeof(g_state_path));ZeroBytes(g_campaign_dir,(uint32_t)sizeof(g_campaign_dir));
-    n=GetEnvironmentVariableW(L"LOCALAPPDATA",local,512);if(n==0||n>=512)return 0;
-    if(!WideAppend(g_campaign_dir,1024,local))return 0;
-    if(!WideAppend(g_campaign_dir,1024,L"\\Packages\\A278AB0D.AsphaltXtreme_h6adky7gbf63m\\LocalState\\CampaignEdition"))return 0;
-    CreateDirectoryW(g_campaign_dir,0);
-    if(!WideAppend(g_state_path,1024,g_campaign_dir))return 0;
-    if(!WideAppend(g_state_path,1024,L"\\campaign_state.bin"))return 0;
+static void UnlockState(void) {
+    InterlockedExchange(&g_lock, 0);
+}
+
+static void ZeroBytes(void* p, uint32_t count) {
+    volatile unsigned char* q = (volatile unsigned char*)p;
+    uint32_t i;
+    for (i = 0; i < count; ++i) q[i] = 0;
+}
+
+static void CopyBytes(void* dst, const void* src, uint32_t count) {
+    volatile unsigned char* d = (volatile unsigned char*)dst;
+    const volatile unsigned char* s = (const volatile unsigned char*)src;
+    uint32_t i;
+    for (i = 0; i < count; ++i) d[i] = s[i];
+}
+
+static uint32_t WideLen(const WCHAR* s) {
+    uint32_t n = 0;
+    if (!s) return 0;
+    while (s[n]) ++n;
+    return n;
+}
+
+static int WideAppend(WCHAR* dst, uint32_t cap, const WCHAR* src) {
+    uint32_t a = WideLen(dst), b = 0;
+    if (!src || a >= cap) return 0;
+    while (src[b]) {
+        if (a + b + 1 >= cap) return 0;
+        dst[a + b] = src[b];
+        ++b;
+    }
+    dst[a + b] = 0;
     return 1;
 }
 
-static int SaveStateUnlocked(void){
-    HANDLE h;DWORD written=0;
-    if(!g_state_path[0]&&!BuildStatePath())return 0;
-    g_state.checksum=StateChecksum(&g_state);
-    h=CreateFileW(g_state_path,GENERIC_WRITE,FILE_SHARE_READ,0,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,0);
-    if(h==INVALID_HANDLE_VALUE)return 0;
-    if(!WriteFile(h,&g_state,(DWORD)sizeof(g_state),&written,0)||written!=(DWORD)sizeof(g_state)){CloseHandle(h);return 0;}
-    FlushFileBuffers(h);CloseHandle(h);return 1;
-}
-
-static void EnsureLoadedUnlocked(void){
-    HANDLE h;DWORD got=0;CampaignState tmp;
-    if(g_loaded)return;
-    InitDefaultState(&g_state);
-    if(BuildStatePath()){
-        ZeroBytes(&tmp,(uint32_t)sizeof(tmp));
-        h=CreateFileW(g_state_path,GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE,0,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0);
-        if(h!=INVALID_HANDLE_VALUE){
-            if(ReadFile(h,&tmp,(DWORD)sizeof(tmp),&got,0)&&got==(DWORD)sizeof(tmp)&&tmp.magic==CAMPAIGN_MAGIC&&tmp.version==CAMPAIGN_VERSION&&tmp.owned_count<=CAMPAIGN_MAX_OWNED&&tmp.inventory_count<=CAMPAIGN_MAX_INVENTORY&&tmp.checksum==StateChecksum(&tmp))CopyBytes(&g_state,&tmp,(uint32_t)sizeof(tmp));
-            CloseHandle(h);
-        }else SaveStateUnlocked();
+static uint32_t Fnv1a(const unsigned char* data, uint32_t count) {
+    uint32_t h = 2166136261u, i;
+    for (i = 0; i < count; ++i) {
+        h ^= data[i];
+        h *= 16777619u;
     }
-    InterlockedExchange(&g_loaded,1);
+    return h;
 }
 
-static int IsOwnedUnlocked(int32_t car_id){ uint32_t i;if(car_id<=0)return 0;for(i=0;i<g_state.owned_count;++i)if(g_state.owned_car_ids[i]==car_id)return 1;return 0; }
-static int AddOwnedUnlocked(int32_t car_id){ if(IsOwnedUnlocked(car_id))return 1;if(g_state.owned_count>=CAMPAIGN_MAX_OWNED)return 0;g_state.owned_car_ids[g_state.owned_count++]=car_id;g_state.last_car_id=car_id;++g_state.craft_count;++g_state.revision;return SaveStateUnlocked(); }
+static uint32_t StateChecksumV2(const CampaignStateV2* s) {
+    return Fnv1a((const unsigned char*)s, (uint32_t)(sizeof(CampaignStateV2) - sizeof(uint32_t)));
+}
 
-static int ResolveSelectedCarId(void* garage){
-    unsigned char* gs=(unsigned char*)garage;void* holder;void* selected;
-    if(!gs)return -1;
-    holder=*(void**)(gs+0x2D4);if(!holder)return -1;
-    selected=*(void**)holder;if(!selected)return -1;
-    return *(int32_t*)((unsigned char*)selected+0xC0);
+static uint32_t StateChecksumV1(const CampaignStateV1* s) {
+    return Fnv1a((const unsigned char*)s, (uint32_t)(sizeof(CampaignStateV1) - sizeof(uint32_t)));
+}
+
+static void InitDefaultState(CampaignStateV2* s) {
+    ZeroBytes(s, (uint32_t)sizeof(*s));
+    s->magic = CAMPAIGN_MAGIC;
+    s->version = CAMPAIGN_VERSION;
+    s->revision = 1;
+    s->credits = CAMPAIGN_DEFAULT_CREDITS;
+    s->premium_currency = CAMPAIGN_DEFAULT_PREMIUM;
+    s->selected_car_id = -1;
+    s->last_acquired_car_id = -1;
+    s->checksum = StateChecksumV2(s);
+}
+
+static int BuildPaths(void) {
+    WCHAR local[512];
+    DWORD n;
+
+    ZeroBytes(local, (uint32_t)sizeof(local));
+    ZeroBytes(g_campaign_dir, (uint32_t)sizeof(g_campaign_dir));
+    ZeroBytes(g_state_path, (uint32_t)sizeof(g_state_path));
+    ZeroBytes(g_tmp_path, (uint32_t)sizeof(g_tmp_path));
+    ZeroBytes(g_backup_path, (uint32_t)sizeof(g_backup_path));
+
+    n = GetEnvironmentVariableW(L"LOCALAPPDATA", local, 512);
+    if (n == 0 || n >= 512) return 0;
+
+    if (!WideAppend(g_campaign_dir, 1024, local)) return 0;
+    if (!WideAppend(g_campaign_dir, 1024, L"\\Packages\\A278AB0D.AsphaltXtreme_h6adky7gbf63m\\LocalState\\CampaignEdition")) return 0;
+    CreateDirectoryW(g_campaign_dir, 0);
+
+    if (!WideAppend(g_state_path, 1024, g_campaign_dir)) return 0;
+    if (!WideAppend(g_state_path, 1024, L"\\CampaignSave.dat")) return 0;
+
+    if (!WideAppend(g_tmp_path, 1024, g_campaign_dir)) return 0;
+    if (!WideAppend(g_tmp_path, 1024, L"\\CampaignSave.tmp")) return 0;
+
+    if (!WideAppend(g_backup_path, 1024, g_campaign_dir)) return 0;
+    if (!WideAppend(g_backup_path, 1024, L"\\CampaignSave.bak")) return 0;
+
+    return 1;
+}
+
+static int WriteWholeFile(const WCHAR* path, const void* data, DWORD size) {
+    HANDLE h;
+    DWORD written = 0;
+
+    h = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+    if (h == INVALID_HANDLE_VALUE) return 0;
+
+    if (!WriteFile(h, data, size, &written, 0) || written != size) {
+        CloseHandle(h);
+        DeleteFileW(path);
+        return 0;
+    }
+
+    FlushFileBuffers(h);
+    CloseHandle(h);
+    return 1;
+}
+
+static int SaveStateUnlocked(void) {
+    int had_current;
+
+    if (!g_state_path[0] && !BuildPaths()) return 0;
+
+    g_state.magic = CAMPAIGN_MAGIC;
+    g_state.version = CAMPAIGN_VERSION;
+    g_state.checksum = StateChecksumV2(&g_state);
+
+    if (!WriteWholeFile(g_tmp_path, &g_state, (DWORD)sizeof(g_state))) return 0;
+
+    had_current = (GetFileAttributesW(g_state_path) != INVALID_FILE_ATTRIBUTES);
+
+    DeleteFileW(g_backup_path);
+    if (had_current) {
+        if (!MoveFileExW(g_state_path, g_backup_path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+            DeleteFileW(g_tmp_path);
+            return 0;
+        }
+    }
+
+    if (!MoveFileExW(g_tmp_path, g_state_path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        if (had_current) {
+            MoveFileExW(g_backup_path, g_state_path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+        }
+        DeleteFileW(g_tmp_path);
+        return 0;
+    }
+
+    return 1;
+}
+
+static int ValidateStateV2(const CampaignStateV2* s) {
+    if (!s) return 0;
+    if (s->magic != CAMPAIGN_MAGIC || s->version != CAMPAIGN_VERSION) return 0;
+    if (s->owned_count > CAMPAIGN_MAX_OWNED) return 0;
+    if (s->inventory_count > CAMPAIGN_MAX_INVENTORY) return 0;
+    if (s->upgrade_count > CAMPAIGN_MAX_VEHICLE_PARTS) return 0;
+    if (s->prokit_count > CAMPAIGN_MAX_VEHICLE_PARTS) return 0;
+    if (s->progress_count > CAMPAIGN_MAX_PROGRESS) return 0;
+    if (s->checksum != StateChecksumV2(s)) return 0;
+    return 1;
+}
+
+static int TryLoadV2(const WCHAR* path, CampaignStateV2* out) {
+    HANDLE h;
+    DWORD got = 0;
+    CampaignStateV2 tmp;
+
+    ZeroBytes(&tmp, (uint32_t)sizeof(tmp));
+
+    h = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    if (h == INVALID_HANDLE_VALUE) return 0;
+
+    if (!ReadFile(h, &tmp, (DWORD)sizeof(tmp), &got, 0) || got != (DWORD)sizeof(tmp)) {
+        CloseHandle(h);
+        return 0;
+    }
+    CloseHandle(h);
+
+    if (!ValidateStateV2(&tmp)) return 0;
+    CopyBytes(out, &tmp, (uint32_t)sizeof(tmp));
+    return 1;
+}
+
+static int TryMigrateV1(void) {
+    WCHAR old_path[1024];
+    HANDLE h;
+    DWORD got = 0;
+    CampaignStateV1 old;
+    uint32_t i;
+
+    ZeroBytes(old_path, (uint32_t)sizeof(old_path));
+    if (!WideAppend(old_path, 1024, g_campaign_dir)) return 0;
+    if (!WideAppend(old_path, 1024, L"\\campaign_state.bin")) return 0;
+
+    ZeroBytes(&old, (uint32_t)sizeof(old));
+    h = CreateFileW(old_path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    if (h == INVALID_HANDLE_VALUE) return 0;
+
+    if (!ReadFile(h, &old, (DWORD)sizeof(old), &got, 0) || got != (DWORD)sizeof(old)) {
+        CloseHandle(h);
+        return 0;
+    }
+    CloseHandle(h);
+
+    if (old.magic != CAMPAIGN_V1_MAGIC ||
+        old.version != CAMPAIGN_V1_VERSION ||
+        old.owned_count > 256u ||
+        old.inventory_count > 256u ||
+        old.checksum != StateChecksumV1(&old)) {
+        return 0;
+    }
+
+    InitDefaultState(&g_state);
+    g_state.revision = old.revision + 1;
+    g_state.credits = old.credits;
+    g_state.premium_currency = old.premium_currency;
+    g_state.last_acquired_car_id = old.last_car_id;
+    g_state.craft_count = old.craft_count;
+
+    g_state.owned_count = old.owned_count;
+    for (i = 0; i < old.owned_count; ++i) g_state.owned_car_ids[i] = old.owned_car_ids[i];
+
+    g_state.inventory_count = old.inventory_count;
+    for (i = 0; i < old.inventory_count; ++i) g_state.inventory[i] = old.inventory[i];
+
+    if (!SaveStateUnlocked()) return 0;
+
+    MoveFileExW(old_path, L"", 0);
+    return 1;
+}
+
+static void EnsureLoadedUnlocked(void) {
+    if (g_loaded) return;
+
+    InitDefaultState(&g_state);
+    if (!BuildPaths()) {
+        InterlockedExchange(&g_loaded, 1);
+        return;
+    }
+
+    if (TryLoadV2(g_state_path, &g_state)) {
+        InterlockedExchange(&g_loaded, 1);
+        return;
+    }
+
+    if (TryLoadV2(g_backup_path, &g_state)) {
+        SaveStateUnlocked();
+        InterlockedExchange(&g_loaded, 1);
+        return;
+    }
+
+    if (TryMigrateV1()) {
+        InterlockedExchange(&g_loaded, 1);
+        return;
+    }
+
+    InitDefaultState(&g_state);
+    SaveStateUnlocked();
+    InterlockedExchange(&g_loaded, 1);
+}
+
+static int IsOwnedUnlocked(int32_t car_id) {
+    uint32_t i;
+    if (car_id <= 0) return 0;
+    for (i = 0; i < g_state.owned_count; ++i) {
+        if (g_state.owned_car_ids[i] == car_id) return 1;
+    }
+    return 0;
+}
+
+static int AddOwnedNoSave(int32_t car_id) {
+    if (car_id <= 0) return 0;
+    if (IsOwnedUnlocked(car_id)) return 1;
+    if (g_state.owned_count >= CAMPAIGN_MAX_OWNED) return 0;
+
+    g_state.owned_car_ids[g_state.owned_count++] = car_id;
+    g_state.last_acquired_car_id = car_id;
+    return 1;
+}
+
+static int FindInventoryIndex(int32_t item_id) {
+    uint32_t i;
+    for (i = 0; i < g_state.inventory_count; ++i) {
+        if (g_state.inventory[i].item_id == item_id) return (int)i;
+    }
+    return -1;
+}
+
+static int InventoryGetUnlocked(int32_t item_id) {
+    int i;
+    if (item_id <= 0) return 0;
+    i = FindInventoryIndex(item_id);
+    return i < 0 ? 0 : g_state.inventory[i].amount;
+}
+
+static int InventoryAddNoSave(int32_t item_id, int32_t amount) {
+    int i;
+    if (item_id <= 0 || amount <= 0) return 0;
+
+    i = FindInventoryIndex(item_id);
+    if (i >= 0) {
+        if (g_state.inventory[i].amount > 0x7FFFFFFF - amount) return 0;
+        g_state.inventory[i].amount += amount;
+        return 1;
+    }
+
+    if (g_state.inventory_count >= CAMPAIGN_MAX_INVENTORY) return 0;
+    g_state.inventory[g_state.inventory_count].item_id = item_id;
+    g_state.inventory[g_state.inventory_count].amount = amount;
+    ++g_state.inventory_count;
+    return 1;
+}
+
+static int InventorySpendNoSave(int32_t item_id, int32_t amount) {
+    int i;
+    if (item_id <= 0 || amount < 0) return 0;
+    if (amount == 0) return 1;
+
+    i = FindInventoryIndex(item_id);
+    if (i < 0 || g_state.inventory[i].amount < amount) return 0;
+
+    g_state.inventory[i].amount -= amount;
+    return 1;
+}
+
+static int FindVehiclePartIndex(CampaignVehiclePartEntry* entries, uint32_t count, int32_t car_id, int16_t slot) {
+    uint32_t i;
+    for (i = 0; i < count; ++i) {
+        if (entries[i].car_id == car_id && entries[i].slot == slot) return (int)i;
+    }
+    return -1;
+}
+
+static int VehiclePartGet(CampaignVehiclePartEntry* entries, uint32_t count, int32_t car_id, int16_t slot) {
+    int i = FindVehiclePartIndex(entries, count, car_id, slot);
+    return i < 0 ? 0 : entries[i].level;
+}
+
+static int VehiclePartSet(CampaignVehiclePartEntry* entries, uint32_t* count, int32_t car_id, int16_t slot, int16_t level) {
+    int i;
+    if (car_id <= 0 || slot < 0 || level < 0) return 0;
+
+    i = FindVehiclePartIndex(entries, *count, car_id, slot);
+    if (i >= 0) {
+        entries[i].level = level;
+        return 1;
+    }
+
+    if (*count >= CAMPAIGN_MAX_VEHICLE_PARTS) return 0;
+    entries[*count].car_id = car_id;
+    entries[*count].slot = slot;
+    entries[*count].level = level;
+    ++(*count);
+    return 1;
+}
+
+static int FindProgressIndex(int32_t node_id) {
+    uint32_t i;
+    for (i = 0; i < g_state.progress_count; ++i) {
+        if (g_state.progress[i].node_id == node_id) return (int)i;
+    }
+    return -1;
+}
+
+static CampaignProgressEntry* GetOrCreateProgress(int32_t node_id) {
+    int i;
+    if (node_id <= 0) return 0;
+
+    i = FindProgressIndex(node_id);
+    if (i >= 0) return &g_state.progress[i];
+
+    if (g_state.progress_count >= CAMPAIGN_MAX_PROGRESS) return 0;
+    i = (int)g_state.progress_count++;
+    g_state.progress[i].node_id = node_id;
+    g_state.progress[i].state = 0;
+    g_state.progress[i].stars = 0;
+    g_state.progress[i].best_time_ms = 0;
+    return &g_state.progress[i];
+}
+
+static int CommitMutationUnlocked(void) {
+    ++g_state.revision;
+    return SaveStateUnlocked();
+}
+
+static int ResolveSelectedCarId(void* garage) {
+    unsigned char* gs = (unsigned char*)garage;
+    void* holder;
+    void* selected;
+
+    if (!gs) return -1;
+    holder = *(void**)(gs + 0x2D4);
+    if (!holder) return -1;
+    selected = *(void**)holder;
+    if (!selected) return -1;
+
+    /*
+      UI adapter only.  The selected vehicle object exposes its stable car id
+      at +0xC0 in this build.  Campaign logic does not trust any ownership,
+      economy or CraftCar state from the object.
+    */
+    return *(int32_t*)((unsigned char*)selected + 0xC0);
 }
 
 extern void __cdecl CampaignInvokeGarageUi(void* widget);
 
-static void RefreshGarageUi(void* garage){
-    unsigned char* gs=(unsigned char*)garage;
+static void RefreshGarageUi(void* garage) {
+    unsigned char* gs = (unsigned char*)garage;
     void* widget;
 
-    if(!gs)return;
-
-    /* GS_Garage +0x35C stores the GarageBottomBarWidget object half of the
-       shared pair.  Assembly performs the UI-only thiscall using ECX. */
-    widget=*(void**)(gs+0x35C);
-    if(!widget)return;
-
+    if (!gs) return;
+    widget = *(void**)(gs + 0x35C);
+    if (!widget) return;
     CampaignInvokeGarageUi(widget);
 }
 
-int __cdecl CampaignIsOwned(int32_t car_id){ int result;LockState();EnsureLoadedUnlocked();result=IsOwnedUnlocked(car_id);UnlockState();return result; }
-int __cdecl CampaignCraftInvoke(void* garage){ int32_t id=ResolveSelectedCarId(garage);int ok;if(id<=0)return 0;LockState();EnsureLoadedUnlocked();ok=AddOwnedUnlocked(id);UnlockState();if(ok)RefreshGarageUi(garage);return ok; }
+int __cdecl CampaignIsOwned(int32_t car_id) {
+    int result;
+    LockState();
+    EnsureLoadedUnlocked();
+    result = IsOwnedUnlocked(car_id);
+    UnlockState();
+    return result;
+}
+
+int __cdecl CampaignCraftInvoke(void* garage) {
+    int32_t id = ResolveSelectedCarId(garage);
+    int ok = 0;
+
+    if (id <= 0) return 0;
+
+    LockState();
+    EnsureLoadedUnlocked();
+
+    CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+    if (AddOwnedNoSave(id)) {
+        ++g_state.craft_count;
+        ok = CommitMutationUnlocked();
+    }
+    if (!ok) CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+
+    UnlockState();
+
+    if (ok) RefreshGarageUi(garage);
+    return ok;
+}
+
+static int ExecuteUnlocked(CampaignCommand* c) {
+    CampaignProgressEntry* p;
+    int result = 0;
+
+    c->status = 0;
+    c->out0 = 0;
+    c->out1 = 0;
+    c->out2 = 0;
+    c->revision = g_state.revision;
+
+    switch (c->op) {
+    case CAMPAIGN_OP_GET_CREDITS:
+        c->out0 = g_state.credits;
+        c->status = 1;
+        return 1;
+
+    case CAMPAIGN_OP_ADD_CREDITS:
+        if (c->a <= 0 || g_state.credits > 0x7FFFFFFF - c->a) return 0;
+        CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+        g_state.credits += c->a;
+        result = CommitMutationUnlocked();
+        break;
+
+    case CAMPAIGN_OP_SPEND_CREDITS:
+        if (c->a < 0 || g_state.credits < c->a) return 0;
+        CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+        g_state.credits -= c->a;
+        result = CommitMutationUnlocked();
+        break;
+
+    case CAMPAIGN_OP_GET_PREMIUM:
+        c->out0 = g_state.premium_currency;
+        c->status = 1;
+        return 1;
+
+    case CAMPAIGN_OP_ADD_PREMIUM:
+        if (c->a <= 0 || g_state.premium_currency > 0x7FFFFFFF - c->a) return 0;
+        CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+        g_state.premium_currency += c->a;
+        result = CommitMutationUnlocked();
+        break;
+
+    case CAMPAIGN_OP_SPEND_PREMIUM:
+        if (c->a < 0 || g_state.premium_currency < c->a) return 0;
+        CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+        g_state.premium_currency -= c->a;
+        result = CommitMutationUnlocked();
+        break;
+
+    case CAMPAIGN_OP_INVENTORY_GET:
+        c->out0 = InventoryGetUnlocked(c->a);
+        c->status = 1;
+        return 1;
+
+    case CAMPAIGN_OP_INVENTORY_ADD:
+        CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+        if (!InventoryAddNoSave(c->a, c->b)) return 0;
+        result = CommitMutationUnlocked();
+        break;
+
+    case CAMPAIGN_OP_INVENTORY_SPEND:
+        CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+        if (!InventorySpendNoSave(c->a, c->b)) return 0;
+        result = CommitMutationUnlocked();
+        break;
+
+    case CAMPAIGN_OP_IS_OWNED:
+        c->out0 = IsOwnedUnlocked(c->a);
+        c->status = 1;
+        return 1;
+
+    case CAMPAIGN_OP_ACQUIRE_CAR:
+        CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+        if (!AddOwnedNoSave(c->a)) return 0;
+        result = CommitMutationUnlocked();
+        break;
+
+    case CAMPAIGN_OP_CRAFT_CAR:
+        /*
+          a = car_id
+          b = blueprint/item id
+          c = required amount
+        */
+        if (c->a <= 0 || c->b <= 0 || c->c < 0) return 0;
+        if (IsOwnedUnlocked(c->a)) {
+            c->status = 1;
+            c->out0 = 1;
+            return 1;
+        }
+
+        CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+        c->out1 = InventoryGetUnlocked(c->b);
+        if (!InventorySpendNoSave(c->b, c->c) || !AddOwnedNoSave(c->a)) return 0;
+        ++g_state.craft_count;
+        result = CommitMutationUnlocked();
+        if (result) {
+            c->out0 = 1;
+            c->out2 = InventoryGetUnlocked(c->b);
+        }
+        break;
+
+    case CAMPAIGN_OP_GET_UPGRADE:
+        c->out0 = VehiclePartGet(g_state.upgrades, g_state.upgrade_count, c->a, (int16_t)c->b);
+        c->status = 1;
+        return 1;
+
+    case CAMPAIGN_OP_SET_UPGRADE:
+        CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+        if (!VehiclePartSet(g_state.upgrades, &g_state.upgrade_count, c->a, (int16_t)c->b, (int16_t)c->c)) return 0;
+        result = CommitMutationUnlocked();
+        break;
+
+    case CAMPAIGN_OP_GET_PROKIT:
+        c->out0 = VehiclePartGet(g_state.prokits, g_state.prokit_count, c->a, (int16_t)c->b);
+        c->status = 1;
+        return 1;
+
+    case CAMPAIGN_OP_SET_PROKIT:
+        CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+        if (!VehiclePartSet(g_state.prokits, &g_state.prokit_count, c->a, (int16_t)c->b, (int16_t)c->c)) return 0;
+        result = CommitMutationUnlocked();
+        break;
+
+    case CAMPAIGN_OP_GET_PROGRESS:
+        p = 0;
+        result = FindProgressIndex(c->a);
+        if (result >= 0) p = &g_state.progress[result];
+        if (p) {
+            c->out0 = p->state;
+            c->out1 = p->stars;
+            c->out2 = p->best_time_ms;
+        }
+        c->status = 1;
+        return 1;
+
+    case CAMPAIGN_OP_SET_PROGRESS:
+        CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+        p = GetOrCreateProgress(c->a);
+        if (!p) return 0;
+        p->state = (int16_t)c->b;
+        if (c->c > p->stars) {
+            g_state.total_stars += (uint32_t)(c->c - p->stars);
+            p->stars = (int16_t)c->c;
+        }
+        if (c->d > 0 && (p->best_time_ms == 0 || c->d < p->best_time_ms)) p->best_time_ms = c->d;
+        result = CommitMutationUnlocked();
+        break;
+
+    case CAMPAIGN_OP_RECORD_RACE:
+        /*
+          a = earned credits
+          b = earned premium currency
+          c = earned stars
+          d = reserved/result flags
+        */
+        if (c->a < 0 || c->b < 0 || c->c < 0) return 0;
+        if (g_state.credits > 0x7FFFFFFF - c->a) return 0;
+        if (g_state.premium_currency > 0x7FFFFFFF - c->b) return 0;
+
+        CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+        g_state.credits += c->a;
+        g_state.premium_currency += c->b;
+        g_state.total_stars += (uint32_t)c->c;
+        ++g_state.race_count;
+        result = CommitMutationUnlocked();
+        break;
+
+    case CAMPAIGN_OP_SAVE:
+        result = SaveStateUnlocked();
+        break;
+
+    case CAMPAIGN_OP_RELOAD:
+        InterlockedExchange(&g_loaded, 0);
+        EnsureLoadedUnlocked();
+        result = 1;
+        break;
+
+    default:
+        return 0;
+    }
+
+    if (!result) {
+        CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+        c->status = 0;
+        c->revision = g_state.revision;
+        return 0;
+    }
+
+    c->status = 1;
+    c->revision = g_state.revision;
+    return 1;
+}
+
+int __cdecl CampaignExecuteCommand(CampaignCommand* command) {
+    int result;
+
+    if (!command || command->size < (uint32_t)sizeof(CampaignCommand)) return 0;
+
+    LockState();
+    EnsureLoadedUnlocked();
+    result = ExecuteUnlocked(command);
+    UnlockState();
+
+    return result;
+}
