@@ -1,0 +1,38 @@
+name: R17 Local Event Runtime
+
+on:
+  push:
+    branches:
+      - r17-local-event-runtime
+  workflow_dispatch:
+
+jobs:
+  build-x86:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build R17 runtime
+        shell: powershell
+        run: |
+          Set-ExecutionPolicy -Scope Process Bypass -Force
+          .\tools\build_r17_local_event_runtime.ps1 -SourceDir .
+
+      - name: Verify output
+        shell: powershell
+        run: |
+          if (-not (Test-Path -LiteralPath ".\RUNTIME_STUBS\IGPLib_x86.dll")) {
+            throw "R17 DLL was not produced."
+          }
+          Get-FileHash -Algorithm SHA256 ".\RUNTIME_STUBS\IGPLib_x86.dll"
+          Get-Content ".\RUNTIME_STUBS\R17-BUILD-REPORT.json"
+
+      - name: Upload R17 runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: R17-LocalEventRuntime-x86
+          path: |
+            RUNTIME_STUBS/IGPLib_x86.dll
+            RUNTIME_STUBS/R17-BUILD-REPORT.json
+          if-no-files-found: error
