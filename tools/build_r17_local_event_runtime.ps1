@@ -46,7 +46,7 @@ if (-not (Test-Path -LiteralPath $def)) { throw "Missing DEF: $def" }
 $vcvars = Resolve-VcVars
 
 $compile = @(
-    'cl.exe /nologo /std:c++17 /O2 /MT /EHsc /LD /DWIN32 /D_WINDOWS',
+    'cl.exe /nologo /std:c++17 /O2 /MT /EHsc /LD /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE',
     ('"{0}"' -f $cpp),
     ('/link /MACHINE:X86 /DEF:"{0}" /OUT:"{1}" /PDB:"{2}" user32.lib gdi32.lib kernel32.lib' -f $def,$outDll,$outPdb)
 ) -join ' '
