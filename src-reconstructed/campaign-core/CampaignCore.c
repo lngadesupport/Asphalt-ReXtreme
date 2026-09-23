@@ -300,6 +300,18 @@ static int WriteWholeFile(const WCHAR* path, const void* data, DWORD size) {
     return 1;
 }
 
+static int IsOwnedUnlocked(int32_t car_id);
+static int ProgressGateUnlocked(int32_t node_id);
+static int RecordEventUnlocked(
+    const CampaignEventDefinition* def,
+    int32_t position,
+    int32_t stars,
+    int32_t finish_time_ms,
+    int32_t* credits_awarded,
+    int32_t* premium_awarded,
+    int32_t* completion_count
+);
+
 static int ValidateRaceSession(const CampaignRaceSession* session) {
     if (!session) return 0;
     if (session->magic != CAMPAIGN_RACE_SESSION_MAGIC) return 0;
