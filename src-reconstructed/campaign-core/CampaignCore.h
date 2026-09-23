@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include "CampaignObjectiveCatalog.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,6 +43,7 @@ enum CampaignCommandOp {
     CAMPAIGN_OP_BEGIN_EVENT_RACE = 72,
     CAMPAIGN_OP_FINISH_EVENT_RACE = 73,
     CAMPAIGN_OP_CANCEL_EVENT_RACE = 74,
+    CAMPAIGN_OP_FINISH_EVENT_RACE_METRICS = 75,
 
     CAMPAIGN_OP_PURCHASE_OFFER = 80,
 
