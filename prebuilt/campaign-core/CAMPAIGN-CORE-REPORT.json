@@ -12,6 +12,6 @@
     "State":  "LocalState\\\\CampaignEdition\\\\CampaignSave.dat",
     "Backup":  "LocalState\\\\CampaignEdition\\\\CampaignSave.bak",
     "V1Migration":  true,
-    "Size":  13312,
-    "SHA256":  "a0c2376b48207fa662df38b601021ba3fa72ab5e0a536119dfb5fcb1793ce9f0"
+    "Size":  17408,
+    "SHA256":  "8900c389e4b8d00c95d553a812067f9f2d071c59bedb3984381dff7229129ca2"
 }
