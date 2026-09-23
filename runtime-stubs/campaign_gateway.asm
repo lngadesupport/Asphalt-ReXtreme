@@ -6,12 +6,14 @@ EXTERN _CampaignIsOwned:PROC
 EXTERN _CampaignExecuteCommand:PROC
 EXTERN _CampaignBeginRaceFromGui:PROC
 EXTERN _CampaignFinishRaceFromGui:PROC
+EXTERN _CampaignBeginRaceAdapter:PROC
 
 CAMPAIGN_CRAFT_MAGIC   EQU 0C0DEC0DEh
 CAMPAIGN_OWNED_MAGIC   EQU 0C0DE0A11h
 CAMPAIGN_COMMAND_MAGIC     EQU 0C0DECA11h
 CAMPAIGN_RACE_BEGIN_MAGIC  EQU 0C0DEB001h
 CAMPAIGN_RACE_FINISH_MAGIC EQU 0C0DEF001h
+CAMPAIGN_CAREER_BEGIN_MAGIC EQU 0C0DEB072h
 
 .code
 
@@ -59,6 +61,9 @@ campaign_gateway PROC
     cmp eax, CAMPAIGN_RACE_FINISH_MAGIC
     je campaign_race_finish
 
+    cmp eax, CAMPAIGN_CAREER_BEGIN_MAGIC
+    je campaign_career_begin
+
     xor eax, eax
     ret 4
 
@@ -89,6 +94,12 @@ campaign_race_begin:
 campaign_race_finish:
     push ecx
     call _CampaignFinishRaceFromGui
+    add esp, 4
+    ret 4
+
+campaign_career_begin:
+    push ecx
+    call _CampaignBeginRaceAdapter
     add esp, 4
     ret 4
 campaign_gateway ENDP
