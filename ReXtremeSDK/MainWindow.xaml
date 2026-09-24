@@ -216,6 +216,22 @@
                                     Cursor="SizeAll" MouseLeftButtonDown="HudElement_MouseLeftButtonDown" MouseMove="HudElement_MouseMove" MouseLeftButtonUp="HudElement_MouseLeftButtonUp">
                                 <TextBlock Text="NITRO ███████░░" Foreground="White" FontWeight="Bold"/>
                             </Border>
+                            <Border x:Name="HudLapElement" Canvas.Left="640" Canvas.Top="24" Padding="10,6" Background="#55303030" BorderBrush="White" BorderThickness="1"
+                                    Cursor="SizeAll" MouseLeftButtonDown="HudElement_MouseLeftButtonDown" MouseMove="HudElement_MouseMove" MouseLeftButtonUp="HudElement_MouseLeftButtonUp">
+                                <TextBlock Text="VOLTA 2/3" Foreground="White" FontWeight="Bold"/>
+                            </Border>
+                            <Border x:Name="HudTimerElement" Canvas.Left="340" Canvas.Top="24" Padding="10,6" Background="#55303030" BorderBrush="White" BorderThickness="1"
+                                    Cursor="SizeAll" MouseLeftButtonDown="HudElement_MouseLeftButtonDown" MouseMove="HudElement_MouseMove" MouseLeftButtonUp="HudElement_MouseLeftButtonUp">
+                                <TextBlock Text="01:42.318" Foreground="White" FontWeight="Bold"/>
+                            </Border>
+                            <Border x:Name="HudMiniMapElement" Canvas.Left="24" Canvas.Top="330" Width="130" Height="100" Background="#332A70A8" BorderBrush="White" BorderThickness="1"
+                                    Cursor="SizeAll" MouseLeftButtonDown="HudElement_MouseLeftButtonDown" MouseMove="HudElement_MouseMove" MouseLeftButtonUp="HudElement_MouseLeftButtonUp">
+                                <TextBlock Text="MINIMAPA" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+                            </Border>
+                            <Border x:Name="HudObjectiveElement" Canvas.Left="24" Canvas.Top="85" Padding="10,6" Background="#55303030" BorderBrush="White" BorderThickness="1"
+                                    Cursor="SizeAll" MouseLeftButtonDown="HudElement_MouseLeftButtonDown" MouseMove="HudElement_MouseMove" MouseLeftButtonUp="HudElement_MouseLeftButtonUp">
+                                <TextBlock Text="OBJETIVO: 3 TAKEDOWNS" Foreground="White" FontWeight="Bold"/>
+                            </Border>
                         </Canvas>
                     </Grid>
                 </TabItem>
