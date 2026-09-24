@@ -30,6 +30,8 @@ on:
       - "src-reconstructed/campaign-core/CampaignCatalog.h"
       - "src-reconstructed/campaign-core/CampaignEventCatalog.c"
       - "src-reconstructed/campaign-core/CampaignEventCatalog.h"
+      - "src-reconstructed/campaign-core/CampaignSpecialEventCatalog.c"
+      - "src-reconstructed/campaign-core/CampaignSpecialEventCatalog.h"
       - "src-reconstructed/campaign-core/CampaignObjectiveCatalog.c"
       - "src-reconstructed/campaign-core/CampaignObjectiveCatalog.h"
       - "src-reconstructed/campaign-core/CampaignChallengeCatalog.c"
@@ -100,6 +102,9 @@ jobs:
           cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignEventCatalog.obj" "src-reconstructed\campaign-core\CampaignEventCatalog.c"
           if errorlevel 1 exit /b 17
 
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignSpecialEventCatalog.obj" "src-reconstructed\campaign-core\CampaignSpecialEventCatalog.c"
+          if errorlevel 1 exit /b 48
+
           cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignObjectiveCatalog.obj" "src-reconstructed\campaign-core\CampaignObjectiveCatalog.c"
           if errorlevel 1 exit /b 20
 
@@ -160,7 +165,7 @@ jobs:
           ml.exe /nologo /c /coff /Fo"prebuilt\campaign-core\campaign_gateway.obj" "runtime-stubs\campaign_gateway.asm"
           if errorlevel 1 exit /b 13
 
-          link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:"runtime-stubs\IGPLib_x86_campaign.def" /out:"prebuilt\campaign-core\IGPLib_x86.dll" "prebuilt\campaign-core\CampaignCore.obj" "prebuilt\campaign-core\CampaignCatalog.obj" "prebuilt\campaign-core\CampaignEventCatalog.obj" "prebuilt\campaign-core\CampaignObjectiveCatalog.obj" "prebuilt\campaign-core\CampaignChallengeCatalog.obj" "prebuilt\campaign-core\CampaignStatistics.obj" "prebuilt\campaign-core\CampaignAchievementCatalog.obj" "prebuilt\campaign-core\CampaignLastResult.obj" "prebuilt\campaign-core\CampaignUpgradeCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeUiMap.obj" "prebuilt\campaign-core\CampaignStoreCatalog.obj" "prebuilt\campaign-core\CampaignStoreAdapter.obj" "prebuilt\campaign-core\CampaignCareerAdapter.obj" "prebuilt\campaign-core\CampaignUpgradeAdapter.obj" "prebuilt\campaign-core\CampaignPresentation.obj" "prebuilt\campaign-core\CampaignPresentationCatalog.obj" "prebuilt\campaign-core\CampaignPresentationBindings.obj" "prebuilt\campaign-core\CampaignPhotoBindings.obj" "prebuilt\campaign-core\CampaignReplayBindings.obj" "prebuilt\campaign-core\CampaignOriginalUiBindings.obj" "prebuilt\campaign-core\CampaignRaceHudBindings.obj" "prebuilt\campaign-core\CampaignRaceHudLayout.obj" "prebuilt\campaign-core\campaign_gateway.obj" kernel32.lib
+          link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:"runtime-stubs\IGPLib_x86_campaign.def" /out:"prebuilt\campaign-core\IGPLib_x86.dll" "prebuilt\campaign-core\CampaignCore.obj" "prebuilt\campaign-core\CampaignCatalog.obj" "prebuilt\campaign-core\CampaignEventCatalog.obj" "prebuilt\campaign-core\CampaignSpecialEventCatalog.obj" "prebuilt\campaign-core\CampaignObjectiveCatalog.obj" "prebuilt\campaign-core\CampaignChallengeCatalog.obj" "prebuilt\campaign-core\CampaignStatistics.obj" "prebuilt\campaign-core\CampaignAchievementCatalog.obj" "prebuilt\campaign-core\CampaignLastResult.obj" "prebuilt\campaign-core\CampaignUpgradeCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeUiMap.obj" "prebuilt\campaign-core\CampaignStoreCatalog.obj" "prebuilt\campaign-core\CampaignStoreAdapter.obj" "prebuilt\campaign-core\CampaignCareerAdapter.obj" "prebuilt\campaign-core\CampaignUpgradeAdapter.obj" "prebuilt\campaign-core\CampaignPresentation.obj" "prebuilt\campaign-core\CampaignPresentationCatalog.obj" "prebuilt\campaign-core\CampaignPresentationBindings.obj" "prebuilt\campaign-core\CampaignPhotoBindings.obj" "prebuilt\campaign-core\CampaignReplayBindings.obj" "prebuilt\campaign-core\CampaignOriginalUiBindings.obj" "prebuilt\campaign-core\CampaignRaceHudBindings.obj" "prebuilt\campaign-core\CampaignRaceHudLayout.obj" "prebuilt\campaign-core\campaign_gateway.obj" kernel32.lib
           if errorlevel 1 exit /b 14
 
           dumpbin.exe /headers /imports "prebuilt\campaign-core\IGPLib_x86.dll" > "prebuilt\campaign-core\DUMPBIN.txt"
@@ -222,6 +227,7 @@ jobs:
           Remove-Item ".\prebuilt\campaign-core\CampaignCore.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignCatalog.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignEventCatalog.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignSpecialEventCatalog.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignObjectiveCatalog.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignChallengeCatalog.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignStatistics.obj" -ErrorAction SilentlyContinue
@@ -295,6 +301,10 @@ jobs:
             V2Migration = $true
             VehicleCatalog = "CampaignCatalog.dat"
             EventCatalog = "CampaignEvents.dat"
+            SpecialEventCatalog = "CampaignSpecialEvents.dat"
+            SpecialEventsReuseCampaignEvents = $true
+            SpecialEventsOnlineBackendRequired = $false
+            SpecialEventsUiRequiresOriginalTemplates = $true
             ObjectiveCatalog = "CampaignObjectives.dat"
             ChallengeCatalog = "CampaignChallenges.dat"
             ChallengeState = "UserData\\CampaignEdition\\ChallengeState.dat"
