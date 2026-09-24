@@ -1,6 +1,6 @@
 {
   "format": "rextreme-photo-bindings",
-  "version": 1,
+  "version": 2,
   "build": "1.7.3.8-x86",
   "rule": "Every Photo camera/HUD semantic requires exact runtime evidence. Free Camera is unavailable until all required semantics are verified.",
   "bindings": []
