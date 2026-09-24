@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "archetypes": [
+    { "id": "buggy", "display_name": "Buggy" },
+    { "id": "rally-car", "display_name": "Rally Car" },
+    { "id": "suv", "display_name": "SUV" },
+    { "id": "muscle-car", "display_name": "Muscle Car" },
+    { "id": "pickup", "display_name": "Pickup" },
+    { "id": "truck", "display_name": "Truck" },
+    { "id": "monster-truck", "display_name": "Monster Truck" }
+  ],
+  "profiles": [],
+  "note": "Archetypes are official Asphalt Xtreme archetypes. Physics profiles remain empty until extracted and verified from the original game data."
+}
