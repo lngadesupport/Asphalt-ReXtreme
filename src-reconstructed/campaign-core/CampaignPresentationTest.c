@@ -110,6 +110,7 @@ int main(void) {
     CampaignPhotoState photo_readback;
     CampaignPresentationDiagnostics diagnostics;
     const WCHAR* replay_path = L"prebuilt\\campaign-core\\presentation-test.rexreplay";
+    WCHAR auto_path[1024];
 
     ZeroMemory(&settings, sizeof(settings));
     ZeroMemory(&loaded, sizeof(loaded));
@@ -124,6 +125,7 @@ int main(void) {
     ZeroMemory(&photo, sizeof(photo));
     ZeroMemory(&photo_readback, sizeof(photo_readback));
     ZeroMemory(&diagnostics, sizeof(diagnostics));
+    ZeroMemory(auto_path, sizeof(auto_path));
 
     if (!CampaignPresentationResetSettings()) return Fail(10);
 
@@ -183,8 +185,14 @@ int main(void) {
     if (info.sample_count != 2 || info.marker_count != 1) return Fail(26);
     if (info.first_time_ms != 100 || info.last_time_ms != 200) return Fail(27);
 
+    DeleteFileW(auto_path);
     DeleteFileW(replay_path);
     if (!CampaignReplaySave(replay_path)) return Fail(28);
+
+    if (!CampaignReplayGetAutoPath(auto_path, 1024)) return Fail(28);
+    DeleteFileW(auto_path);
+    if (!CampaignReplaySaveAuto()) return Fail(28);
+    if (GetFileAttributesW(auto_path) == INVALID_FILE_ATTRIBUTES) return Fail(28);
 
     if (!CampaignReplayClear()) return Fail(29);
     if (!CampaignReplayLoad(replay_path)) return Fail(30);
@@ -312,6 +320,7 @@ int main(void) {
     DeleteFileW(L"prebuilt\\campaign-core\\ReXtremePresentation.dat");
     DeleteFileW(L"prebuilt\\campaign-core\\ReXtremePresentation.tmp");
     DeleteFileW(L"prebuilt\\campaign-core\\ReXtremePresentation.bak");
+    DeleteFileW(auto_path);
     DeleteFileW(L"prebuilt\\campaign-core\\CampaignPresentationOptions.dat");
     DeleteFileW(L"prebuilt\\campaign-core\\ReXtreme.ini");
 
