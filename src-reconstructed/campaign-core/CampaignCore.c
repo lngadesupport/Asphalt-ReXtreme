@@ -8,6 +8,7 @@
 #include "CampaignUpgradeCatalog.h"
 #include "CampaignUpgradeUiMap.h"
 #include "CampaignStoreCatalog.h"
+#include "CampaignPresentation.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
 #define CAMPAIGN_VERSION 3u
@@ -559,6 +560,69 @@ static int BeginEventRaceUnlocked(
     if (!WriteRaceSessionUnlocked(&session)) return 0;
     if (session_id) *session_id = session.session_id;
     return 1;
+}
+
+static int CampaignReplayEnabledUnlocked(void) {
+    CampaignPresentationSettings settings;
+    ZeroBytes(&settings, (uint32_t)sizeof(settings));
+    settings.size = (uint32_t)sizeof(settings);
+    if (!CampaignPresentationGetSettings(&settings)) return 0;
+    return (settings.flags & CAMPAIGN_PRESENTATION_REPLAY_ENABLED) ? 1 : 0;
+}
+
+static void CampaignReplayBeginLifecycleUnlocked(
+    int32_t event_id,
+    int32_t car_id,
+    uint32_t session_id
+) {
+    CampaignReplayMetadata metadata;
+    CampaignReplayMarker marker;
+
+    if (!CampaignReplayEnabledUnlocked()) return;
+
+    /*
+      Capacity is deliberately generous but bounded by CampaignReplayStart().
+      At 30 samples/s, 32768 samples covers ~18 minutes of one-entity capture.
+      The future verified sampling adapter may choose a different density.
+    */
+    if (!CampaignReplayStart(32768u)) return;
+
+    ZeroBytes(&metadata, (uint32_t)sizeof(metadata));
+    metadata.size = (uint32_t)sizeof(metadata);
+    metadata.version = CAMPAIGN_REPLAY_FORMAT_VERSION;
+    metadata.event_id = event_id;
+    metadata.track_id = 0;      /* not mapped yet */
+    metadata.player_car_id = car_id > 0 ? car_id : 0;
+    metadata.race_mode = 0;     /* not mapped yet */
+    metadata.session_id = session_id;
+    CampaignReplaySetMetadata(&metadata);
+
+    ZeroBytes(&marker, (uint32_t)sizeof(marker));
+    marker.time_ms = 0;
+    marker.type = CAMPAIGN_REPLAY_MARKER_START;
+    marker.entity_id = car_id;
+    marker.value = event_id;
+    CampaignReplayAddMarker(&marker);
+}
+
+static void CampaignReplayFinishLifecycleUnlocked(
+    const CampaignRaceMetrics* metrics
+) {
+    CampaignReplayMarker marker;
+
+    if (!metrics) {
+        CampaignReplayStop();
+        return;
+    }
+
+    ZeroBytes(&marker, (uint32_t)sizeof(marker));
+    marker.time_ms = metrics->finish_time_ms > 0 ?
+        (uint32_t)metrics->finish_time_ms : 0u;
+    marker.type = CAMPAIGN_REPLAY_MARKER_FINISH;
+    marker.entity_id = 0;
+    marker.value = metrics->placement;
+    CampaignReplayAddMarker(&marker);
+    CampaignReplayStop();
 }
 
 static int FinishEventRaceUnlocked(
@@ -1776,6 +1840,10 @@ int __cdecl CampaignBeginRaceFromGui(void* game_mode_gui) {
         result = BeginEventRaceUnlocked(event_id, 0, &session_id);
     }
 
+    if (result) {
+        CampaignReplayBeginLifecycleUnlocked(event_id, 0, session_id);
+    }
+
     UnlockState();
     return result ? (int)session_id : 0;
 }
@@ -1796,11 +1864,13 @@ int __cdecl CampaignFinishRaceFromGui(void* game_mode_gui) {
     }
 
     if (!CampaignExtractRaceMetrics(game_mode_gui, &metrics)) {
+        CampaignReplayStop();
         UnlockState();
         return 0;
     }
 
     metrics.session_id = g_race_session_buffer.session_id;
+    CampaignReplayFinishLifecycleUnlocked(&metrics);
 
     CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
     finish_status = FinishEventRaceMetricsUnlocked(&metrics);
