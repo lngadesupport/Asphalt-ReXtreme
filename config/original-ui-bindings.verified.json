@@ -1,0 +1,12 @@
+{
+  "format": "rextreme-original-ui-bindings",
+  "version": 1,
+  "build": "1.7.3.8-x86",
+  "policy": {
+    "original_ui_only": true,
+    "custom_ui_assets_allowed": false,
+    "fallback_if_unmapped": "feature-hidden"
+  },
+  "rule": "Every ReXtreme in-game UI feature must reuse verified original Asphalt Xtreme UI components, assets, typography, animations, sounds and interaction patterns. If an original equivalent is not verified, the feature remains hidden.",
+  "bindings": []
+}
