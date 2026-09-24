@@ -11,7 +11,7 @@ File Type: DLL
 FILE HEADER VALUES
              14C machine (x86)
                4 number of sections
-        6AB54FD1 time date stamp Thu Sep 24 16:29:05 2026
+        6AB55000 time date stamp Thu Sep 24 16:29:52 2026
                0 file pointer to symbol table
                0 number of symbols
               E0 size of optional header
@@ -49,13 +49,13 @@ OPTIONAL HEADER VALUES
             1000 size of heap commit
                0 loader flags
               10 number of directories
-           14B90 [     354] RVA [size] of Export Directory
-           14FE8 [      28] RVA [size] of Import Directory
+           14BB0 [     354] RVA [size] of Export Directory
+           15008 [      28] RVA [size] of Import Directory
                0 [       0] RVA [size] of Resource Directory
                0 [       0] RVA [size] of Exception Directory
                0 [       0] RVA [size] of Certificates Directory
           152000 [    1774] RVA [size] of Base Relocation Directory
-           14B70 [      1C] RVA [size] of Debug Directory
+           14B88 [      1C] RVA [size] of Debug Directory
                0 [       0] RVA [size] of Architecture Directory
                0 [       0] RVA [size] of Global Pointer Directory
                0 [       0] RVA [size] of Thread Storage Directory
@@ -83,8 +83,8 @@ SECTION HEADER #1
 
 SECTION HEADER #2
   .rdata name
-    122E virtual size
-   14000 virtual address (10014000 to 1001522D)
+    124E virtual size
+   14000 virtual address (10014000 to 1001524D)
     1400 size of raw data
    13400 file pointer to raw data (00013400 to 000147FF)
        0 file pointer to relocation table
@@ -99,13 +99,13 @@ SECTION HEADER #2
 
         Time Type        Size      RVA  Pointer
     -------- ------- -------- -------- --------
-    6AB54FD1 coffgrp       DC 00014EFC    142FC
+    6AB55000 coffgrp       DC 00014F1C    1431C
 
   Section contains the following imports:
 
     KERNEL32.dll
               10014000 Import Address Table
-              10015010 Import Name Table
+              10015030 Import Name Table
                      0 time date stamp
                      0 Index of first forwarder reference
 
