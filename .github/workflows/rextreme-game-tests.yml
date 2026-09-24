@@ -11,10 +11,12 @@ on:
       - "tools/build_presentation_binding_catalog.py"
       - "tools/build_photo_binding_catalog.py"
       - "tools/build_replay_binding_catalog.py"
+      - "tools/build_original_ui_binding_catalog.py"
       - "config/presentation-capabilities.verified.json"
       - "config/presentation-bindings.verified.json"
       - "config/photo-bindings.verified.json"
       - "config/replay-bindings.verified.json"
+      - "config/original-ui-bindings.verified.json"
       - "config/replay-frame-binding.verified.json"
       - "config/photo-frame-binding.verified.json"
       - "config/photo-toggle-binding.verified.json"
@@ -24,6 +26,7 @@ on:
       - "tests/test_build_presentation_binding_catalog.py"
       - "tests/test_build_photo_binding_catalog.py"
       - "tests/test_build_replay_binding_catalog.py"
+      - "tests/test_build_original_ui_binding_catalog.py"
       - "tools/audit_original_settings_ui.py"
       - "tools/audit_replay_frame_hooks.py"
       - "tools/audit_replay_transform_bindings.py"
@@ -62,6 +65,7 @@ jobs:
           tests/test_build_presentation_binding_catalog.py
           tests/test_build_photo_binding_catalog.py
           tests/test_build_replay_binding_catalog.py
+          tests/test_build_original_ui_binding_catalog.py
           tests/test_audit_original_settings_ui.py
           tests/test_audit_replay_frame_hooks.py
           tests/test_audit_replay_transform_bindings.py
@@ -126,3 +130,19 @@ jobs:
           if ($r.recording_ready) { throw "Replay recording cannot be ready with an empty catalog" }
           if (-not $r.safe_empty_catalog) { throw "Expected safe empty Replay binding catalog" }
           if ((Get-Item CampaignReplayBindings.dat).Length -ne 28) { throw "Unexpected Replay catalog size" }
+
+      - name: Build safe empty original UI binding catalog
+        run: >
+          python tools/build_original_ui_binding_catalog.py
+          config/original-ui-bindings.verified.json
+          CampaignOriginalUiBindings.dat
+          --report CampaignOriginalUiBindings.report.json
+      - name: Verify original-only UI policy
+        shell: pwsh
+        run: |
+          $r = Get-Content CampaignOriginalUiBindings.report.json -Raw | ConvertFrom-Json
+          if ($r.count -ne 0) { throw "Unverified original UI bindings leaked into runtime catalog" }
+          if (-not $r.original_ui_only) { throw "Original-only UI policy was disabled" }
+          if ($r.custom_ui_assets_allowed) { throw "Custom in-game UI assets must remain forbidden" }
+          if ($r.fallback_if_unmapped -ne "feature-hidden") { throw "Unmapped UI features must remain hidden" }
+          if ((Get-Item CampaignOriginalUiBindings.dat).Length -ne 28) { throw "Unexpected original UI catalog size" }
