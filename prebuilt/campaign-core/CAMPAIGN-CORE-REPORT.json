@@ -35,6 +35,10 @@
     "AchievementCatalog":  "CampaignAchievements.dat",
     "AchievementState":  "UserData\\\\CampaignEdition\\\\AchievementState.dat",
     "AchievementMetricsSource":  "CampaignStatistics-v1",
+    "ChampionshipCatalog":  "CampaignChampionships.dat",
+    "ChampionshipState":  "UserData\\\\CampaignEdition\\\\ChampionshipState.dat",
+    "ChampionshipsReuseCampaignEvents":  true,
+    "ChampionshipsOnlineBackendRequired":  false,
     "AchievementRewards":  "none",
     "AchievementUiRequiresOriginalTemplates":  true,
     "LastRaceResultState":  "UserData\\\\CampaignEdition\\\\LastRaceResult.dat",
@@ -81,5 +85,5 @@
     "RaceHudLayout":  "UserData\\\\RaceHudLayout.dat",
     "RaceHudLayoutPortable":  true,
     "Size":  94720,
-    "SHA256":  "91b7e8e2b7427b740b8ea222bcf33bf27d08bc474c3463a998b11de79b1e2d97"
+    "SHA256":  "15447b6bf0716d7e40491478c0829f32433c1d0f5a1cea1b179115ac278fb9df"
 }
