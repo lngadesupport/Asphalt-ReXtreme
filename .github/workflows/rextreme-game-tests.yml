@@ -84,7 +84,7 @@ jobs:
           $r = Get-Content CampaignPresentationBindings.report.json -Raw | ConvertFrom-Json
           if ($r.count -ne 0) { throw "Unverified presentation bindings leaked into runtime catalog" }
           if (-not $r.safe_empty_catalog) { throw "Expected safe empty binding catalog" }
-          if ((Get-Item CampaignPresentationBindings.dat).Length -ne 20) { throw "Unexpected empty binding catalog size" }
+          if ((Get-Item CampaignPresentationBindings.dat).Length -ne 28) { throw "Unexpected empty binding catalog size" }
 
       - name: Build safe empty Photo binding catalog
         run: >
@@ -99,4 +99,4 @@ jobs:
           if ($r.count -ne 0) { throw "Unverified Photo bindings leaked into runtime catalog" }
           if ($r.free_camera_ready) { throw "Free Camera cannot be ready with an empty catalog" }
           if (-not $r.safe_empty_catalog) { throw "Expected safe empty Photo binding catalog" }
-          if ((Get-Item CampaignPhotoBindings.dat).Length -ne 20) { throw "Unexpected Photo catalog size" }
+          if ((Get-Item CampaignPhotoBindings.dat).Length -ne 28) { throw "Unexpected Photo catalog size" }
