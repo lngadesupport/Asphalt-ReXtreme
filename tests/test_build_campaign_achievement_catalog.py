@@ -28,3 +28,12 @@ def test_unknown_metric_rejected(tmp_path):
  try:mod.build(s,o)
  except mod.AchievementError as e:assert "invalid metric" in str(e)
  else:raise AssertionError("invented metric accepted")
+
+
+def test_zero_threshold_rejected(tmp_path):
+ s=tmp_path/"a.json";o=tmp_path/"out.dat"
+ s.write_text(json.dumps({"format":"rextreme-campaign-achievements","version":1,"achievements":[
+ {"id":1,"metric":"wins","compare":"ge","threshold":0}]}),encoding="utf-8")
+ try:mod.build(s,o)
+ except mod.AchievementError as e:assert "threshold must be > 0" in str(e)
+ else:raise AssertionError("zero-threshold achievement accepted")
