@@ -5,6 +5,7 @@ Set-StrictMode -Version Latest
 if([string]::IsNullOrWhiteSpace($ProjectRoot)){
   $ProjectRoot=(Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 }else{
+  $ProjectRoot=$ProjectRoot.Trim().Trim('"').TrimEnd('\')
   $ProjectRoot=(Resolve-Path -LiteralPath $ProjectRoot).Path
 }
 
