@@ -787,6 +787,7 @@ int main(void) {
         !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_ACHIEVEMENTS)) return Fail(121);
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_RESULTS)) return Fail(144);
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_PROFILE)) return Fail(161);
+    if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_SPECIAL_EVENTS)) return Fail(162);
     if (CampaignOriginalUiBindingsResolve("ui.button") != (void*)&g_test_ui_targets[4]) return Fail(122);
 
     if (CampaignRaceHudBindingsCount() != 0) return Fail(123);
