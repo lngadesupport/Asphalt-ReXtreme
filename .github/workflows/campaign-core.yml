@@ -204,6 +204,9 @@ jobs:
             ReplayFrameSelector = "0xC0DEB002"
             ReplayFrameBindingRegistry = "config/replay-frame-binding.verified.json"
             ReplayFrameBindingVerified = $false
+            PhotoFrameSelector = "0xC0DEB003"
+            PhotoFrameBindingRegistry = "config/photo-frame-binding.verified.json"
+            PhotoFrameBindingVerified = $false
             PresentationSettings = "ReXtremePresentation.dat"
             ReplayFormat = ".rexreplay"
             ReplayRuntimeFoundation = $true
