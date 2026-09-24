@@ -16,6 +16,7 @@
 #include "CampaignChallengeCatalog.h"
 #include "CampaignStatistics.h"
 #include "CampaignAchievementCatalog.h"
+#include "CampaignLastResult.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
 #define CAMPAIGN_VERSION 3u
@@ -2020,6 +2021,12 @@ int __cdecl CampaignFinishRaceFromGui(void* game_mode_gui) {
             DeleteFileW(g_race_session_consuming_path);
             /* Challenge sidecar is secondary: a failure never invalidates the race commit. */
             CampaignChallengesOnRace(g_race_session_buffer.event_id, &metrics);
+            CampaignLastResultRecord(
+                g_race_session_buffer.event_id,
+                g_race_session_buffer.car_id > 0 ? g_race_session_buffer.car_id : 0,
+                &metrics,
+                g_state.revision
+            );
             if (CampaignStatisticsRecordRace(&metrics)) {
                 CampaignAchievementsRefresh();
             }
@@ -2402,6 +2409,12 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             DeleteFileW(g_race_session_consuming_path);
             /* Only full metric finishes contribute to Challenges. */
             CampaignChallengesOnRace(g_race_session_buffer.event_id, metrics);
+            CampaignLastResultRecord(
+                g_race_session_buffer.event_id,
+                g_race_session_buffer.car_id > 0 ? g_race_session_buffer.car_id : 0,
+                metrics,
+                g_state.revision
+            );
             if (CampaignStatisticsRecordRace(metrics)) {
                 CampaignAchievementsRefresh();
             }
@@ -2699,6 +2712,65 @@ static int ExecuteUnlocked(CampaignCommand* c) {
         c->status = 1;
         c->revision = g_state.revision;
         return 1;
+
+    case CAMPAIGN_OP_GET_LAST_RESULT:
+        {
+            CampaignLastResultSnapshot result_snapshot;
+            const CampaignRaceMetrics* metrics;
+            ZeroBytes(&result_snapshot, (uint32_t)sizeof(result_snapshot));
+            result_snapshot.size = (uint32_t)sizeof(result_snapshot);
+            if (!CampaignLastResultGet(&result_snapshot)) return 0;
+            metrics = &result_snapshot.metrics;
+
+            switch (c->a) {
+            case CAMPAIGN_LAST_RESULT_IDENTITY:
+                c->out0 = result_snapshot.event_id;
+                c->out1 = result_snapshot.car_id;
+                c->out2 = (int32_t)result_snapshot.session_id;
+                break;
+            case CAMPAIGN_LAST_RESULT_RACE:
+                c->out0 = metrics->placement;
+                c->out1 = metrics->finish_time_ms;
+                c->out2 = metrics->stars_awarded;
+                break;
+            case CAMPAIGN_LAST_RESULT_REWARDS:
+                c->out0 = metrics->credits_awarded;
+                c->out1 = metrics->premium_awarded;
+                c->out2 = metrics->completion_count;
+                break;
+            case CAMPAIGN_LAST_RESULT_OBJECTIVES:
+                c->out0 = metrics->achieved_mask;
+                c->out1 = metrics->stars_awarded;
+                c->out2 = (int32_t)result_snapshot.campaign_revision;
+                break;
+            case CAMPAIGN_LAST_RESULT_MOVEMENT:
+                c->out0 = metrics->drift_meters;
+                c->out1 = metrics->air_time_ms;
+                c->out2 = metrics->nitro_time_ms;
+                break;
+            case CAMPAIGN_LAST_RESULT_DESTRUCTION:
+                c->out0 = metrics->wrecked_cars;
+                c->out1 = metrics->wrecked_environment;
+                c->out2 = metrics->wrecks_made;
+                break;
+            case CAMPAIGN_LAST_RESULT_STUNTS:
+                c->out0 = metrics->flat_spins;
+                c->out1 = metrics->barrel_rolls;
+                c->out2 = metrics->obstacles_broken;
+                break;
+            case CAMPAIGN_LAST_RESULT_NITRO:
+                c->out0 = metrics->nitro_all_in;
+                c->out1 = metrics->nitro_chain;
+                c->out2 = metrics->nitro_normal;
+                break;
+            default:
+                return 0;
+            }
+
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
 
     case CAMPAIGN_OP_GET_PROFILE_SUMMARY:
         switch (c->a) {
