@@ -148,10 +148,17 @@ def main() -> int:
     ]
     for name in required:
         p = pkg / name
+        count = None
+        if p.is_file() and p.stat().st_size >= 12:
+            try:
+                count = struct.unpack_from("<I", p.read_bytes(), 8)[0]
+            except Exception:
+                count = None
         report["data"][name] = {
             "exists": p.is_file(),
             "size": p.stat().st_size if p.is_file() else 0,
             "sha256": sha(p) if p.is_file() else None,
+            "entry_count": count,
         }
 
     for name in ("CampaignCatalog.dat", "CampaignEvents.dat", "CampaignObjectives.dat", "CampaignUpgrades.dat"):
@@ -159,7 +166,18 @@ def main() -> int:
             report["blocking"].append(f"{name} missing")
 
     if ams.is_file():
-        report["patches"] = patch_status(root, ams.read_bytes())
+        ams_data = ams.read_bytes()
+        report["patches"] = patch_status(root, ams_data)
+        offline_off = 0x00BACDD0
+        offline_expected = bytes.fromhex("31 C0 C3 90 90 90 90")
+        report["service_retirement"] = {
+            "global_is_online_false": bytes_at(
+                ams_data, offline_off, len(offline_expected)
+            ) == offline_expected,
+            "global_is_online_file_offset": f"0x{offline_off:08X}",
+        }
+        if not report["service_retirement"]["global_is_online_false"]:
+            report["blocking"].append("Global IsOnline FALSE patch missing")
 
     runtime_dll = pkg / "ReXtremeLocalRuntime.dll"
     report["runtime_hygiene"] = {
@@ -179,13 +197,23 @@ def main() -> int:
         "garage": "READY" if report["patches"].get("garage", {}).get("ready") else "NOT_APPLIED",
         "career": "READY" if report["patches"].get("career", {}).get("ready") else "NOT_APPLIED",
         "upgrade": (
-            "READY" if report["patches"].get("upgrade", {}).get("ready")
-            else "BLOCKED_DATA" if not report["data"]["CampaignUpgradeUiMap.dat"]["exists"]
+            "READY"
+            if report["patches"].get("upgrade", {}).get("ready")
+               and (report["data"]["CampaignUpgradeUiMap.dat"]["entry_count"] or 0) > 0
+            else "BLOCKED_DATA"
+            if not report["data"]["CampaignUpgradeUiMap.dat"]["exists"]
+               or (report["data"]["CampaignUpgradeUiMap.dat"]["entry_count"] or 0) == 0
             else "NOT_APPLIED"
         ),
         "store": (
-            "READY" if report["patches"].get("store", {}).get("ready")
-            else "BLOCKED_DATA" if not report["data"]["CampaignStore.dat"]["exists"]
+            "READY"
+            if report["patches"].get("store", {}).get("ready")
+               and (report["data"]["CampaignStore.dat"]["entry_count"] or 0) > 0
+            else "MONETIZATION_RETIRED"
+            if report["patches"].get("store", {}).get("ready")
+               and (report["data"]["CampaignStore.dat"]["entry_count"] or 0) == 0
+            else "BLOCKED_DATA"
+            if not report["data"]["CampaignStore.dat"]["exists"]
             else "NOT_APPLIED"
         ),
     }
