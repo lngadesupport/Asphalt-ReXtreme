@@ -54,4 +54,24 @@ public sealed class RxMusicCatalog
     [JsonPropertyName("tracks")] public List<RxMusicTrack> Tracks { get; set; } = [];
 }
 
+public sealed class RxHudLayout
+{
+    [JsonPropertyName("schema_version")] public int SchemaVersion { get; set; } = 1;
+    [JsonPropertyName("id")] public string Id { get; set; } = "";
+    [JsonPropertyName("base")] public string Base { get; set; } = "original";
+    [JsonPropertyName("components")] public List<RxHudComponent> Components { get; set; } = [];
+}
+
+public sealed class RxHudComponent
+{
+    [JsonPropertyName("id")] public string Id { get; set; } = "";
+    [JsonPropertyName("type")] public string Type { get; set; } = "";
+    [JsonPropertyName("anchor")] public string Anchor { get; set; } = "top-left";
+    [JsonPropertyName("x")] public double X { get; set; }
+    [JsonPropertyName("y")] public double Y { get; set; }
+    [JsonPropertyName("scale")] public double Scale { get; set; } = 1;
+    [JsonPropertyName("opacity")] public double Opacity { get; set; } = 1;
+    [JsonPropertyName("binding")] public string? Binding { get; set; }
+}
+
 public sealed record ValidationMessage(string Level, string Code, string Message, string? Path = null);
