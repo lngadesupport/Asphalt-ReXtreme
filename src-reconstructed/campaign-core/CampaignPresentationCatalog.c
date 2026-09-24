@@ -17,6 +17,7 @@ static CampaignPresentationCapability g_entries[CAMPAIGN_PRESENTATION_CAPABILITY
 static CampaignPresentationCapability g_load_entries[CAMPAIGN_PRESENTATION_CAPABILITY_MAX];
 static uint32_t g_count;
 static volatile LONG g_loaded;
+static WCHAR g_options_ini_path[1024];
 
 static void ZeroBytes(void* p, uint32_t count) {
     volatile unsigned char* q = (volatile unsigned char*)p;
@@ -32,6 +33,82 @@ static int StringEqual(const char* a, const char* b) {
         ++i;
     }
     return a[i] == 0 && b[i] == 0;
+}
+
+static int AsciiToWide(const char* src, WCHAR* dst, uint32_t cap) {
+    uint32_t i = 0;
+    if (!src || !dst || cap == 0) return 0;
+    while (src[i]) {
+        unsigned char ch = (unsigned char)src[i];
+        if (ch > 0x7F || i + 1 >= cap) return 0;
+        dst[i] = (WCHAR)ch;
+        ++i;
+    }
+    dst[i] = 0;
+    return 1;
+}
+
+static int IntToWide(int32_t value, WCHAR* dst, uint32_t cap) {
+    WCHAR temp[32];
+    uint32_t count = 0;
+    uint32_t out = 0;
+    uint32_t magnitude;
+    int negative = value < 0;
+
+    if (!dst || cap < 2) return 0;
+
+    if (negative) {
+        magnitude = (uint32_t)(-(value + 1));
+        ++magnitude;
+    } else {
+        magnitude = (uint32_t)value;
+    }
+
+    do {
+        if (count >= 31) return 0;
+        temp[count++] = (WCHAR)(L'0' + (magnitude % 10u));
+        magnitude /= 10u;
+    } while (magnitude != 0);
+
+    if (negative) {
+        if (out + 1 >= cap) return 0;
+        dst[out++] = L'-';
+    }
+
+    while (count > 0) {
+        if (out + 1 >= cap) return 0;
+        dst[out++] = temp[--count];
+    }
+    dst[out] = 0;
+    return 1;
+}
+
+static int BuildOptionsIniPath(void) {
+    DWORD n;
+    int i;
+
+    if (g_options_ini_path[0]) return 1;
+    ZeroBytes(g_options_ini_path, (uint32_t)sizeof(g_options_ini_path));
+
+    n = GetModuleFileNameW(0, g_options_ini_path, 1024);
+    if (n == 0 || n >= 1024) return 0;
+
+    i = (int)n - 1;
+    while (i >= 0 && g_options_ini_path[i] != L'\\' && g_options_ini_path[i] != L'/') --i;
+    if (i < 0) return 0;
+    g_options_ini_path[i + 1] = 0;
+
+    {
+        static const WCHAR suffix[] = L"ReXtreme.ini";
+        uint32_t pos = (uint32_t)(i + 1);
+        uint32_t j = 0;
+        while (suffix[j]) {
+            if (pos + 1 >= 1024) return 0;
+            g_options_ini_path[pos++] = suffix[j++];
+        }
+        g_options_ini_path[pos] = 0;
+    }
+    return 1;
 }
 
 static int BuildCatalogPath(WCHAR* out, uint32_t cap) {
@@ -185,4 +262,84 @@ const CampaignPresentationCapability* CampaignPresentationCatalogFind(const char
         if (StringEqual(g_entries[i].id, id)) return &g_entries[i];
     }
     return 0;
+}
+
+int CampaignPresentationCapabilityValueValid(
+    const CampaignPresentationCapability* capability,
+    int32_t value
+) {
+    int32_t delta;
+
+    if (!capability) return 0;
+    if (!(capability->flags & CAMPAIGN_PRESENTATION_CAPABILITY_VERIFIED)) return 0;
+    if (value < capability->minimum || value > capability->maximum) return 0;
+
+    if (capability->step > 0) {
+        delta = value - capability->minimum;
+        if ((delta % capability->step) != 0) return 0;
+    }
+    return 1;
+}
+
+int CampaignPresentationCatalogGetValue(uint32_t index, int32_t* out_value) {
+    const CampaignPresentationCapability* capability;
+    WCHAR key[CAMPAIGN_PRESENTATION_CAPABILITY_ID_MAX];
+    int value;
+
+    if (!out_value) return 0;
+    capability = CampaignPresentationCatalogGet(index);
+    if (!capability) return 0;
+    if (!BuildOptionsIniPath()) return 0;
+    if (!AsciiToWide(capability->id, key, CAMPAIGN_PRESENTATION_CAPABILITY_ID_MAX)) return 0;
+
+    value = GetPrivateProfileIntW(
+        L"VerifiedPresentation",
+        key,
+        capability->original_value,
+        g_options_ini_path
+    );
+
+    if (!CampaignPresentationCapabilityValueValid(capability, value)) {
+        value = capability->original_value;
+    }
+
+    *out_value = value;
+    return 1;
+}
+
+int CampaignPresentationCatalogSetValue(uint32_t index, int32_t value) {
+    const CampaignPresentationCapability* capability;
+    WCHAR key[CAMPAIGN_PRESENTATION_CAPABILITY_ID_MAX];
+    WCHAR text[32];
+
+    capability = CampaignPresentationCatalogGet(index);
+    if (!capability) return 0;
+    if (!CampaignPresentationCapabilityValueValid(capability, value)) return 0;
+    if (!BuildOptionsIniPath()) return 0;
+    if (!AsciiToWide(capability->id, key, CAMPAIGN_PRESENTATION_CAPABILITY_ID_MAX)) return 0;
+    if (!IntToWide(value, text, 32)) return 0;
+
+    return WritePrivateProfileStringW(
+        L"VerifiedPresentation",
+        key,
+        text,
+        g_options_ini_path
+    ) ? 1 : 0;
+}
+
+int CampaignPresentationCatalogResetValue(uint32_t index) {
+    const CampaignPresentationCapability* capability;
+    WCHAR key[CAMPAIGN_PRESENTATION_CAPABILITY_ID_MAX];
+
+    capability = CampaignPresentationCatalogGet(index);
+    if (!capability) return 0;
+    if (!BuildOptionsIniPath()) return 0;
+    if (!AsciiToWide(capability->id, key, CAMPAIGN_PRESENTATION_CAPABILITY_ID_MAX)) return 0;
+
+    return WritePrivateProfileStringW(
+        L"VerifiedPresentation",
+        key,
+        0,
+        g_options_ini_path
+    ) ? 1 : 0;
 }
