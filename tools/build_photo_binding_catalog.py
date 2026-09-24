@@ -8,9 +8,9 @@ import struct
 from pathlib import Path
 
 MAGIC = 0x48505852  # RXPH
-VERSION = 1
+VERSION = 2
 MAX_ENTRIES = 32
-HEADER = struct.Struct("<IIIII")
+HEADER = struct.Struct("<IIIIIII")
 ENTRY = struct.Struct("<IIIiIiI")
 
 SEMANTICS = {
@@ -65,6 +65,21 @@ def load_source(path: Path) -> dict:
     if len(bindings) > MAX_ENTRIES:
         raise PhotoBindingError(f"too many bindings: {len(bindings)}")
     return data
+
+
+def target_fingerprint(data: dict, binding_count: int) -> tuple[int, int]:
+    target = data.get("target_pe")
+    if binding_count == 0 and target is None:
+        return 0, 0
+    if not isinstance(target, dict):
+        raise PhotoBindingError("non-empty Photo bindings require target_pe fingerprint")
+    stamp = parse_int(target.get("time_date_stamp"), "target_pe.time_date_stamp")
+    size = parse_int(target.get("size_of_image"), "target_pe.size_of_image")
+    if not 0 < stamp <= 0xFFFFFFFF:
+        raise PhotoBindingError("target_pe.time_date_stamp must be non-zero uint32")
+    if not 0 < size <= 0xFFFFFFFF:
+        raise PhotoBindingError("target_pe.size_of_image must be non-zero uint32")
+    return stamp, size
 
 
 def normalize(raw: dict, seen: set[int]) -> tuple:
@@ -132,8 +147,17 @@ def build(source: Path, output: Path, report: Path | None = None) -> dict:
         semantics.append(raw["semantic"])
 
     body = b"".join(packed)
+    stamp, size_of_image = target_fingerprint(data, len(packed))
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_bytes(HEADER.pack(MAGIC, VERSION, len(packed), ENTRY.size, fnv1a(body)) + body)
+    output.write_bytes(HEADER.pack(
+        MAGIC,
+        VERSION,
+        len(packed),
+        ENTRY.size,
+        fnv1a(body),
+        stamp,
+        size_of_image,
+    ) + body)
 
     required = {"position_x", "position_y", "position_z", "pitch", "yaw", "roll", "hud_visible"}
     summary = {
@@ -143,6 +167,10 @@ def build(source: Path, output: Path, report: Path | None = None) -> dict:
         "count": len(packed),
         "entry_size": ENTRY.size,
         "binding_semantics": semantics,
+        "target_pe": {
+            "time_date_stamp": stamp,
+            "size_of_image": size_of_image,
+        },
         "free_camera_ready": required.issubset(set(semantics)),
         "safe_empty_catalog": len(packed) == 0,
         "output": str(output),
