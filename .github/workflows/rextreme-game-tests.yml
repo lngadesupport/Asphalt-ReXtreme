@@ -15,6 +15,7 @@ on:
       - "config/photo-bindings.verified.json"
       - "config/replay-frame-binding.verified.json"
       - "config/photo-frame-binding.verified.json"
+      - "config/photo-toggle-binding.verified.json"
       - "tests/test_campaign_rebuilder.py"
       - "tests/test_audit_presentation_capabilities.py"
       - "tests/test_build_presentation_capability_catalog.py"
@@ -24,10 +25,12 @@ on:
       - "tools/audit_replay_frame_hooks.py"
       - "tools/apply_replay_frame_binding.py"
       - "tools/apply_photo_frame_binding.py"
+      - "tools/apply_photo_toggle_binding.py"
       - "tests/test_audit_original_settings_ui.py"
       - "tests/test_audit_replay_frame_hooks.py"
       - "tests/test_apply_replay_frame_binding.py"
       - "tests/test_apply_photo_frame_binding.py"
+      - "tests/test_apply_photo_toggle_binding.py"
       - ".github/workflows/rextreme-game-tests.yml"
   workflow_dispatch:
 
@@ -57,6 +60,7 @@ jobs:
           tests/test_audit_replay_frame_hooks.py
           tests/test_apply_replay_frame_binding.py
           tests/test_apply_photo_frame_binding.py
+          tests/test_apply_photo_toggle_binding.py
       - name: Build safe empty presentation catalog
         run: >
           python tools/build_presentation_capability_catalog.py
