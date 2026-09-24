@@ -21,6 +21,8 @@
     "SpecialEventCatalog":  "CampaignSpecialEvents.dat",
     "SpecialEventsReuseCampaignEvents":  true,
     "SpecialEventsOnlineBackendRequired":  false,
+    "SpecialEventRotatingProgressState":  "UserData\\\\CampaignEdition\\\\SpecialEventPeriodState.dat",
+    "SpecialEventDailyWeeklyMonthlyReset":  true,
     "SpecialEventsUiRequiresOriginalTemplates":  true,
     "ObjectiveCatalog":  "CampaignObjectives.dat",
     "ChallengeCatalog":  "CampaignChallenges.dat",
@@ -78,6 +80,6 @@
     "RaceHudNewWidgetsAllowed":  false,
     "RaceHudLayout":  "UserData\\\\RaceHudLayout.dat",
     "RaceHudLayoutPortable":  true,
-    "Size":  90112,
-    "SHA256":  "fae1523e933807d9835f3e3d6ec537faf20eff0784a02198e2ec5fb3e2afdd15"
+    "Size":  94720,
+    "SHA256":  "91b7e8e2b7427b740b8ea222bcf33bf27d08bc474c3463a998b11de79b1e2d97"
 }
