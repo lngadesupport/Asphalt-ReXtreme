@@ -45,6 +45,7 @@ static int BuildCatalogPath(void) {
     ZeroBytes(g_event_catalog_path, (uint32_t)sizeof(g_event_catalog_path));
 
     module = GetModuleHandleW(L"IGPLib_x86.dll");
+    if (!module) module = GetModuleHandleW(0);
     if (!module) return 0;
 
     n = GetModuleFileNameW(module, g_event_catalog_path, 1024);
