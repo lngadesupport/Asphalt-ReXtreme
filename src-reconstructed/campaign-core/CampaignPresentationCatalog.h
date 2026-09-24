@@ -31,9 +31,11 @@ typedef struct CampaignPresentationCapability {
 
 int CampaignPresentationCatalogLoad(void);
 uint32_t CampaignPresentationCatalogCount(void);
+uint32_t CampaignPresentationCatalogRuntimeReadyCount(void);
 const CampaignPresentationCapability* CampaignPresentationCatalogGet(uint32_t index);
 const CampaignPresentationCapability* CampaignPresentationCatalogFind(const char* id);
 int CampaignPresentationCapabilityValueValid(const CampaignPresentationCapability* capability, int32_t value);
+int CampaignPresentationCapabilityRuntimeReady(uint32_t index);
 int CampaignPresentationCatalogGetValue(uint32_t index, int32_t* out_value);
 int CampaignPresentationCatalogSetValue(uint32_t index, int32_t value);
 int CampaignPresentationCatalogResetValue(uint32_t index);
