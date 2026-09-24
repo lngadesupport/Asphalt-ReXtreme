@@ -24,14 +24,14 @@ if(-not(Test-Path -LiteralPath (Join-Path $ProjectRoot "_PACKAGE_PHASE5\AMS.exe"
 $raw="https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme"
 $files=@(
   @{Commit="f87c87f03fb493e232ab0d196887323522ba7f74"; Path="tools/campaign_frontend_boot_v1.py"},
-  @{Commit="9c3992953503a05daf8071ad0a281abe6f7d0347"; Path="tools/campaign_frontend_garage_v3.py"},
-  @{Commit="ee59523ea382e9af732aaaffc2c05c0fee5bca89"; Path="tools/test_frontend_only_v2.ps1"},
+  @{Commit="c21b537a97c75706ebfe4b2152857bf256e2ff07"; Path="tools/campaign_frontend_garage_v4.py"},
+  @{Commit="70123ffca16607292232d4a2155af768c676f81b"; Path="tools/test_frontend_only_v2.ps1"},
   @{Commit="4cd77ca30e43796c925eff48df961d166ad63457"; Path="tools/campaign_career_adapter_v3.py"},
   @{Commit="e20ac2b853e71220e4eb2ef66bd3c77872cc0ff6"; Path="tools/campaign_career_adapter_v2.py"},
   @{Commit="e9b74d4acfb10b61031032603b441d3348a00618"; Path="tools/read_garage_trace.ps1"},
   @{Commit="f6e19872390977cbae62b4acb0d6e0acfc664566"; Path="tools/read_garage_ui_trace.ps1"},
   @{Commit="573595ec0346701e960ef4b2d7971268940723a8"; Path="READ-MONTAR-TRACE.cmd"},
-  @{Commit="b20a3e1f3654c2a5e6721cfe7535506e66dabb45"; Path="prebuilt/campaign-core/IGPLib_x86.dll"},
+  @{Commit="262b87ae9d6f36d905acb5986d1a024708381513"; Path="prebuilt/campaign-core/IGPLib_x86.dll"},
   @{Commit="9a912f2335ed1eb6cc61f568916862a602865fa8"; Path="config/OFFLINE-AUTHORITY.json"},
   @{Commit="ae1e424688ee2040b0da19f6af75f78adb57b5fb"; Path="tools/audit_offline_authority.py"},
   @{Commit="ac1d30cc3e0e347d482b1d33ed2968d2d48aedbd"; Path="tools/map_online_surface.py"}
@@ -51,7 +51,7 @@ foreach($f in $files){
 }
 
 $core=Join-Path $ProjectRoot "prebuilt\campaign-core\IGPLib_x86.dll"
-$expected="59a437bc8575ad6a34309c57687cec9247bda1fabddc4baa4bdfc95aedb312a6"
+$expected="08e13caaac423b196201a6b6fb5605438230e6600b638276f88565f0884829aa"
 $got=(Get-FileHash -LiteralPath $core -Algorithm SHA256).Hash.ToLowerInvariant()
 if($got-ne$expected){
   throw "Campaign Core SHA256 mismatch. Expected $expected got $got"
@@ -64,13 +64,14 @@ Write-Host "============================================================" -Foreg
 Write-Host ("Campaign Core SHA256: "+$got)
 Write-Host "Generic ownership primitive: untouched"
 Write-Host "Startup authority: CampaignStartupService"
-Write-Host "Garage authority: direct local button callback -> CampaignGarageService"
+Write-Host "Garage authority: ABI-correct local callback -> CampaignGarageService"
 Write-Host "Career authority: Campaign Career v3"
 Write-Host "Network authority: hard denied"
 Write-Host "Multiplayer: not allowed in Campaign Edition"
 Write-Host "Feature policy: local-only"
 Write-Host "Legacy async build signal: bypassed"
 Write-Host "Garage UI snapshots: enabled"
+Write-Host "Garage callback ABI: ret 8 preserved"
 Write-Host ""
 
 $python=Join-Path $ProjectRoot "runtime\python312-x86\python.exe"
