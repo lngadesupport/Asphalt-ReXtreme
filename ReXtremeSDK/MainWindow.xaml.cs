@@ -450,6 +450,35 @@ public partial class MainWindow : Window
         catch (Exception ex) { Fail(ex); }
     }
 
+    private void ImportTrackBundle_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Importar bundle de pista exportado pelo ReXtreme Blender Tools",
+                Filter = "ReXtreme Blender scene|*.rxscene.json|JSON|*.json"
+            };
+            if (dialog.ShowDialog() != true) return;
+
+            var id = TrackIdBox.Text.Trim();
+            var name = TrackNameBox.Text.Trim();
+            if (string.IsNullOrWhiteSpace(id)) throw new InvalidDataException("Informe o ID da pista.");
+            if (string.IsNullOrWhiteSpace(name)) throw new InvalidDataException("Informe o nome da pista.");
+
+            var file = new TrackBundleImporterService().Import(ProjectRoot, dialog.FileName, id, name);
+            var track = JsonDocument.Parse(File.ReadAllText(file)).RootElement;
+            if (track.TryGetProperty("geometry", out var geometry))
+                TrackGeometryBox.Text = geometry.GetString() ?? "";
+            if (track.TryGetProperty("environment", out var env) && env.ValueKind == JsonValueKind.String)
+                TrackEnvironmentBox.Text = env.GetString() ?? "";
+
+            Log($"Bundle de pista importado e validado: {file}");
+            RefreshProjectTree();
+        }
+        catch (Exception ex) { Fail(ex); }
+    }
+
     private void SaveTrack_Click(object sender, RoutedEventArgs e)
     {
         try
