@@ -42,3 +42,16 @@ def test_anchor_verification():
     data = b"\x00" * 16 + b"\x8B\xC3\x8B\x4D\xF4" + b"\x00" * 4
     row = mod.verify_anchor(data, 16, bytes.fromhex("8B C3 8B 4D F4"), "begin")
     assert row["matches"] is True
+
+
+def test_extract_field_writes():
+    rows = mod.extract_field_writes([
+        {"va": "0x00401000", "text": "movss dword ptr [ecx + 0x34], xmm0"},
+        {"va": "0x00401005", "text": "mov dword ptr [eax + 16], edx"},
+        {"va": "0x00401008", "text": "cmp dword ptr [ecx + 0x20], 0"},
+    ])
+    assert len(rows) == 2
+    assert rows[0]["base_register"] == "ecx"
+    assert rows[0]["field_offset"] == 0x34
+    assert rows[0]["scalar_float_write"] is True
+    assert rows[1]["field_offset"] == 16
