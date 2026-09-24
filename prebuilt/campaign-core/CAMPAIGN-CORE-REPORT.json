@@ -28,6 +28,8 @@
     "ReplayRuntimeFoundation":  true,
     "PhotoModeRuntimeFoundation":  true,
     "RendererOverridesDefaultToOriginal":  true,
-    "Size":  32256,
-    "SHA256":  "3096000ac79ebc4f9117a309a71cb18b9a62194e90867997f7887756592ce930"
+    "PresentationCapabilityCatalog":  "CampaignPresentationOptions.dat",
+    "UnverifiedPresentationOptionsVisible":  false,
+    "Size":  33280,
+    "SHA256":  "340cba3a36800c739415feb01d63d17408f48b074cfe7209c907530c12ff54d0"
 }
