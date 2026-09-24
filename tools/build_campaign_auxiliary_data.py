@@ -191,6 +191,7 @@ def parse_payload(name: str, payload: bytes):
 
 
 def build_objectives(career: dict, output: Path, report: Path):
+    output.unlink(missing_ok=True)
     rows, unresolved = convert_objectives(career)
     payload = {
         "recognized_objectives": len(rows),
@@ -209,6 +210,7 @@ def build_objectives(career: dict, output: Path, report: Path):
 
 
 def build_ui_map(candidates, output: Path, report: Path):
+    output.unlink(missing_ok=True)
     resolved = {}
     conflicts = []
     unresolved = [x for x in candidates if x.get("unresolved")]
