@@ -160,6 +160,19 @@ int __cdecl CampaignFrontendLobbyReady(void) {
 }
 
 
+static int32_t CampaignFrontendSelectedCarId(void* gs_garage) {
+    unsigned char* gs = (unsigned char*)gs_garage;
+    void* holder;
+    void* selected;
+
+    if (!gs) return 0;
+    holder = *(void**)(gs + 0x2D4);
+    if (!holder) return 0;
+    selected = *(void**)holder;
+    if (!selected) return 0;
+    return *(int32_t*)((unsigned char*)selected + 0xC0);
+}
+
 int __cdecl CampaignFrontendGarageBuild(void* gs_garage) {
     CampaignGarageResult out;
     int32_t car_id;
