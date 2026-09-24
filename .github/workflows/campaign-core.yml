@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - campaign-edition-win32
+      - public-beta-0.1
     paths:
       - "src-reconstructed/campaign-core/CampaignCore.c"
       - "src-reconstructed/campaign-core/CampaignCore.h"
@@ -26,6 +27,12 @@ on:
       - "src-reconstructed/campaign-core/CampaignCareerAdapter.h"
       - "src-reconstructed/campaign-core/CampaignUpgradeAdapter.c"
       - "src-reconstructed/campaign-core/CampaignUpgradeAdapter.h"
+      - "src-reconstructed/campaign-core/CampaignEventBus.c"
+      - "src-reconstructed/campaign-core/CampaignEventBus.h"
+      - "src-reconstructed/campaign-core/CampaignOnlinePolicy.c"
+      - "src-reconstructed/campaign-core/CampaignOnlinePolicy.h"
+      - "src-reconstructed/campaign-core/CampaignUiService.c"
+      - "src-reconstructed/campaign-core/CampaignUiService.h"
       - "runtime-stubs/campaign_gateway.asm"
       - "runtime-stubs/IGPLib_x86_campaign.def"
       - "docs/CAMPAIGN-CORE-V2.md"
@@ -91,10 +98,19 @@ jobs:
           cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignUpgradeAdapter.obj" "src-reconstructed\campaign-core\CampaignUpgradeAdapter.c"
           if errorlevel 1 exit /b 21
 
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignEventBus.obj" "src-reconstructed\campaign-core\CampaignEventBus.c"
+          if errorlevel 1 exit /b 23
+
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignOnlinePolicy.obj" "src-reconstructed\campaign-core\CampaignOnlinePolicy.c"
+          if errorlevel 1 exit /b 24
+
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignUiService.obj" "src-reconstructed\campaign-core\CampaignUiService.c"
+          if errorlevel 1 exit /b 25
+
           ml.exe /nologo /c /coff /Fo"prebuilt\campaign-core\campaign_gateway.obj" "runtime-stubs\campaign_gateway.asm"
           if errorlevel 1 exit /b 13
 
-          link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:"runtime-stubs\IGPLib_x86_campaign.def" /out:"prebuilt\campaign-core\IGPLib_x86.dll" "prebuilt\campaign-core\CampaignCore.obj" "prebuilt\campaign-core\CampaignCatalog.obj" "prebuilt\campaign-core\CampaignEventCatalog.obj" "prebuilt\campaign-core\CampaignObjectiveCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeUiMap.obj" "prebuilt\campaign-core\CampaignStoreCatalog.obj" "prebuilt\campaign-core\CampaignStoreAdapter.obj" "prebuilt\campaign-core\CampaignCareerAdapter.obj" "prebuilt\campaign-core\CampaignUpgradeAdapter.obj" "prebuilt\campaign-core\campaign_gateway.obj" kernel32.lib
+          link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:"runtime-stubs\IGPLib_x86_campaign.def" /out:"prebuilt\campaign-core\IGPLib_x86.dll" "prebuilt\campaign-core\CampaignCore.obj" "prebuilt\campaign-core\CampaignCatalog.obj" "prebuilt\campaign-core\CampaignEventCatalog.obj" "prebuilt\campaign-core\CampaignObjectiveCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeUiMap.obj" "prebuilt\campaign-core\CampaignStoreCatalog.obj" "prebuilt\campaign-core\CampaignStoreAdapter.obj" "prebuilt\campaign-core\CampaignCareerAdapter.obj" "prebuilt\campaign-core\CampaignUpgradeAdapter.obj" "prebuilt\campaign-core\CampaignEventBus.obj" "prebuilt\campaign-core\CampaignOnlinePolicy.obj" "prebuilt\campaign-core\CampaignUiService.obj" "prebuilt\campaign-core\campaign_gateway.obj" kernel32.lib
           if errorlevel 1 exit /b 14
 
           dumpbin.exe /headers /imports "prebuilt\campaign-core\IGPLib_x86.dll" > "prebuilt\campaign-core\DUMPBIN.txt"
@@ -117,6 +133,9 @@ jobs:
           Remove-Item ".\prebuilt\campaign-core\CampaignStoreAdapter.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignCareerAdapter.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignUpgradeAdapter.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignEventBus.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignOnlinePolicy.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignUiService.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\campaign_gateway.obj" -ErrorAction SilentlyContinue
           Remove-Item $batPath -ErrorAction SilentlyContinue
 
@@ -163,6 +182,9 @@ jobs:
             UpgradeUiMap = "CampaignUpgradeUiMap.dat"
             StoreCatalog = "CampaignStore.dat"
             StoreLegacySelector = "0xC0DE5501"
+            UiSelector = "0xC0DE7701"
+            OnlinePolicySelector = "0xC0DE7702"
+            EventPollSelector = "0xC0DE7703"
             CareerPreSelector = "0xC0DECA72"
             CareerPostSelector = "0xC0DECA73"
             Size = $size
