@@ -13,12 +13,14 @@ on:
       - "tools/build_replay_binding_catalog.py"
       - "tools/build_original_ui_binding_catalog.py"
       - "tools/build_race_hud_binding_catalog.py"
+      - "tools/build_campaign_challenge_catalog.py"
       - "config/presentation-capabilities.verified.json"
       - "config/presentation-bindings.verified.json"
       - "config/photo-bindings.verified.json"
       - "config/replay-bindings.verified.json"
       - "config/original-ui-bindings.verified.json"
       - "config/race-hud-bindings.verified.json"
+      - "config/campaign_challenges.json"
       - "config/replay-frame-binding.verified.json"
       - "config/photo-frame-binding.verified.json"
       - "config/photo-toggle-binding.verified.json"
@@ -30,6 +32,7 @@ on:
       - "tests/test_build_replay_binding_catalog.py"
       - "tests/test_build_original_ui_binding_catalog.py"
       - "tests/test_build_race_hud_binding_catalog.py"
+      - "tests/test_build_campaign_challenge_catalog.py"
       - "tools/audit_original_settings_ui.py"
       - "tools/rank_original_ui_candidates.py"
       - "tools/audit_original_ui_rtti.py"
@@ -76,6 +79,7 @@ jobs:
           tests/test_build_replay_binding_catalog.py
           tests/test_build_original_ui_binding_catalog.py
           tests/test_build_race_hud_binding_catalog.py
+          tests/test_build_campaign_challenge_catalog.py
           tests/test_audit_original_settings_ui.py
           tests/test_rank_original_ui_candidates.py
           tests/test_audit_original_ui_rtti.py
@@ -174,3 +178,16 @@ jobs:
           if (-not $r.original_elements_only) { throw "HUD original-elements-only policy was disabled" }
           if ($r.create_new_hud_widgets) { throw "New HUD widgets must remain forbidden" }
           if ((Get-Item CampaignRaceHudBindings.dat).Length -ne 28) { throw "Unexpected HUD catalog size" }
+
+      - name: Build offline Challenge catalog
+        run: >
+          python tools/build_campaign_challenge_catalog.py
+          config/campaign_challenges.json
+          CampaignChallenges.dat
+          --report CampaignChallenges.report.json
+      - name: Verify Challenge catalog uses only existing race metrics
+        shell: pwsh
+        run: |
+          $r = Get-Content CampaignChallenges.report.json -Raw | ConvertFrom-Json
+          if ($r.count -ne 0) { throw "Default Challenge catalog should remain data-empty until content is approved" }
+          if ((Get-Item CampaignChallenges.dat).Length -ne 7188) { throw "Unexpected Challenge catalog size" }
