@@ -9,14 +9,17 @@ on:
       - "tools/audit_presentation_capabilities.py"
       - "tools/build_presentation_capability_catalog.py"
       - "tools/build_presentation_binding_catalog.py"
+      - "tools/build_photo_binding_catalog.py"
       - "config/presentation-capabilities.verified.json"
       - "config/presentation-bindings.verified.json"
+      - "config/photo-bindings.verified.json"
       - "config/replay-frame-binding.verified.json"
       - "config/photo-frame-binding.verified.json"
       - "tests/test_campaign_rebuilder.py"
       - "tests/test_audit_presentation_capabilities.py"
       - "tests/test_build_presentation_capability_catalog.py"
       - "tests/test_build_presentation_binding_catalog.py"
+      - "tests/test_build_photo_binding_catalog.py"
       - "tools/audit_original_settings_ui.py"
       - "tools/audit_replay_frame_hooks.py"
       - "tools/apply_replay_frame_binding.py"
@@ -49,6 +52,7 @@ jobs:
           tests/test_audit_presentation_capabilities.py
           tests/test_build_presentation_capability_catalog.py
           tests/test_build_presentation_binding_catalog.py
+          tests/test_build_photo_binding_catalog.py
           tests/test_audit_original_settings_ui.py
           tests/test_audit_replay_frame_hooks.py
           tests/test_apply_replay_frame_binding.py
@@ -81,3 +85,18 @@ jobs:
           if ($r.count -ne 0) { throw "Unverified presentation bindings leaked into runtime catalog" }
           if (-not $r.safe_empty_catalog) { throw "Expected safe empty binding catalog" }
           if ((Get-Item CampaignPresentationBindings.dat).Length -ne 20) { throw "Unexpected empty binding catalog size" }
+
+      - name: Build safe empty Photo binding catalog
+        run: >
+          python tools/build_photo_binding_catalog.py
+          config/photo-bindings.verified.json
+          CampaignPhotoBindings.dat
+          --report CampaignPhotoBindings.report.json
+      - name: Verify Photo bindings remain fail-closed
+        shell: pwsh
+        run: |
+          $r = Get-Content CampaignPhotoBindings.report.json -Raw | ConvertFrom-Json
+          if ($r.count -ne 0) { throw "Unverified Photo bindings leaked into runtime catalog" }
+          if ($r.free_camera_ready) { throw "Free Camera cannot be ready with an empty catalog" }
+          if (-not $r.safe_empty_catalog) { throw "Expected safe empty Photo binding catalog" }
+          if ((Get-Item CampaignPhotoBindings.dat).Length -ne 20) { throw "Unexpected Photo catalog size" }
