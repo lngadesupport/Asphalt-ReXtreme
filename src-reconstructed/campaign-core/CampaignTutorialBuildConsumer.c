@@ -4,6 +4,7 @@
 #include "CampaignTutorialBuildConsumer.h"
 #include "CampaignGarageFlow.h"
 #include "CampaignEventBus.h"
+#include "CampaignGarageUiTrace.h"
 
 #define CAMPAIGN_AMS_IMAGE_BASE 0x00400000u
 #define CAMPAIGN_GBBW_READY_UI_RVA (0x00974480u - CAMPAIGN_AMS_IMAGE_BASE)
@@ -92,6 +93,8 @@ int __cdecl CampaignTutorialBuildComplete(
     pending_control = *(void**)(gs + 0x3B0);
     widget = *(void**)(gs + 0x35C);
 
+    CampaignGarageUiTraceWrite(20, gs_garage, widget);
+
     *(void**)(gs + 0x3AC) = 0;
     *(void**)(gs + 0x3B0) = 0;
 
@@ -110,6 +113,8 @@ int __cdecl CampaignTutorialBuildComplete(
         *(void**)(gbbw + 0x48) = 0;
     }
 
+    CampaignGarageUiTraceWrite(21, gs_garage, widget);
+
     if (out && out->size >= (uint32_t)sizeof(*out)) {
         ZeroBytes(out, (uint32_t)sizeof(*out));
         out->size = (uint32_t)sizeof(*out);
@@ -124,6 +129,8 @@ int __cdecl CampaignTutorialBuildComplete(
     if (widget) {
         CampaignRefreshGarageBottomBar(widget);
     }
+
+    CampaignGarageUiTraceWrite(22, gs_garage, widget);
 
     if (success) {
         CampaignGarageFlowFrontendCompleted(car_id, revision);
