@@ -110,6 +110,24 @@ public partial class MainWindow : Window
         catch (Exception ex) { Fail(ex); }
     }
 
+    private void VerifyPackage_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Verificar pacote ReXtreme",
+                Filter = "ReXtreme mod|*.rxmod|ZIP|*.zip"
+            };
+            if (dialog.ShowDialog() != true) return;
+
+            OutputBox.Clear();
+            foreach (var item in new RxModPackager().Verify(dialog.FileName))
+                Log($"{item.Level,-7} {item.Code}: {item.Message}");
+        }
+        catch (Exception ex) { Fail(ex); }
+    }
+
     private void ImportModel_Click(object sender, RoutedEventArgs e)
     {
         try
