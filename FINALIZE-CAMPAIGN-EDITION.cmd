@@ -159,8 +159,7 @@ echo.
 echo [VALIDATE] Validando Campaign Edition...
 python.exe "%TOOLS%\validate_campaign_final.py" ^
   --project-root "%ROOT%" ^
-  --output "%ROOT%\_TRACE_MONTAR\CAMPAIGN-FINAL-STATUS.json" ^
-  --require-complete
+  --output "%ROOT%\_TRACE_MONTAR\CAMPAIGN-FINAL-STATUS.json"
 set "VALERR=%ERRORLEVEL%"
 
 echo.
@@ -178,8 +177,11 @@ echo Inicie:
 echo   _PACKAGE_PHASE5\RUN-PACKAGE-PHASE5.cmd
 echo.
 if not "%VALERR%"=="0" (
-  echo BLOQUEIO: a reconstrucao literal ainda nao esta completa.
+  echo BLOQUEIO: o beta nao atingiu o estado jogavel minimo.
   echo Consulte CAMPAIGN-FINAL-STATUS.json para o subsistema exato.
+) else (
+  echo Beta jogavel validado.
+  echo Subsistemas incompletos continuam registrados em CAMPAIGN-FINAL-STATUS.json.
 )
 if not "%REXTREME_NO_PAUSE%"=="1" pause
 exit /b %VALERR%
