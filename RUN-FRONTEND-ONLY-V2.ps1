@@ -31,7 +31,7 @@ $files=@(
   @{Commit="e9b74d4acfb10b61031032603b441d3348a00618"; Path="tools/read_garage_trace.ps1"},
   @{Commit="308d737496c13d768c1e83a5f4982e7d6993df73"; Path="tools/read_garage_ui_trace.ps1"},
   @{Commit="573595ec0346701e960ef4b2d7971268940723a8"; Path="READ-MONTAR-TRACE.cmd"},
-  @{Commit="262b87ae9d6f36d905acb5986d1a024708381513"; Path="prebuilt/campaign-core/IGPLib_x86.dll"},
+  @{Commit="3e53e867beec0d60fea27eb0cf21f469f87a6848"; Path="prebuilt/campaign-core/IGPLib_x86.dll"},
   @{Commit="9a912f2335ed1eb6cc61f568916862a602865fa8"; Path="config/OFFLINE-AUTHORITY.json"},
   @{Commit="ae1e424688ee2040b0da19f6af75f78adb57b5fb"; Path="tools/audit_offline_authority.py"},
   @{Commit="ac1d30cc3e0e347d482b1d33ed2968d2d48aedbd"; Path="tools/map_online_surface.py"}
@@ -51,7 +51,7 @@ foreach($f in $files){
 }
 
 $core=Join-Path $ProjectRoot "prebuilt\campaign-core\IGPLib_x86.dll"
-$expected="08e13caaac423b196201a6b6fb5605438230e6600b638276f88565f0884829aa"
+$expected="f20536d6211dd00dd5592ac1d7024173748fa31bc796bf5f62abe8f6b57ab2dd"
 $got=(Get-FileHash -LiteralPath $core -Algorithm SHA256).Hash.ToLowerInvariant()
 if($got-ne$expected){
   throw "Campaign Core SHA256 mismatch. Expected $expected got $got"
@@ -72,6 +72,7 @@ Write-Host "Feature policy: local-only"
 Write-Host "Legacy async build signal: bypassed"
 Write-Host "Garage UI snapshots: enabled"
 Write-Host "Garage callback ABI: ret 8 preserved"
+Write-Host "Startup diagnostics: garage trace disabled during splash"
 Write-Host ""
 
 $python=Join-Path $ProjectRoot "runtime\python312-x86\python.exe"
