@@ -94,6 +94,7 @@ static int DefValid(const CampaignAchievementDefinition* d){
     if(!d||d->achievement_id<=0)return 0;
     if(d->metric<CAMPAIGN_ACHIEVEMENT_RACES||d->metric>CAMPAIGN_ACHIEVEMENT_NITRO_NORMAL)return 0;
     if(d->compare!=CAMPAIGN_COMPARE_LE&&d->compare!=CAMPAIGN_COMPARE_GE&&d->compare!=CAMPAIGN_COMPARE_EQ)return 0;
+    if(d->threshold==0)return 0;
     return 1;
 }
 static int CatalogValid(const CampaignAchievementCatalogFile* f){
@@ -233,6 +234,8 @@ int CampaignAchievementsRefresh(void){
         CampaignAchievementStateEntry* e=StateFind(d->achievement_id);
         uint32_t value=0;
         if(!e||e->completed||!MetricValue(&stats,d->metric,&value))continue;
+        if((d->metric==CAMPAIGN_ACHIEVEMENT_BEST_PLACEMENT||
+            d->metric==CAMPAIGN_ACHIEVEMENT_BEST_FINISH_TIME_MS)&&value==0)continue;
         if(Compare(value,d->compare,d->threshold)){
             e->completed=1;e->unlocked_day_key=CurrentDayKey();changed=1;
         }
