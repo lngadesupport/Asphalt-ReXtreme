@@ -961,38 +961,51 @@ static int TryMigrateV1(void) {
 }
 
 static void EnsureLoadedUnlocked(void) {
-    if (g_loaded) return;
+    if (g_loaded) {
+        /*
+          Must run before any new Campaign mutation. A pending Challenge claim
+          uses the Campaign revision to decide whether its reward was committed.
+        */
+        CampaignChallengesRecoverClaim(g_state.revision);
+        return;
+    }
 
     InitDefaultState(&g_state);
     if (!BuildPaths()) {
         InterlockedExchange(&g_loaded, 1);
+        CampaignChallengesRecoverClaim(g_state.revision);
         return;
     }
 
     if (TryLoadV3(g_state_path, &g_state)) {
         InterlockedExchange(&g_loaded, 1);
+        CampaignChallengesRecoverClaim(g_state.revision);
         return;
     }
 
     if (TryLoadV3(g_backup_path, &g_state)) {
         SaveStateUnlocked();
         InterlockedExchange(&g_loaded, 1);
+        CampaignChallengesRecoverClaim(g_state.revision);
         return;
     }
 
     if (TryMigrateV2()) {
         InterlockedExchange(&g_loaded, 1);
+        CampaignChallengesRecoverClaim(g_state.revision);
         return;
     }
 
     if (TryMigrateV1()) {
         InterlockedExchange(&g_loaded, 1);
+        CampaignChallengesRecoverClaim(g_state.revision);
         return;
     }
 
     InitDefaultState(&g_state);
     SaveStateUnlocked();
     InterlockedExchange(&g_loaded, 1);
+    CampaignChallengesRecoverClaim(g_state.revision);
 }
 
 static int IsOwnedUnlocked(int32_t car_id) {
@@ -2497,6 +2510,87 @@ static int ExecuteUnlocked(CampaignCommand* c) {
         c->status = 1;
         c->revision = g_state.revision;
         return 1;
+
+    case CAMPAIGN_OP_CHALLENGE_CLAIM:
+        {
+            CampaignChallengeStatus status;
+            CampaignChallengeClaim claim;
+            int has_reward;
+
+            ZeroBytes(&status, (uint32_t)sizeof(status));
+            status.size = (uint32_t)sizeof(status);
+            if (!CampaignChallengesGetStatus(c->a, &status)) return 0;
+
+            c->out0 = status.reward_credits;
+            c->out1 = status.reward_premium;
+            c->out2 = status.reward_item_id;
+
+            /* Idempotent UI retry after a completed claim. */
+            if (status.claimed) {
+                c->status = 1;
+                c->revision = g_state.revision;
+                return 1;
+            }
+            if (!status.completed) return 0;
+
+            ZeroBytes(&claim, (uint32_t)sizeof(claim));
+            claim.size = (uint32_t)sizeof(claim);
+            if (!CampaignChallengesBeginClaim(c->a, g_state.revision, &claim)) return 0;
+
+            /*
+              If a prior reward commit is already visible by revision, finalize
+              the journal only. Never grant it a second time.
+            */
+            if (g_state.revision > claim.start_campaign_revision) {
+                if (!CampaignChallengesFinalizeClaim(c->a, g_state.revision)) return 0;
+                c->status = 1;
+                c->revision = g_state.revision;
+                return 1;
+            }
+
+            has_reward =
+                claim.reward_credits > 0 ||
+                claim.reward_premium > 0 ||
+                claim.reward_item_id > 0;
+
+            if (!has_reward) {
+                if (!CampaignChallengesFinalizeClaim(c->a, g_state.revision)) return 0;
+                c->status = 1;
+                c->revision = g_state.revision;
+                return 1;
+            }
+
+            if (claim.reward_credits > 0 &&
+                g_state.credits > 0x7FFFFFFF - claim.reward_credits) return 0;
+            if (claim.reward_premium > 0 &&
+                g_state.premium_currency > 0x7FFFFFFF - claim.reward_premium) return 0;
+
+            CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+            g_state.credits += claim.reward_credits;
+            g_state.premium_currency += claim.reward_premium;
+
+            if (claim.reward_item_id > 0 &&
+                !InventoryAddNoSave(claim.reward_item_id, claim.reward_item_amount)) {
+                CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+                return 0;
+            }
+
+            result = CommitMutationUnlocked();
+            if (!result) {
+                CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+                return 0;
+            }
+
+            /*
+              Reward is durably committed now. If sidecar finalization fails,
+              the pending journal remains; the next EnsureLoadedUnlocked()
+              sees revision > start_revision and finalizes without regranting.
+            */
+            CampaignChallengesFinalizeClaim(c->a, g_state.revision);
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
 
     case CAMPAIGN_OP_GET_PROFILE_SUMMARY:
         switch (c->a) {
