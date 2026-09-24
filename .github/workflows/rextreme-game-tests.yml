@@ -16,6 +16,7 @@ on:
       - "tools/build_campaign_challenge_catalog.py"
       - "tools/build_campaign_achievement_catalog.py"
       - "tools/build_campaign_special_event_catalog.py"
+      - "tools/build_campaign_championship_catalog.py"
       - "config/presentation-capabilities.verified.json"
       - "config/presentation-bindings.verified.json"
       - "config/photo-bindings.verified.json"
@@ -25,6 +26,7 @@ on:
       - "config/campaign_challenges.json"
       - "config/campaign_achievements.json"
       - "config/campaign_special_events.json"
+      - "config/campaign_championships.json"
       - "config/replay-frame-binding.verified.json"
       - "config/photo-frame-binding.verified.json"
       - "config/photo-toggle-binding.verified.json"
@@ -39,6 +41,7 @@ on:
       - "tests/test_build_campaign_challenge_catalog.py"
       - "tests/test_build_campaign_achievement_catalog.py"
       - "tests/test_build_campaign_special_event_catalog.py"
+      - "tests/test_build_campaign_championship_catalog.py"
       - "tools/audit_original_settings_ui.py"
       - "tools/rank_original_ui_candidates.py"
       - "tools/audit_original_ui_rtti.py"
@@ -88,6 +91,7 @@ jobs:
           tests/test_build_campaign_challenge_catalog.py
           tests/test_build_campaign_achievement_catalog.py
           tests/test_build_campaign_special_event_catalog.py
+          tests/test_build_campaign_championship_catalog.py
           tests/test_audit_original_settings_ui.py
           tests/test_rank_original_ui_candidates.py
           tests/test_audit_original_ui_rtti.py
@@ -227,3 +231,18 @@ jobs:
           if (-not $r.uses_existing_campaign_events_only) { throw "Special Events must reuse Campaign events" }
           if ($r.online_backend_required) { throw "Special Events must remain offline-capable" }
           if ((Get-Item CampaignSpecialEvents.dat).Length -ne 6164) { throw "Unexpected Special Event catalog size" }
+
+      - name: Build safe empty Championship catalog
+        run: >
+          python tools/build_campaign_championship_catalog.py
+          config/campaign_championships.json
+          CampaignChampionships.dat
+          --report CampaignChampionships.report.json
+      - name: Verify default Championships are data-empty and offline
+        shell: pwsh
+        run: |
+          $r = Get-Content CampaignChampionships.report.json -Raw | ConvertFrom-Json
+          if ($r.count -ne 0) { throw "Default Championship catalog must stay empty until event data is approved" }
+          if (-not $r.uses_existing_campaign_events_only) { throw "Championships must reuse Campaign events" }
+          if ($r.online_backend_required) { throw "Championships must remain offline-capable" }
+          if ((Get-Item CampaignChampionships.dat).Length -ne 6932) { throw "Unexpected Championship catalog size" }
