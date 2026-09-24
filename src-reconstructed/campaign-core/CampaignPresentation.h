@@ -7,7 +7,7 @@ extern "C" {
 #endif
 
 #define CAMPAIGN_PRESENTATION_SETTINGS_VERSION 1u
-#define CAMPAIGN_REPLAY_FORMAT_VERSION 2u
+#define CAMPAIGN_REPLAY_FORMAT_VERSION 3u
 #define CAMPAIGN_REPLAY_MARKER_MAX 4096u
 
 /*
@@ -34,6 +34,17 @@ enum CampaignPresentationFlags {
     CAMPAIGN_PRESENTATION_REPLAY_ENABLED = 1u << 0,
     CAMPAIGN_PRESENTATION_PHOTO_ENABLED  = 1u << 1
 };
+
+typedef struct CampaignReplayMetadata {
+    uint32_t size;
+    uint32_t version;
+    int32_t event_id;
+    int32_t track_id;
+    int32_t player_car_id;
+    int32_t race_mode;
+    uint32_t session_id;
+    uint32_t flags;
+} CampaignReplayMetadata;
 
 typedef struct CampaignReplaySample {
     uint32_t time_ms;
@@ -133,6 +144,8 @@ enum CampaignPresentationOp {
     CAMPAIGN_PRESENTATION_OP_CAPABILITY_SET_VALUE = 14,
     CAMPAIGN_PRESENTATION_OP_CAPABILITY_RESET_VALUE = 15,
 
+    CAMPAIGN_PRESENTATION_OP_REPLAY_SET_METADATA = 18,
+    CAMPAIGN_PRESENTATION_OP_REPLAY_GET_METADATA = 19,
     CAMPAIGN_PRESENTATION_OP_REPLAY_START = 20,
     CAMPAIGN_PRESENTATION_OP_REPLAY_STOP = 21,
     CAMPAIGN_PRESENTATION_OP_REPLAY_CLEAR = 22,
@@ -186,6 +199,8 @@ int __cdecl CampaignPresentationGetSettings(CampaignPresentationSettings* out);
 int __cdecl CampaignPresentationSetSettings(const CampaignPresentationSettings* settings);
 int __cdecl CampaignPresentationResetSettings(void);
 
+int __cdecl CampaignReplaySetMetadata(const CampaignReplayMetadata* metadata);
+int __cdecl CampaignReplayGetMetadata(CampaignReplayMetadata* out);
 int __cdecl CampaignReplayStart(uint32_t capacity);
 int __cdecl CampaignReplayStop(void);
 int __cdecl CampaignReplayClear(void);
