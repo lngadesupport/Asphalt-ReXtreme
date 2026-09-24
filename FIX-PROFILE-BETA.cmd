@@ -4,15 +4,15 @@ cd /d "%~dp0"
 title Asphalt ReXtreme Public Beta - Fix Local Profile
 
 set "PY=%~dp0runtime\python312-x86\python.exe"
-set "TOOL=%~dp0tools\campaign_profile_adapter_v1.py"
+set "TOOL=%~dp0tools\campaign_profile_adapter_v2.py"
 
 echo ============================================================
-echo  ASPHALT REXTREME - LOCAL PROFILE FIX
+echo  ASPHALT REXTREME - LOCAL PROFILE FIX V2
 echo ============================================================
 echo.
 echo Este patch remove a autoridade do sync/cloud legado.
 echo Global IsOnline continua FALSE.
-echo O perfil passa a concluir sincronizacao localmente.
+echo O perfil usa validacao local e remove a tela de sync sem forcar GlobalSync amplo.
 echo.
 
 if not exist "%PY%" (
