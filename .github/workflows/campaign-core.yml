@@ -49,6 +49,9 @@ on:
       - "src-reconstructed/campaign-core/CampaignLastResult.c"
       - "src-reconstructed/campaign-core/CampaignLastResult.h"
       - "src-reconstructed/campaign-core/CampaignLastResultTest.c"
+      - "src-reconstructed/campaign-core/CampaignChampionshipCatalog.c"
+      - "src-reconstructed/campaign-core/CampaignChampionshipCatalog.h"
+      - "src-reconstructed/campaign-core/CampaignChampionshipTest.c"
       - "src-reconstructed/campaign-core/CampaignUpgradeCatalog.c"
       - "src-reconstructed/campaign-core/CampaignUpgradeCatalog.h"
       - "src-reconstructed/campaign-core/CampaignUpgradeUiMap.c"
@@ -124,6 +127,9 @@ jobs:
           if errorlevel 1 exit /b 42
 
           cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignLastResult.obj" "src-reconstructed\campaign-core\CampaignLastResult.c"
+
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignChampionshipCatalog.obj" "src-reconstructed\campaign-core\CampaignChampionshipCatalog.c"
+          if errorlevel 1 exit /b 49
           if errorlevel 1 exit /b 45
 
           cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignUpgradeCatalog.obj" "src-reconstructed\campaign-core\CampaignUpgradeCatalog.c"
@@ -171,7 +177,7 @@ jobs:
           ml.exe /nologo /c /coff /Fo"prebuilt\campaign-core\campaign_gateway.obj" "runtime-stubs\campaign_gateway.asm"
           if errorlevel 1 exit /b 13
 
-          link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:"runtime-stubs\IGPLib_x86_campaign.def" /out:"prebuilt\campaign-core\IGPLib_x86.dll" "prebuilt\campaign-core\CampaignCore.obj" "prebuilt\campaign-core\CampaignCatalog.obj" "prebuilt\campaign-core\CampaignEventCatalog.obj" "prebuilt\campaign-core\CampaignSpecialEventCatalog.obj" "prebuilt\campaign-core\CampaignSpecialEventState.obj" "prebuilt\campaign-core\CampaignObjectiveCatalog.obj" "prebuilt\campaign-core\CampaignChallengeCatalog.obj" "prebuilt\campaign-core\CampaignStatistics.obj" "prebuilt\campaign-core\CampaignAchievementCatalog.obj" "prebuilt\campaign-core\CampaignLastResult.obj" "prebuilt\campaign-core\CampaignUpgradeCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeUiMap.obj" "prebuilt\campaign-core\CampaignStoreCatalog.obj" "prebuilt\campaign-core\CampaignStoreAdapter.obj" "prebuilt\campaign-core\CampaignCareerAdapter.obj" "prebuilt\campaign-core\CampaignUpgradeAdapter.obj" "prebuilt\campaign-core\CampaignPresentation.obj" "prebuilt\campaign-core\CampaignPresentationCatalog.obj" "prebuilt\campaign-core\CampaignPresentationBindings.obj" "prebuilt\campaign-core\CampaignPhotoBindings.obj" "prebuilt\campaign-core\CampaignReplayBindings.obj" "prebuilt\campaign-core\CampaignOriginalUiBindings.obj" "prebuilt\campaign-core\CampaignRaceHudBindings.obj" "prebuilt\campaign-core\CampaignRaceHudLayout.obj" "prebuilt\campaign-core\campaign_gateway.obj" kernel32.lib
+          link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:"runtime-stubs\IGPLib_x86_campaign.def" /out:"prebuilt\campaign-core\IGPLib_x86.dll" "prebuilt\campaign-core\CampaignCore.obj" "prebuilt\campaign-core\CampaignCatalog.obj" "prebuilt\campaign-core\CampaignEventCatalog.obj" "prebuilt\campaign-core\CampaignSpecialEventCatalog.obj" "prebuilt\campaign-core\CampaignSpecialEventState.obj" "prebuilt\campaign-core\CampaignObjectiveCatalog.obj" "prebuilt\campaign-core\CampaignChallengeCatalog.obj" "prebuilt\campaign-core\CampaignStatistics.obj" "prebuilt\campaign-core\CampaignAchievementCatalog.obj" "prebuilt\campaign-core\CampaignLastResult.obj" "prebuilt\campaign-core\CampaignChampionshipCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeUiMap.obj" "prebuilt\campaign-core\CampaignStoreCatalog.obj" "prebuilt\campaign-core\CampaignStoreAdapter.obj" "prebuilt\campaign-core\CampaignCareerAdapter.obj" "prebuilt\campaign-core\CampaignUpgradeAdapter.obj" "prebuilt\campaign-core\CampaignPresentation.obj" "prebuilt\campaign-core\CampaignPresentationCatalog.obj" "prebuilt\campaign-core\CampaignPresentationBindings.obj" "prebuilt\campaign-core\CampaignPhotoBindings.obj" "prebuilt\campaign-core\CampaignReplayBindings.obj" "prebuilt\campaign-core\CampaignOriginalUiBindings.obj" "prebuilt\campaign-core\CampaignRaceHudBindings.obj" "prebuilt\campaign-core\CampaignRaceHudLayout.obj" "prebuilt\campaign-core\campaign_gateway.obj" kernel32.lib
           if errorlevel 1 exit /b 14
 
           dumpbin.exe /headers /imports "prebuilt\campaign-core\IGPLib_x86.dll" > "prebuilt\campaign-core\DUMPBIN.txt"
@@ -229,6 +235,13 @@ jobs:
           if errorlevel 1 exit /b 49
 
           "prebuilt\campaign-core\CampaignSpecialEventTest.exe"
+
+          cl.exe /nologo /c /TC /O2 /MT /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /I"src-reconstructed\campaign-core" /Fo"prebuilt\campaign-core\CampaignChampionshipTest.obj" "src-reconstructed\campaign-core\CampaignChampionshipTest.c"
+          if errorlevel 1 exit /b 50
+          link.exe /nologo /machine:x86 /out:"prebuilt\campaign-core\CampaignChampionshipTest.exe" "prebuilt\campaign-core\CampaignChampionshipTest.obj" "prebuilt\campaign-core\CampaignChampionshipCatalog.obj" "prebuilt\campaign-core\CampaignEventCatalog.obj" kernel32.lib
+          if errorlevel 1 exit /b 51
+          "prebuilt\campaign-core\CampaignChampionshipTest.exe"
+          if errorlevel 1 exit /b 52
           if errorlevel 1 exit /b 50
 
           exit /b 0
@@ -249,6 +262,7 @@ jobs:
           Remove-Item ".\prebuilt\campaign-core\CampaignStatistics.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignAchievementCatalog.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignLastResult.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignChampionshipCatalog.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignUpgradeCatalog.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignUpgradeUiMap.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignStoreCatalog.obj" -ErrorAction SilentlyContinue
@@ -276,6 +290,8 @@ jobs:
           Remove-Item ".\prebuilt\campaign-core\CampaignLastResultTest.exe" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignSpecialEventTest.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignSpecialEventTest.exe" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignChampionshipTest.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignChampionshipTest.exe" -ErrorAction SilentlyContinue
           Remove-Item $batPath -ErrorAction SilentlyContinue
 
       - name: Verify
@@ -336,6 +352,10 @@ jobs:
             AchievementCatalog = "CampaignAchievements.dat"
             AchievementState = "UserData\\CampaignEdition\\AchievementState.dat"
             AchievementMetricsSource = "CampaignStatistics-v1"
+            ChampionshipCatalog = "CampaignChampionships.dat"
+            ChampionshipState = "UserData\\CampaignEdition\\ChampionshipState.dat"
+            ChampionshipsReuseCampaignEvents = $true
+            ChampionshipsOnlineBackendRequired = $false
             AchievementRewards = "none"
             AchievementUiRequiresOriginalTemplates = $true
             LastRaceResultState = "UserData\\CampaignEdition\\LastRaceResult.dat"
