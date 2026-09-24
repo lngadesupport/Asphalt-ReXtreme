@@ -19,6 +19,8 @@ on:
       - "src-reconstructed/campaign-core/CampaignPhotoBindings.h"
       - "src-reconstructed/campaign-core/CampaignReplayBindings.c"
       - "src-reconstructed/campaign-core/CampaignReplayBindings.h"
+      - "src-reconstructed/campaign-core/CampaignOriginalUiBindings.c"
+      - "src-reconstructed/campaign-core/CampaignOriginalUiBindings.h"
       - "src-reconstructed/campaign-core/CampaignPresentationTest.c"
       - "src-reconstructed/campaign-core/CampaignCatalog.c"
       - "src-reconstructed/campaign-core/CampaignCatalog.h"
@@ -118,10 +120,13 @@ jobs:
           cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignReplayBindings.obj" "src-reconstructed\campaign-core\CampaignReplayBindings.c"
           if errorlevel 1 exit /b 30
 
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignOriginalUiBindings.obj" "src-reconstructed\campaign-core\CampaignOriginalUiBindings.c"
+          if errorlevel 1 exit /b 31
+
           ml.exe /nologo /c /coff /Fo"prebuilt\campaign-core\campaign_gateway.obj" "runtime-stubs\campaign_gateway.asm"
           if errorlevel 1 exit /b 13
 
-          link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:"runtime-stubs\IGPLib_x86_campaign.def" /out:"prebuilt\campaign-core\IGPLib_x86.dll" "prebuilt\campaign-core\CampaignCore.obj" "prebuilt\campaign-core\CampaignCatalog.obj" "prebuilt\campaign-core\CampaignEventCatalog.obj" "prebuilt\campaign-core\CampaignObjectiveCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeUiMap.obj" "prebuilt\campaign-core\CampaignStoreCatalog.obj" "prebuilt\campaign-core\CampaignStoreAdapter.obj" "prebuilt\campaign-core\CampaignCareerAdapter.obj" "prebuilt\campaign-core\CampaignUpgradeAdapter.obj" "prebuilt\campaign-core\CampaignPresentation.obj" "prebuilt\campaign-core\CampaignPresentationCatalog.obj" "prebuilt\campaign-core\CampaignPresentationBindings.obj" "prebuilt\campaign-core\CampaignPhotoBindings.obj" "prebuilt\campaign-core\CampaignReplayBindings.obj" "prebuilt\campaign-core\campaign_gateway.obj" kernel32.lib
+          link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:"runtime-stubs\IGPLib_x86_campaign.def" /out:"prebuilt\campaign-core\IGPLib_x86.dll" "prebuilt\campaign-core\CampaignCore.obj" "prebuilt\campaign-core\CampaignCatalog.obj" "prebuilt\campaign-core\CampaignEventCatalog.obj" "prebuilt\campaign-core\CampaignObjectiveCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeUiMap.obj" "prebuilt\campaign-core\CampaignStoreCatalog.obj" "prebuilt\campaign-core\CampaignStoreAdapter.obj" "prebuilt\campaign-core\CampaignCareerAdapter.obj" "prebuilt\campaign-core\CampaignUpgradeAdapter.obj" "prebuilt\campaign-core\CampaignPresentation.obj" "prebuilt\campaign-core\CampaignPresentationCatalog.obj" "prebuilt\campaign-core\CampaignPresentationBindings.obj" "prebuilt\campaign-core\CampaignPhotoBindings.obj" "prebuilt\campaign-core\CampaignReplayBindings.obj" "prebuilt\campaign-core\CampaignOriginalUiBindings.obj" "prebuilt\campaign-core\campaign_gateway.obj" kernel32.lib
           if errorlevel 1 exit /b 14
 
           dumpbin.exe /headers /imports "prebuilt\campaign-core\IGPLib_x86.dll" > "prebuilt\campaign-core\DUMPBIN.txt"
@@ -130,7 +135,7 @@ jobs:
           cl.exe /nologo /c /TC /O2 /MT /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /I"src-reconstructed\campaign-core" /Fo"prebuilt\campaign-core\CampaignPresentationTest.obj" "src-reconstructed\campaign-core\CampaignPresentationTest.c"
           if errorlevel 1 exit /b 25
 
-          link.exe /nologo /machine:x86 /out:"prebuilt\campaign-core\CampaignPresentationTest.exe" "prebuilt\campaign-core\CampaignPresentationTest.obj" "prebuilt\campaign-core\CampaignPresentation.obj" "prebuilt\campaign-core\CampaignPresentationCatalog.obj" "prebuilt\campaign-core\CampaignPresentationBindings.obj" "prebuilt\campaign-core\CampaignPhotoBindings.obj" "prebuilt\campaign-core\CampaignReplayBindings.obj" kernel32.lib
+          link.exe /nologo /machine:x86 /out:"prebuilt\campaign-core\CampaignPresentationTest.exe" "prebuilt\campaign-core\CampaignPresentationTest.obj" "prebuilt\campaign-core\CampaignPresentation.obj" "prebuilt\campaign-core\CampaignPresentationCatalog.obj" "prebuilt\campaign-core\CampaignPresentationBindings.obj" "prebuilt\campaign-core\CampaignPhotoBindings.obj" "prebuilt\campaign-core\CampaignReplayBindings.obj" "prebuilt\campaign-core\CampaignOriginalUiBindings.obj" kernel32.lib
           if errorlevel 1 exit /b 26
 
           "prebuilt\campaign-core\CampaignPresentationTest.exe"
@@ -159,6 +164,7 @@ jobs:
           Remove-Item ".\prebuilt\campaign-core\CampaignPresentationBindings.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignPhotoBindings.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignReplayBindings.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignOriginalUiBindings.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\campaign_gateway.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignPresentationTest.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignPresentationTest.exe" -ErrorAction SilentlyContinue
@@ -240,6 +246,7 @@ jobs:
             CustomInGameUiAssetsAllowed = $false
             UnmappedUiFeatureBehavior = "hidden"
             OriginalUiBindingRegistry = "config/original-ui-bindings.verified.json"
+            OriginalUiBindingCatalog = "CampaignOriginalUiBindings.dat"
             Size = $size
             SHA256 = $hash
           } | ConvertTo-Json | Set-Content ".\prebuilt\campaign-core\CAMPAIGN-CORE-REPORT.json" -Encoding UTF8
