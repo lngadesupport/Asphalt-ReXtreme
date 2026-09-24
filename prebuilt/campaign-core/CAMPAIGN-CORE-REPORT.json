@@ -33,6 +33,6 @@
     "RendererOverridesDefaultToOriginal":  true,
     "PresentationCapabilityCatalog":  "CampaignPresentationOptions.dat",
     "UnverifiedPresentationOptionsVisible":  false,
-    "Size":  39424,
-    "SHA256":  "99a4547b8a8439db9c4955c4104003775c90cb494781d96aefc3f0038892799f"
+    "Size":  39936,
+    "SHA256":  "debfc299e42716d5bcf1554205fadc5089a174702b570280e77cacb466bd9e00"
 }
