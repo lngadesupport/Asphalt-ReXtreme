@@ -11,6 +11,7 @@
 #include "CampaignPresentation.h"
 #include "CampaignPhotoBindings.h"
 #include "CampaignReplayBindings.h"
+#include "CampaignOriginalUiBindings.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
 #define CAMPAIGN_VERSION 3u
@@ -1930,6 +1931,14 @@ int __cdecl CampaignPhotoToggleFromGui(void* game_mode_gui) {
     settings.size = (uint32_t)sizeof(settings);
     if (!CampaignPresentationGetSettings(&settings) ||
         !(settings.flags & CAMPAIGN_PRESENTATION_PHOTO_ENABLED)) {
+        return 0;
+    }
+
+    /*
+      ReXtreme does not expose a substitute Photo UI. The pause hook may only
+      open Photo Mode after the complete original Asphalt UI set is verified.
+    */
+    if (!CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_PHOTO_MODE)) {
         return 0;
     }
 
