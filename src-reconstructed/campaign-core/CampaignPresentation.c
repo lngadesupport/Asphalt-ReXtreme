@@ -12,6 +12,7 @@
 #define RXRP_MAGIC 0x50525852u /* RXRP */
 #define RX_REPLAY_MIN_CAPACITY 256u
 #define RX_REPLAY_MAX_CAPACITY 524288u
+#define RX_REPLAY_FRAME_INTERVAL_MS 33u
 
 typedef struct CampaignPresentationDisk {
     uint32_t magic;
@@ -41,6 +42,9 @@ static uint32_t g_replay_capacity;
 static uint32_t g_replay_count;
 static uint32_t g_replay_write;
 static uint32_t g_replay_dropped;
+static uint32_t g_replay_throttled;
+static uint32_t g_replay_last_frame_time_ms;
+static uint32_t g_replay_last_frame_valid;
 static uint32_t g_replay_active;
 static CampaignReplayMarker g_replay_markers[CAMPAIGN_REPLAY_MARKER_MAX];
 static uint32_t g_replay_marker_count;
@@ -504,6 +508,9 @@ static void ReplayReleaseUnlocked(void) {
     g_replay_count = 0;
     g_replay_write = 0;
     g_replay_dropped = 0;
+    g_replay_throttled = 0;
+    g_replay_last_frame_time_ms = 0;
+    g_replay_last_frame_valid = 0;
     g_replay_active = 0;
     g_replay_marker_count = 0;
     g_replay_dropped_markers = 0;
@@ -575,18 +582,17 @@ int __cdecl CampaignReplayClear(void) {
     g_replay_count = 0;
     g_replay_write = 0;
     g_replay_dropped = 0;
+    g_replay_throttled = 0;
+    g_replay_last_frame_time_ms = 0;
+    g_replay_last_frame_valid = 0;
     g_replay_marker_count = 0;
     g_replay_dropped_markers = 0;
     PresentationUnlock();
     return 1;
 }
 
-int __cdecl CampaignReplayRecord(const CampaignReplaySample* sample) {
-    if (!sample) return 0;
-
-    PresentationLock();
-    if (!g_replay_active || !g_replay_samples || g_replay_capacity == 0) {
-        PresentationUnlock();
+static int ReplayRecordUnlocked(const CampaignReplaySample* sample) {
+    if (!sample || !g_replay_active || !g_replay_samples || g_replay_capacity == 0) {
         return 0;
     }
 
@@ -602,9 +608,50 @@ int __cdecl CampaignReplayRecord(const CampaignReplaySample* sample) {
     } else {
         ++g_replay_dropped;
     }
-
-    PresentationUnlock();
     return 1;
+}
+
+int __cdecl CampaignReplayRecord(const CampaignReplaySample* sample) {
+    int result;
+    if (!sample) return 0;
+
+    PresentationLock();
+    result = ReplayRecordUnlocked(sample);
+    PresentationUnlock();
+    return result;
+}
+
+int __cdecl CampaignReplayRecordFrame(const CampaignReplaySample* sample) {
+    uint32_t delta;
+    int result;
+
+    if (!sample) return 0;
+
+    PresentationLock();
+    if (!g_replay_active || !g_replay_samples || g_replay_capacity == 0) {
+        PresentationUnlock();
+        return 0;
+    }
+
+    if (g_replay_last_frame_valid) {
+        if (sample->time_ms >= g_replay_last_frame_time_ms) {
+            delta = sample->time_ms - g_replay_last_frame_time_ms;
+            if (delta < RX_REPLAY_FRAME_INTERVAL_MS) {
+                ++g_replay_throttled;
+                PresentationUnlock();
+                return 1;
+            }
+        }
+        /* A backwards race clock is treated as a new capture epoch. */
+    }
+
+    result = ReplayRecordUnlocked(sample);
+    if (result) {
+        g_replay_last_frame_time_ms = sample->time_ms;
+        g_replay_last_frame_valid = 1;
+    }
+    PresentationUnlock();
+    return result;
 }
 
 static uint32_t ReplayPhysicalIndexUnlocked(uint32_t chronological_index) {
@@ -626,6 +673,7 @@ int __cdecl CampaignReplayGetInfo(CampaignReplayInfo* out) {
     out->sample_count = g_replay_count;
     out->capacity = g_replay_capacity;
     out->dropped_samples = g_replay_dropped;
+    out->throttled_samples = g_replay_throttled;
     out->marker_count = g_replay_marker_count;
     out->dropped_markers = g_replay_dropped_markers;
     out->first_time_ms = 0;
