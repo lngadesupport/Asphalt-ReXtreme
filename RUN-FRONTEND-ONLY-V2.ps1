@@ -31,7 +31,8 @@ $files=@(
   @{Commit="e9b74d4acfb10b61031032603b441d3348a00618"; Path="tools/read_garage_trace.ps1"},
   @{Commit="cd509d42293b249a8654c5a6c5467d6cf6857a47"; Path="prebuilt/campaign-core/IGPLib_x86.dll"},
   @{Commit="9a912f2335ed1eb6cc61f568916862a602865fa8"; Path="config/OFFLINE-AUTHORITY.json"},
-  @{Commit="bdeaea35e04faf7ffb8a141df35fe0a2b75707e0"; Path="tools/audit_offline_authority.py"}
+  @{Commit="bdeaea35e04faf7ffb8a141df35fe0a2b75707e0"; Path="tools/audit_offline_authority.py"},
+  @{Commit="ac1d30cc3e0e347d482b1d33ed2968d2d48aedbd"; Path="tools/map_online_surface.py"}
 )
 
 foreach($f in $files){
@@ -71,6 +72,9 @@ $python=Join-Path $ProjectRoot "runtime\python312-x86\python.exe"
 if(Test-Path -LiteralPath $python -PathType Leaf){
   & $python (Join-Path $ProjectRoot "tools\audit_offline_authority.py") --project-root $ProjectRoot
   if($LASTEXITCODE-ne0){throw "Offline authority audit failed: $LASTEXITCODE"}
+
+  & $python (Join-Path $ProjectRoot "tools\map_online_surface.py") --project-root $ProjectRoot
+  if($LASTEXITCODE-ne0){throw "Online surface map failed: $LASTEXITCODE"}
 }
 
 & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ProjectRoot "tools\test_frontend_only_v2.ps1") -ProjectRoot $ProjectRoot
