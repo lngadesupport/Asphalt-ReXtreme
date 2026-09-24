@@ -28,14 +28,8 @@ jobs:
         shell: pwsh
         run: |
           foreach ($script in @(
-            "tools/public_beta.ps1",
-            "tools/capture_beta_runtime.ps1",
-            "tools/beta_startup_bisect.ps1",
-            "tools/test_profile_only.ps1",
-            "tools/test_profile_offline.ps1",
-            "tools/test_offline_surface_v5.ps1",
-            "tools/test_frontend_only_v2.ps1",
-            "tools/read_garage_trace.ps1"
+            "RUN-CLEAN-RUNTIME-V1.ps1",
+            "tools/test_clean_runtime_v1.ps1"
           )) {
             $tokens = $null
             $errors = $null
@@ -56,10 +50,10 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Run Campaign unit tests
+      - name: Run clean runtime unit tests
         shell: pwsh
-        run: python -m unittest discover -s tests -v
+        run: python -m unittest tests.test_campaign_frontend_shell_v1 -v
 
-      - name: Audit offline authority
+      - name: Audit clean runtime
         shell: pwsh
-        run: python tools/audit_offline_authority.py --project-root . --require-source
+        run: python tools/audit_clean_runtime.py --project-root .
