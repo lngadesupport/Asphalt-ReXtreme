@@ -11,7 +11,14 @@ import json
 import zipfile
 from pathlib import Path
 
-from audit_presentation_capabilities import iter_ascii_strings, iter_utf16le_strings, sha256
+from audit_presentation_capabilities import (
+    find_xrefs,
+    iter_ascii_strings,
+    iter_utf16le_strings,
+    parse_pe,
+    raw_to_rva,
+    sha256,
+)
 
 try:
     from xtea_assets import decode_stream, DecodeError
@@ -38,7 +45,13 @@ def keyword_hits(text: str) -> list[str]:
     return sorted({k for k in UI_KEYWORDS if k in low})
 
 
-def scan_blob(blob: bytes, source: str, limit: int = 500) -> list[dict]:
+def scan_blob(
+    blob: bytes,
+    source: str,
+    limit: int = 500,
+    image_base: int | None = None,
+    sections=None,
+) -> list[dict]:
     rows: list[dict] = []
     seen: set[tuple[str, int, str]] = set()
 
@@ -54,10 +67,23 @@ def scan_blob(blob: bytes, source: str, limit: int = 500) -> list[dict]:
             if key in seen:
                 continue
             seen.add(key)
+            rva = raw_to_rva(offset, sections) if sections else None
+            va = image_base + rva if image_base is not None and rva is not None else None
+            xref_raw = find_xrefs(blob, va, sections) if va is not None and sections else []
+            xref_rvas = [
+                x
+                for raw in xref_raw
+                if (x := raw_to_rva(raw, sections)) is not None
+            ]
             rows.append({
                 "source": source,
                 "encoding": encoding,
                 "offset": offset,
+                "rva": rva,
+                "va": va,
+                "xref_raw_offsets": xref_raw,
+                "xref_rvas": xref_rvas,
+                "xref_count": len(xref_raw),
                 "text": text[:260],
                 "keywords": hits,
                 "status": "candidate-only",
@@ -96,7 +122,12 @@ def scan_regular_file(path: Path, root: Path) -> list[dict]:
         except Exception:
             pass
 
-    rows.extend(scan_blob(data, rel))
+    pe_info = parse_pe(data)
+    if pe_info:
+        image_base, sections = pe_info
+        rows.extend(scan_blob(data, rel, image_base=image_base, sections=sections))
+    else:
+        rows.extend(scan_blob(data, rel))
     return rows
 
 
@@ -177,10 +208,19 @@ def main() -> int:
         if path.suffix.lower() in SCAN_SUFFIXES:
             rows.extend(scan_regular_file(path, root))
 
-    rows.sort(key=lambda x: (x["source"], x["offset"] if x["offset"] is not None else -1))
+    rows.sort(
+        key=lambda x: (
+            -int(x.get("xref_count", 0)),
+            x["source"],
+            x["offset"] if x["offset"] is not None else -1,
+        )
+    )
 
     by_keyword: dict[str, int] = {}
+    with_xrefs = 0
     for row in rows:
+        if row.get("xref_count", 0):
+            with_xrefs += 1
         for k in row["keywords"]:
             by_keyword[k] = by_keyword.get(k, 0) + 1
 
@@ -197,6 +237,7 @@ def main() -> int:
             "files_seen": files_scanned,
             "archives_scanned": archives_scanned,
             "candidate_rows": len(rows),
+            "candidate_rows_with_x86_xrefs": with_xrefs,
             "by_keyword": dict(sorted(by_keyword.items())),
         },
         "candidates": rows,
