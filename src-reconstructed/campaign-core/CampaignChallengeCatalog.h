@@ -40,6 +40,17 @@ typedef struct CampaignChallengeDefinition {
     int32_t reserved;
 } CampaignChallengeDefinition;
 
+typedef struct CampaignChallengeClaim {
+    uint32_t size;
+    int32_t challenge_id;
+    uint32_t period_key;
+    uint32_t start_campaign_revision;
+    int32_t reward_credits;
+    int32_t reward_premium;
+    int32_t reward_item_id;
+    int32_t reward_item_amount;
+} CampaignChallengeClaim;
+
 typedef struct CampaignChallengeStatus {
     uint32_t size;
     int32_t challenge_id;
@@ -70,6 +81,14 @@ int CampaignChallengesGetStatus(int32_t challenge_id, CampaignChallengeStatus* o
 int CampaignChallengesGetStatusByIndex(uint32_t index, CampaignChallengeStatus* out);
 int CampaignChallengesCanClaim(int32_t challenge_id, CampaignChallengeStatus* out);
 int CampaignChallengesMarkClaimed(int32_t challenge_id);
+int CampaignChallengesBeginClaim(
+    int32_t challenge_id,
+    uint32_t campaign_revision,
+    CampaignChallengeClaim* out
+);
+int CampaignChallengesGetPendingClaim(CampaignChallengeClaim* out);
+int CampaignChallengesFinalizeClaim(int32_t challenge_id, uint32_t campaign_revision);
+int CampaignChallengesRecoverClaim(uint32_t campaign_revision);
 int CampaignChallengesResetState(void);
 
 #ifdef __cplusplus
