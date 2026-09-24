@@ -485,6 +485,7 @@ static int CorruptReplayTail(const WCHAR* path) {
 
 int main(void) {
     CampaignPresentationSettings settings;
+    CampaignSimpleFovControl simple_fov;
     CampaignPresentationSettings loaded;
     CampaignReplayMetadata metadata;
     CampaignReplayMetadata metadata_readback;
@@ -865,6 +866,11 @@ int main(void) {
             g_test_hud_visible != 1) return Fail(140);
     }
 
+    ZeroMemory(&simple_fov, sizeof(simple_fov));
+    simple_fov.size = sizeof(simple_fov);
+    if (!CampaignPresentationSimpleFovGet(&simple_fov)) return Fail(145);
+    if (simple_fov.available != 0) return Fail(146);
+
     if (CampaignPresentationCatalogCount() != 0) return Fail(50);
     if (!WriteTestCapabilityCatalog()) return Fail(51);
     if (!CampaignPresentationCatalogLoad()) return Fail(52);
@@ -874,6 +880,30 @@ int main(void) {
     if (CampaignPresentationBindingsCount() != 1) return Fail(86);
 
     g_test_bound_fov = 7000;
+    ZeroMemory(&simple_fov, sizeof(simple_fov));
+    simple_fov.size = sizeof(simple_fov);
+    if (!CampaignPresentationSimpleFovGet(&simple_fov)) return Fail(147);
+    if (!simple_fov.available ||
+        simple_fov.minimum_x100 != 5000 ||
+        simple_fov.maximum_x100 != 10000 ||
+        simple_fov.step_x100 != 100 ||
+        simple_fov.original_x100 != 7000 ||
+        simple_fov.current_x100 != 7000) return Fail(148);
+
+    if (!CampaignPresentationSimpleFovSet(7600)) return Fail(149);
+    if (g_test_bound_fov != 7600) return Fail(150);
+    ZeroMemory(&simple_fov, sizeof(simple_fov));
+    simple_fov.size = sizeof(simple_fov);
+    if (!CampaignPresentationSimpleFovGet(&simple_fov) ||
+        simple_fov.current_x100 != 7600) return Fail(151);
+
+    if (!CampaignPresentationSimpleFovReset()) return Fail(152);
+    if (g_test_bound_fov != 7000) return Fail(153);
+    ZeroMemory(&simple_fov, sizeof(simple_fov));
+    simple_fov.size = sizeof(simple_fov);
+    if (!CampaignPresentationSimpleFovGet(&simple_fov) ||
+        simple_fov.current_x100 != 7000) return Fail(154);
+
     {
         int32_t value = 0;
         int32_t bound = 0;
