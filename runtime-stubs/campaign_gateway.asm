@@ -15,6 +15,7 @@ EXTERN _CampaignBeginRaceAdapter:PROC
 EXTERN _CampaignUiSubmit:PROC
 EXTERN _CampaignOnlineResolve:PROC
 EXTERN _CampaignEventPoll:PROC
+EXTERN _CampaignFrontendSubmit:PROC
 
 CAMPAIGN_CRAFT_MAGIC   EQU 0C0DEC0DEh
 CAMPAIGN_OWNED_MAGIC   EQU 0C0DE0A11h
@@ -28,6 +29,7 @@ CAMPAIGN_STORE_LEGACY_MAGIC EQU 0C0DE5501h
 CAMPAIGN_UI_MAGIC           EQU 0C0DE7701h
 CAMPAIGN_POLICY_MAGIC       EQU 0C0DE7702h
 CAMPAIGN_EVENT_POLL_MAGIC   EQU 0C0DE7703h
+CAMPAIGN_FRONTEND_MAGIC     EQU 0C0DE7704h
 
 .code
 
@@ -96,6 +98,9 @@ campaign_gateway PROC
 
     cmp eax, CAMPAIGN_EVENT_POLL_MAGIC
     je campaign_event_poll
+
+    cmp eax, CAMPAIGN_FRONTEND_MAGIC
+    je campaign_frontend
 
     xor eax, eax
     ret 4
@@ -169,6 +174,12 @@ campaign_policy:
 campaign_event_poll:
     push ecx
     call _CampaignEventPoll
+    add esp, 4
+    ret 4
+
+campaign_frontend:
+    push ecx
+    call _CampaignFrontendSubmit
     add esp, 4
     ret 4
 campaign_gateway ENDP
