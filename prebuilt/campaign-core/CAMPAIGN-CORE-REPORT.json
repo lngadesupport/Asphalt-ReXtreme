@@ -22,6 +22,12 @@
     "StoreLegacySelector":  "0xC0DE5501",
     "CareerPreSelector":  "0xC0DECA72",
     "CareerPostSelector":  "0xC0DECA73",
-    "Size":  26624,
-    "SHA256":  "2fc2d4cf023f05becb33570b2d4b4b8900fe2cfc280db0b19569754380d4d6cd"
+    "PresentationSelector":  "0xC0DECA90",
+    "PresentationSettings":  "ReXtremePresentation.dat",
+    "ReplayFormat":  ".rexreplay",
+    "ReplayRuntimeFoundation":  true,
+    "PhotoModeRuntimeFoundation":  true,
+    "RendererOverridesDefaultToOriginal":  true,
+    "Size":  31232,
+    "SHA256":  "7c3350debebc59bae9f9ec1f44ed806ffae95bf34098cb3b65adbf401d540c19"
 }
