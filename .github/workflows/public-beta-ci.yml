@@ -33,7 +33,9 @@ jobs:
             "tools/beta_startup_bisect.ps1",
             "tools/test_profile_only.ps1",
             "tools/test_profile_offline.ps1",
-            "tools/test_offline_surface_v5.ps1"
+            "tools/test_offline_surface_v5.ps1",
+            "tools/test_frontend_only_v2.ps1",
+            "tools/read_garage_trace.ps1"
           )) {
             $tokens = $null
             $errors = $null
@@ -57,3 +59,7 @@ jobs:
       - name: Run Campaign unit tests
         shell: pwsh
         run: python -m unittest discover -s tests -v
+
+      - name: Audit offline authority
+        shell: pwsh
+        run: python tools/audit_offline_authority.py --project-root .
