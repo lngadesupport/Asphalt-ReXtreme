@@ -49,6 +49,8 @@ static CampaignPhotoState g_photo;
 static WCHAR g_settings_path[1024];
 static WCHAR g_settings_tmp[1024];
 static WCHAR g_settings_bak[1024];
+static WCHAR g_replay_auto_path[1024];
+static WCHAR g_replay_auto_dir[1024];
 
 static void PresentationLock(void) {
     while (InterlockedCompareExchange(&g_presentation_lock, 1, 0) != 0) Sleep(0);
@@ -117,6 +119,67 @@ static int WideAppend(WCHAR* dst, uint32_t cap, const WCHAR* src) {
         dst[n++] = src[i++];
     }
     dst[n] = 0;
+    return 1;
+}
+
+static int EnsureDirectoryPath(const WCHAR* path) {
+    DWORD attrs;
+    if (!path || !path[0]) return 0;
+    attrs = GetFileAttributesW(path);
+    if (attrs != INVALID_FILE_ATTRIBUTES) {
+        return (attrs & FILE_ATTRIBUTE_DIRECTORY) ? 1 : 0;
+    }
+    if (CreateDirectoryW(path, 0)) return 1;
+    return GetLastError() == ERROR_ALREADY_EXISTS ? 1 : 0;
+}
+
+static int AppendHex8(WCHAR* dst, uint32_t cap, uint32_t value) {
+    static const WCHAR digits[] = L"0123456789ABCDEF";
+    WCHAR text[9];
+    uint32_t i;
+    for (i = 0; i < 8; ++i) {
+        uint32_t shift = (7u - i) * 4u;
+        text[i] = digits[(value >> shift) & 0xFu];
+    }
+    text[8] = 0;
+    return WideAppend(dst, cap, text);
+}
+
+static int BuildReplayAutoPathUnlocked(void) {
+    WCHAR exe[1024];
+    DWORD n;
+    int i;
+
+    ZeroBytes(exe, (uint32_t)sizeof(exe));
+    ZeroBytes(g_replay_auto_path, (uint32_t)sizeof(g_replay_auto_path));
+    ZeroBytes(g_replay_auto_dir, (uint32_t)sizeof(g_replay_auto_dir));
+
+    n = GetModuleFileNameW(0, exe, 1024);
+    if (n == 0 || n >= 1024) return 0;
+
+    i = (int)n - 1;
+    while (i >= 0 && exe[i] != L'\\' && exe[i] != L'/') --i;
+    if (i < 0) return 0;
+    exe[i + 1] = 0;
+
+    if (!WideCopy(g_replay_auto_dir, 1024, exe)) return 0;
+    if (!WideAppend(g_replay_auto_dir, 1024, L"UserData")) return 0;
+    if (!EnsureDirectoryPath(g_replay_auto_dir)) return 0;
+    if (!WideAppend(g_replay_auto_dir, 1024, L"\\Replays")) return 0;
+    if (!EnsureDirectoryPath(g_replay_auto_dir)) return 0;
+
+    if (!WideCopy(g_replay_auto_path, 1024, g_replay_auto_dir)) return 0;
+    if (!WideAppend(g_replay_auto_path, 1024, L"\\Replay-E")) return 0;
+    if (!AppendHex8(
+            g_replay_auto_path,
+            1024,
+            (uint32_t)g_replay_metadata.event_id)) return 0;
+    if (!WideAppend(g_replay_auto_path, 1024, L"-S")) return 0;
+    if (!AppendHex8(
+            g_replay_auto_path,
+            1024,
+            g_replay_metadata.session_id)) return 0;
+    if (!WideAppend(g_replay_auto_path, 1024, L".rexreplay")) return 0;
     return 1;
 }
 
@@ -527,6 +590,38 @@ int __cdecl CampaignReplayGetSample(uint32_t chronological_index, CampaignReplay
     CopyBytes(out, &g_replay_samples[physical], (uint32_t)sizeof(*out));
     PresentationUnlock();
     return 1;
+}
+
+int __cdecl CampaignReplayGetAutoPath(WCHAR* out, uint32_t capacity_chars) {
+    int result = 0;
+
+    if (!out || capacity_chars == 0) return 0;
+
+    PresentationLock();
+    if (g_replay_metadata.event_id > 0 &&
+        g_replay_metadata.session_id != 0 &&
+        BuildReplayAutoPathUnlocked()) {
+        result = WideCopy(out, capacity_chars, g_replay_auto_path);
+    }
+    PresentationUnlock();
+    return result;
+}
+
+int __cdecl CampaignReplaySaveAuto(void) {
+    WCHAR path[1024];
+    CampaignReplayInfo info;
+
+    ZeroBytes(path, (uint32_t)sizeof(path));
+    ZeroBytes(&info, (uint32_t)sizeof(info));
+    info.size = (uint32_t)sizeof(info);
+
+    /*
+      Do not create empty replay files. START/FINISH metadata-only sessions are
+      useful for lifecycle diagnostics but are not playable replays.
+    */
+    if (!CampaignReplayGetInfo(&info) || info.sample_count == 0) return 0;
+    if (!CampaignReplayGetAutoPath(path, 1024)) return 0;
+    return CampaignReplaySave(path);
 }
 
 int __cdecl CampaignReplaySave(const WCHAR* path) {
@@ -1166,6 +1261,15 @@ int __cdecl CampaignPresentationInvoke(CampaignPresentationCommand* command) {
         }
         break;
 
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_GET_AUTO_PATH:
+        command->status = CampaignReplayGetAutoPath(
+            (WCHAR*)(uintptr_t)command->ptr0,
+            (uint32_t)command->a
+        );
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_SAVE_AUTO:
+        command->status = CampaignReplaySaveAuto();
+        break;
     case CAMPAIGN_PRESENTATION_OP_REPLAY_SET_METADATA:
         command->status = CampaignReplaySetMetadata(
             (const CampaignReplayMetadata*)(uintptr_t)command->ptr0
