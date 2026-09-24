@@ -35,6 +35,8 @@ UI_KEYWORDS = (
     "tab", "label", "text", "menu", "item", "widget", "container",
     "result", "results", "reward", "rewards", "star", "finish", "continue",
     "profile", "statistics", "stats", "record", "records", "career stats",
+    "special event", "special_event", "specialevent", "limited event",
+    "limited_event", "event card", "event_card",
 )
 
 SCAN_SUFFIXES = {
