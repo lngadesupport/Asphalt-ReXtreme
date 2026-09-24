@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
 from campaign_rebuilder import (
+    prepare_portable_user_data,
     quarantine_package_metadata,
     verify_source,
     write_status,
@@ -64,6 +65,21 @@ class CampaignRebuilderTests(unittest.TestCase):
             self.assertTrue((root / "_source_metadata/appx/AppxManifest.xml").exists())
             self.assertTrue((root / "_source_metadata/appx/AppxMetadata/CodeIntegrity.cat").exists())
 
+    def test_prepare_portable_user_data(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            created = prepare_portable_user_data(root)
+            self.assertEqual(
+                created,
+                [
+                    "UserData/CampaignEdition/",
+                    "UserData/Replays/",
+                    "UserData/Screenshots/",
+                ],
+            )
+            for rel in created:
+                self.assertTrue((root / rel.rstrip("/")).is_dir())
+
     def test_status_never_claims_portable_ready(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -73,6 +89,7 @@ class CampaignRebuilderTests(unittest.TestCase):
                 ["AppxManifest.xml"],
                 [],
                 {"catalog": "CampaignPresentationOptions.dat", "report": "CampaignPresentationOptions.report.json", "count": 0, "safe_empty_catalog": True},
+                ["UserData/CampaignEdition/", "UserData/Replays/", "UserData/Screenshots/"],
             )
             data = json.loads(status_path.read_text(encoding="utf-8"))
             self.assertEqual(data["edition"], "Campaign")
