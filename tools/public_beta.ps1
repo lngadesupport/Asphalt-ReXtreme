@@ -395,10 +395,10 @@ function Update-Beta {
     New-Item -ItemType Directory -Force -Path $tmp | Out-Null
     try {
         foreach ($rel in $paths) {
-            $uri = $base + "/" + ($rel -replace "\\","/")
+            $uri = $base + "/" + ($rel -replace "\\","/") + "?channel=beta1-sync"
             $dst = Join-Path $tmp $rel
             New-Item -ItemType Directory -Force -Path (Split-Path $dst -Parent) | Out-Null
-            Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $dst
+            Invoke-WebRequest -UseBasicParsing -Headers @{"Cache-Control"="no-cache"} -Uri $uri -OutFile $dst
         }
 
         foreach ($rel in $paths) {
