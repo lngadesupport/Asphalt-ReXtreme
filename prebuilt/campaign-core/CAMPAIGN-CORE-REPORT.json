@@ -24,8 +24,10 @@
     "OnlinePolicySelector":  "0xC0DE7702",
     "EventPollSelector":  "0xC0DE7703",
     "FrontendSelector":  "0xC0DE7704",
+    "FrontendOwnershipSelector":  "0xC0DE7712",
+    "FrontendGarageBuildSelector":  "0xC0DE7713",
     "CareerPreSelector":  "0xC0DECA72",
     "CareerPostSelector":  "0xC0DECA73",
-    "Size":  29696,
-    "SHA256":  "1970e44df2634511c41ee615e5642e9bb6f820835de3e8b605a3f39f6343e8ba"
+    "Size":  30208,
+    "SHA256":  "491440d37bc3a6da8e6d140a734e1a648e08f4300a41cd6b46ebb027ac8e21a1"
 }

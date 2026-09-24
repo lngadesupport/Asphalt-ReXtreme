@@ -11,7 +11,7 @@ File Type: DLL
 FILE HEADER VALUES
              14C machine (x86)
                4 number of sections
-        6AB57C28 time date stamp Thu Sep 24 19:38:16 2026
+        6AB57C63 time date stamp Thu Sep 24 19:39:15 2026
                0 file pointer to symbol table
                0 number of symbols
               E0 size of optional header
@@ -23,7 +23,7 @@ FILE HEADER VALUES
 OPTIONAL HEADER VALUES
              10B magic # (PE32)
            14.51 linker version
-            5E00 size of code
+            6000 size of code
            E2800 size of initialized data
                0 size of uninitialized data
                0 entry point
@@ -69,10 +69,10 @@ OPTIONAL HEADER VALUES
 
 SECTION HEADER #1
    .text name
-    5D09 virtual size
-    1000 virtual address (10001000 to 10006D08)
-    5E00 size of raw data
-     400 file pointer to raw data (00000400 to 000061FF)
+    5E7C virtual size
+    1000 virtual address (10001000 to 10006E7B)
+    6000 size of raw data
+     400 file pointer to raw data (00000400 to 000063FF)
        0 file pointer to relocation table
        0 file pointer to line numbers
        0 number of relocations
@@ -86,7 +86,7 @@ SECTION HEADER #2
      994 virtual size
     7000 virtual address (10007000 to 10007993)
      A00 size of raw data
-    6200 file pointer to raw data (00006200 to 00006BFF)
+    6400 file pointer to raw data (00006400 to 00006DFF)
        0 file pointer to relocation table
        0 file pointer to line numbers
        0 number of relocations
@@ -99,7 +99,7 @@ SECTION HEADER #2
 
         Time Type        Size      RVA  Pointer
     -------- ------- -------- -------- --------
-    6AB57C28 coffgrp       DC 0000774C     694C
+    6AB57C63 coffgrp       DC 0000774C     6B4C
 
   Section contains the following imports:
 
@@ -143,7 +143,7 @@ SECTION HEADER #4
      7D0 virtual size
    EA000 virtual address (100EA000 to 100EA7CF)
      800 size of raw data
-    6C00 file pointer to raw data (00006C00 to 000073FF)
+    6E00 file pointer to raw data (00006E00 to 000075FF)
        0 file pointer to relocation table
        0 file pointer to line numbers
        0 number of relocations
