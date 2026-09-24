@@ -142,6 +142,14 @@ class CampaignRebuilderTests(unittest.TestCase):
             self.assertTrue(data["championships_reuse_campaign_events"])
             self.assertFalse(data["championships_online_backend_required"])
             self.assertTrue(data["championships_ui_requires_original_templates"])
+            self.assertEqual(
+                data["activity_context_state"],
+                "UserData/CampaignEdition/ActivityContext.dat",
+            )
+            self.assertTrue(
+                data["special_event_and_championship_progress_requires_explicit_context"]
+            )
+            self.assertTrue(data["career_races_do_not_advance_special_modes_by_event_id"])
 
 
 if __name__ == "__main__":
