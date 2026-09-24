@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rextreme.local/schema/graphics-v1.json",
+  "title": "ReXtreme Graphics Capability Preset",
+  "type": "object",
+  "required": ["id", "name", "capability_source", "options"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "id": {"type": "string"},
+    "name": {"type": "string"},
+    "capability_source": {"const": "original-renderer-audit"},
+    "original_default": {"type": "boolean"},
+    "options": {
+      "type": "array",
+      "description": "Only capabilities verified in Asphalt Xtreme may be listed.",
+      "items": {
+        "type": "object",
+        "required": ["id", "control"],
+        "properties": {
+          "id": {"type": "string"},
+          "control": {"enum": ["toggle", "choice", "slider"]},
+          "values": {"type": "array"},
+          "minimum": {"type": "number"},
+          "maximum": {"type": "number"},
+          "original_value": {}
+        }
+      }
+    }
+  }
+}
