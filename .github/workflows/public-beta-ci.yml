@@ -62,4 +62,4 @@ jobs:
 
       - name: Audit offline authority
         shell: pwsh
-        run: python tools/audit_offline_authority.py --project-root .
+        run: python tools/audit_offline_authority.py --project-root . --require-source
