@@ -1889,6 +1889,62 @@ static int PurchaseStoreOfferUnlocked(
     return InventoryAddNoSave(offer->item_id, offer->quantity);
 }
 
+static int GarageRecipeAffordableUnlocked(
+    const CampaignVehicleRecipe* recipe
+) {
+    if (!recipe || recipe->car_id <= 0 || recipe->cost < 0) return 0;
+    if (!ProgressGateUnlocked(recipe->unlock_node_id)) return 0;
+    if (IsOwnedUnlocked(recipe->car_id)) return 1;
+
+    switch (recipe->acquisition_type) {
+    case CAMPAIGN_ACQUIRE_BLUEPRINT:
+        return recipe->item_id > 0 &&
+               InventoryGetUnlocked(recipe->item_id) >= recipe->cost;
+    case CAMPAIGN_ACQUIRE_CREDITS:
+        return g_state.credits >= recipe->cost;
+    case CAMPAIGN_ACQUIRE_PREMIUM:
+        return g_state.premium_currency >= recipe->cost;
+    case CAMPAIGN_ACQUIRE_FREE:
+        return recipe->cost == 0;
+    default:
+        return 0;
+    }
+}
+
+static const CampaignUpgradeDefinition* GarageNextPartUnlocked(
+    int32_t car_id,
+    int32_t kind,
+    int32_t slot,
+    int* current_level
+) {
+    CampaignVehiclePartEntry* entries;
+    uint32_t count;
+    int current;
+
+    if (car_id <= 0 || slot < 0 ||
+        (kind != CAMPAIGN_UPGRADE_KIND_STANDARD &&
+         kind != CAMPAIGN_UPGRADE_KIND_PROKIT)) return 0;
+
+    if (kind == CAMPAIGN_UPGRADE_KIND_STANDARD) {
+        entries = g_state.upgrades;
+        count = g_state.upgrade_count;
+    } else {
+        entries = g_state.prokits;
+        count = g_state.prokit_count;
+    }
+
+    current = VehiclePartGet(entries, count, car_id, (int16_t)slot);
+    if (current_level) *current_level = current;
+    if (current < 0 || current >= 0x7FFF) return 0;
+
+    return CampaignUpgradeCatalogFind(
+        car_id,
+        kind,
+        slot,
+        current + 1
+    );
+}
+
 static int CommitMutationUnlocked(void) {
     ++g_state.revision;
     return SaveStateUnlocked();
@@ -3432,6 +3488,112 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             c->out2=unlocked;
             c->status=1;c->revision=g_state.revision;return 1;
         }
+
+    case CAMPAIGN_OP_GARAGE_COUNT:
+        c->out0 = (int32_t)CampaignCatalogCount();
+        c->status = 1;
+        c->revision = g_state.revision;
+        return 1;
+
+    case CAMPAIGN_OP_GARAGE_CAR_ID_AT:
+        {
+            const CampaignVehicleRecipe* recipe =
+                CampaignCatalogGet((uint32_t)c->a);
+            if (!recipe) return 0;
+            c->out0 = recipe->car_id;
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_GARAGE_CAR_STATUS:
+        {
+            const CampaignVehicleRecipe* recipe = CampaignCatalogFind(c->a);
+            uint32_t flags = 0;
+            int owned;
+            int unlocked;
+            if (!recipe) return 0;
+
+            owned = IsOwnedUnlocked(recipe->car_id);
+            unlocked = ProgressGateUnlocked(recipe->unlock_node_id);
+
+            if (owned) flags |= CAMPAIGN_GARAGE_OWNED;
+            if (owned && g_state.selected_car_id == recipe->car_id)
+                flags |= CAMPAIGN_GARAGE_SELECTED;
+            if (unlocked) flags |= CAMPAIGN_GARAGE_UNLOCKED;
+            if (unlocked && GarageRecipeAffordableUnlocked(recipe))
+                flags |= CAMPAIGN_GARAGE_ACQUIRABLE;
+
+            c->out0 = (int32_t)flags;
+            c->out1 = recipe->class_id;
+            c->out2 = recipe->acquisition_type;
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_GARAGE_ACQUISITION:
+        {
+            const CampaignVehicleRecipe* recipe = CampaignCatalogFind(c->a);
+            if (!recipe) return 0;
+            c->out0 = recipe->item_id;
+            c->out1 = recipe->cost;
+            c->out2 = recipe->unlock_node_id;
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_GARAGE_PART_STATUS:
+        {
+            const CampaignUpgradeDefinition* next;
+            int current = 0;
+            uint32_t flags = 0;
+            if (!CampaignCatalogFind(c->a)) return 0;
+            next = GarageNextPartUnlocked(c->a, c->b, c->c, &current);
+            c->out0 = current;
+            if (next) {
+                flags |= 1u;
+                c->out1 = next->target_level;
+                if (ProgressGateUnlocked(next->unlock_node_id)) flags |= 2u;
+            } else {
+                c->out1 = 0;
+            }
+            c->out2 = (int32_t)flags;
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_GARAGE_NEXT_PART_COST:
+        {
+            const CampaignUpgradeDefinition* next;
+            int current = 0;
+            if (!CampaignCatalogFind(c->a)) return 0;
+            next = GarageNextPartUnlocked(c->a, c->b, c->c, &current);
+            if (!next) return 0;
+            c->out0 = next->cost_type;
+            c->out1 = next->item_id;
+            c->out2 = next->cost;
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_GARAGE_SELECT_CAR:
+        if (c->a <= 0 || !CampaignCatalogFind(c->a) || !IsOwnedUnlocked(c->a))
+            return 0;
+        if (g_state.selected_car_id == c->a) {
+            c->out0 = c->a;
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+        CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
+        g_state.selected_car_id = c->a;
+        result = CommitMutationUnlocked();
+        if (result) c->out0 = c->a;
+        break;
 
     case CAMPAIGN_OP_GET_PROFILE_SUMMARY:
         switch (c->a) {
