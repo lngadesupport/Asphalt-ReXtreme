@@ -3521,7 +3521,7 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             if (owned && g_state.selected_car_id == recipe->car_id)
                 flags |= CAMPAIGN_GARAGE_SELECTED;
             if (unlocked) flags |= CAMPAIGN_GARAGE_UNLOCKED;
-            if (unlocked && GarageRecipeAffordableUnlocked(recipe))
+            if (unlocked && !owned && GarageRecipeAffordableUnlocked(recipe))
                 flags |= CAMPAIGN_GARAGE_ACQUIRABLE;
 
             c->out0 = (int32_t)flags;
