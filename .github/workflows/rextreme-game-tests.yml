@@ -14,6 +14,7 @@ on:
       - "tools/build_original_ui_binding_catalog.py"
       - "tools/build_race_hud_binding_catalog.py"
       - "tools/build_campaign_challenge_catalog.py"
+      - "tools/build_campaign_achievement_catalog.py"
       - "config/presentation-capabilities.verified.json"
       - "config/presentation-bindings.verified.json"
       - "config/photo-bindings.verified.json"
@@ -21,6 +22,7 @@ on:
       - "config/original-ui-bindings.verified.json"
       - "config/race-hud-bindings.verified.json"
       - "config/campaign_challenges.json"
+      - "config/campaign_achievements.json"
       - "config/replay-frame-binding.verified.json"
       - "config/photo-frame-binding.verified.json"
       - "config/photo-toggle-binding.verified.json"
@@ -33,6 +35,7 @@ on:
       - "tests/test_build_original_ui_binding_catalog.py"
       - "tests/test_build_race_hud_binding_catalog.py"
       - "tests/test_build_campaign_challenge_catalog.py"
+      - "tests/test_build_campaign_achievement_catalog.py"
       - "tools/audit_original_settings_ui.py"
       - "tools/rank_original_ui_candidates.py"
       - "tools/audit_original_ui_rtti.py"
@@ -80,6 +83,7 @@ jobs:
           tests/test_build_original_ui_binding_catalog.py
           tests/test_build_race_hud_binding_catalog.py
           tests/test_build_campaign_challenge_catalog.py
+          tests/test_build_campaign_achievement_catalog.py
           tests/test_audit_original_settings_ui.py
           tests/test_rank_original_ui_candidates.py
           tests/test_audit_original_ui_rtti.py
@@ -191,3 +195,16 @@ jobs:
           $r = Get-Content CampaignChallenges.report.json -Raw | ConvertFrom-Json
           if ($r.count -ne 0) { throw "Default Challenge catalog should remain data-empty until content is approved" }
           if ((Get-Item CampaignChallenges.dat).Length -ne 7188) { throw "Unexpected Challenge catalog size" }
+
+      - name: Build offline Achievement catalog
+        run: >
+          python tools/build_campaign_achievement_catalog.py
+          config/campaign_achievements.json
+          CampaignAchievements.dat
+          --report CampaignAchievements.report.json
+      - name: Verify Achievement catalog uses existing statistics only
+        shell: pwsh
+        run: |
+          $r = Get-Content CampaignAchievements.report.json -Raw | ConvertFrom-Json
+          if ($r.count -ne 0) { throw "Default Achievement catalog should remain data-empty until content is approved" }
+          if ((Get-Item CampaignAchievements.dat).Length -ne 4116) { throw "Unexpected Achievement catalog size" }
