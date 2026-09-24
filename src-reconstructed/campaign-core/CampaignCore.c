@@ -1287,7 +1287,6 @@ static int BeginSpecialEventStageUnlocked(
         return 0;
     }
 
-    CampaignReplayBeginLifecycleUnlocked(event_id,car_id,sid);
     if(session_id)*session_id=sid;
     if(period_key_out)*period_key_out=period_key;
     return 1;
