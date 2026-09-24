@@ -5,6 +5,7 @@
 #include "CampaignPresentationBindings.h"
 #include "CampaignPhotoBindings.h"
 #include "CampaignOriginalUiBindings.h"
+#include "CampaignRaceHudBindings.h"
 
 static volatile int32_t g_test_bound_fov;
 static volatile float g_test_photo_x;
@@ -15,6 +16,11 @@ static volatile int32_t g_test_photo_yaw;
 static volatile int32_t g_test_photo_roll;
 static volatile unsigned char g_test_photo_hud;
 static volatile uint32_t g_test_ui_targets[16];
+static volatile float g_test_hud_x;
+static volatile float g_test_hud_y;
+static volatile float g_test_hud_scale;
+static volatile float g_test_hud_opacity;
+static volatile unsigned char g_test_hud_visible;
 
 typedef struct TestCatalogHeader {
     uint32_t magic;
@@ -172,6 +178,78 @@ static int WriteTestOriginalUiCatalog(void) {
     return 1;
 }
 
+
+static int WriteTestRaceHudCatalog(void) {
+    const WCHAR* path = L"prebuilt\\campaign-core\\CampaignRaceHudBindings.dat";
+    TestBindingHeader header;
+    CampaignRaceHudBinding bindings[5];
+    HMODULE module;
+    uintptr_t base;
+    uintptr_t targets[5];
+    uint32_t properties[5] = {
+        CAMPAIGN_RACE_HUD_PROP_X,
+        CAMPAIGN_RACE_HUD_PROP_Y,
+        CAMPAIGN_RACE_HUD_PROP_SCALE,
+        CAMPAIGN_RACE_HUD_PROP_OPACITY,
+        CAMPAIGN_RACE_HUD_PROP_VISIBLE
+    };
+    HANDLE h;
+    DWORD written = 0;
+    uint32_t stamp = 0;
+    uint32_t image_size = 0;
+    uint32_t i;
+
+    ZeroMemory(&header, sizeof(header));
+    ZeroMemory(bindings, sizeof(bindings));
+    module = GetModuleHandleW(0);
+    if (!module || !CurrentTestPeFingerprint(&stamp, &image_size)) return 0;
+    base = (uintptr_t)module;
+
+    targets[0] = (uintptr_t)&g_test_hud_x;
+    targets[1] = (uintptr_t)&g_test_hud_y;
+    targets[2] = (uintptr_t)&g_test_hud_scale;
+    targets[3] = (uintptr_t)&g_test_hud_opacity;
+    targets[4] = (uintptr_t)&g_test_hud_visible;
+
+    for (i = 0; i < 5; ++i) {
+        if (targets[i] <= base || targets[i] - base > 0xFFFFFFFFu) return 0;
+        bindings[i].element = CAMPAIGN_RACE_HUD_SPEED;
+        bindings[i].property = properties[i];
+        bindings[i].base_kind = CAMPAIGN_PRESENTATION_BASE_MODULE_RVA;
+        bindings[i].target_rva = (uint32_t)(targets[i] - base);
+        bindings[i].field_offset = 0;
+        bindings[i].flags = 1;
+        if (properties[i] == CAMPAIGN_RACE_HUD_PROP_VISIBLE) {
+            bindings[i].value_kind = CAMPAIGN_PRESENTATION_VALUE_U8_BOOL;
+            bindings[i].scale_divisor = 1;
+        } else {
+            bindings[i].value_kind = CAMPAIGN_PRESENTATION_VALUE_FLOAT_SCALED;
+            bindings[i].scale_divisor = 1000;
+        }
+    }
+
+    header.magic = 0x42485852u;
+    header.version = 1;
+    header.count = 5;
+    header.entry_size = sizeof(CampaignRaceHudBinding);
+    header.entries_hash = TestFnv1a((const unsigned char*)bindings, sizeof(bindings));
+    header.pe_time_date_stamp = stamp;
+    header.pe_size_of_image = image_size;
+
+    h = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+    if (h == INVALID_HANDLE_VALUE) return 0;
+    if (!WriteFile(h, &header, sizeof(header), &written, 0) || written != sizeof(header)) {
+        CloseHandle(h);
+        return 0;
+    }
+    written = 0;
+    if (!WriteFile(h, bindings, sizeof(bindings), &written, 0) || written != sizeof(bindings)) {
+        CloseHandle(h);
+        return 0;
+    }
+    CloseHandle(h);
+    return 1;
+}
 
 static int WriteTestCapabilityCatalog(void) {
     const WCHAR* path = L"prebuilt\\campaign-core\\CampaignPresentationOptions.dat";
@@ -692,6 +770,37 @@ int main(void) {
         !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_RACE_HUD)) return Fail(121);
     if (CampaignOriginalUiBindingsResolve("ui.button") != (void*)&g_test_ui_targets[4]) return Fail(122);
 
+    if (CampaignRaceHudBindingsCount() != 0) return Fail(123);
+    {
+        CampaignRaceHudElementState hud;
+        ZeroMemory(&hud, sizeof(hud));
+        hud.size = sizeof(hud);
+        hud.element = CAMPAIGN_RACE_HUD_SPEED;
+        hud.set_flags =
+            CAMPAIGN_RACE_HUD_SET_X |
+            CAMPAIGN_RACE_HUD_SET_Y |
+            CAMPAIGN_RACE_HUD_SET_SCALE |
+            CAMPAIGN_RACE_HUD_SET_OPACITY |
+            CAMPAIGN_RACE_HUD_SET_VISIBLE;
+        hud.x_x1000 = 12500;
+        hud.y_x1000 = 42000;
+        hud.scale_x1000 = 1250;
+        hud.opacity_x1000 = 750;
+        hud.visible = 1;
+
+        if (CampaignRaceHudApplyElement(&hud)) return Fail(124);
+        if (!WriteTestRaceHudCatalog()) return Fail(125);
+        if (!CampaignRaceHudBindingsLoad()) return Fail(126);
+        if (CampaignRaceHudBindingsCount() != 5) return Fail(127);
+        if (!CampaignRaceHudElementReady(CAMPAIGN_RACE_HUD_SPEED, hud.set_flags)) return Fail(128);
+        if (!CampaignRaceHudApplyElement(&hud)) return Fail(129);
+        if (g_test_hud_x != 12.5f ||
+            g_test_hud_y != 42.0f ||
+            g_test_hud_scale != 1.25f ||
+            g_test_hud_opacity != 0.75f ||
+            g_test_hud_visible != 1) return Fail(130);
+    }
+
     if (CampaignPresentationCatalogCount() != 0) return Fail(50);
     if (!WriteTestCapabilityCatalog()) return Fail(51);
     if (!CampaignPresentationCatalogLoad()) return Fail(52);
@@ -758,6 +867,7 @@ int main(void) {
     DeleteFileW(L"prebuilt\\campaign-core\\CampaignPresentationBindings.dat");
     DeleteFileW(L"prebuilt\\campaign-core\\CampaignPhotoBindings.dat");
     DeleteFileW(L"prebuilt\\campaign-core\\CampaignOriginalUiBindings.dat");
+    DeleteFileW(L"prebuilt\\campaign-core\\CampaignRaceHudBindings.dat");
     DeleteFileW(L"prebuilt\\campaign-core\\ReXtreme.ini");
 
     return 0;
