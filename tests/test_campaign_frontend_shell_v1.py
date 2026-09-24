@@ -1,4 +1,6 @@
-import importlib.util, struct
+import importlib.util
+import struct
+import unittest
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -8,12 +10,23 @@ m=importlib.util.module_from_spec(spec)
 assert spec.loader is not None
 spec.loader.exec_module(m)
 
-def test_build_path_has_no_original_object_dependency():
-    p=m.gateway_return(m.BUILD_CALLBACK_VA,m.RT_BUILD_SELECTED,m.BUILD_CALLBACK_STACK)
-    assert p[:5]==b"\x68"+struct.pack("<I",m.RT_BUILD_SELECTED)
-    assert p[-3:]==b"\xC2\x08\x00"
+class CleanFrontendShellTests(unittest.TestCase):
+    def test_build_path_has_no_original_object_dependency(self):
+        p=m.gateway_return(
+            m.BUILD_CALLBACK_VA,
+            m.RT_BUILD_SELECTED,
+            m.BUILD_CALLBACK_STACK
+        )
+        self.assertEqual(
+            p[:5],
+            b"\x68"+struct.pack("<I",m.RT_BUILD_SELECTED)
+        )
+        self.assertEqual(p[-3:],b"\xC2\x08\x00")
 
-def test_clean_runtime_selectors_only():
-    assert m.RT_BOOT==0xC0DE9005
-    assert m.RT_LOBBY==0xC0DE9006
-    assert m.RT_BUILD_SELECTED==0xC0DE9003
+    def test_clean_runtime_selectors_only(self):
+        self.assertEqual(m.RT_BOOT,0xC0DE9005)
+        self.assertEqual(m.RT_LOBBY,0xC0DE9006)
+        self.assertEqual(m.RT_BUILD_SELECTED,0xC0DE9003)
+
+if __name__=="__main__":
+    unittest.main()
