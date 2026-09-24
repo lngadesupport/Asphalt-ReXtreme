@@ -14,7 +14,7 @@ spec.loader.exec_module(mod)
 def write_caps(path: Path, caps: list[dict]) -> None:
     path.write_text(json.dumps({
         "format": "rextreme-presentation-capabilities",
-        "version": 1,
+        "version": mod.VERSION,
         "build": "1.7.3.8-x86",
         "capabilities": caps,
     }), encoding="utf-8")
@@ -91,7 +91,7 @@ def test_verified_binding_builds(tmp_path: Path):
         "scale_divisor": 100,
         "verified": True,
         "evidence": [{"source": "AMS.exe", "rva": "0x0153AC20"}],
-    }])
+    }], target_pe={"time_date_stamp": "0x12345678", "size_of_image": "0x02000000"})
     result = mod.build(src, caps, out)
     assert result["count"] == 1
     assert result["binding_ids"] == ["fov"]
