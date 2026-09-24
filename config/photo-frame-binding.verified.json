@@ -1,0 +1,8 @@
+{
+  "format": "rextreme-photo-frame-binding",
+  "version": 1,
+  "build": "1.7.3.8-x86",
+  "enabled": false,
+  "rule": "Enable only after runtime/disassembly verification proves a safe per-frame GameModeGUIBase hook for Photo Mode.",
+  "binding": null
+}
