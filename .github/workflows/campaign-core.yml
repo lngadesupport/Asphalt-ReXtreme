@@ -15,6 +15,8 @@ on:
       - "src-reconstructed/campaign-core/CampaignPresentationCatalog.h"
       - "src-reconstructed/campaign-core/CampaignPresentationBindings.c"
       - "src-reconstructed/campaign-core/CampaignPresentationBindings.h"
+      - "src-reconstructed/campaign-core/CampaignPhotoBindings.c"
+      - "src-reconstructed/campaign-core/CampaignPhotoBindings.h"
       - "src-reconstructed/campaign-core/CampaignPresentationTest.c"
       - "src-reconstructed/campaign-core/CampaignCatalog.c"
       - "src-reconstructed/campaign-core/CampaignCatalog.h"
@@ -108,10 +110,13 @@ jobs:
           cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignPresentationBindings.obj" "src-reconstructed\campaign-core\CampaignPresentationBindings.c"
           if errorlevel 1 exit /b 28
 
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignPhotoBindings.obj" "src-reconstructed\campaign-core\CampaignPhotoBindings.c"
+          if errorlevel 1 exit /b 29
+
           ml.exe /nologo /c /coff /Fo"prebuilt\campaign-core\campaign_gateway.obj" "runtime-stubs\campaign_gateway.asm"
           if errorlevel 1 exit /b 13
 
-          link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:"runtime-stubs\IGPLib_x86_campaign.def" /out:"prebuilt\campaign-core\IGPLib_x86.dll" "prebuilt\campaign-core\CampaignCore.obj" "prebuilt\campaign-core\CampaignCatalog.obj" "prebuilt\campaign-core\CampaignEventCatalog.obj" "prebuilt\campaign-core\CampaignObjectiveCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeUiMap.obj" "prebuilt\campaign-core\CampaignStoreCatalog.obj" "prebuilt\campaign-core\CampaignStoreAdapter.obj" "prebuilt\campaign-core\CampaignCareerAdapter.obj" "prebuilt\campaign-core\CampaignUpgradeAdapter.obj" "prebuilt\campaign-core\CampaignPresentation.obj" "prebuilt\campaign-core\CampaignPresentationCatalog.obj" "prebuilt\campaign-core\CampaignPresentationBindings.obj" "prebuilt\campaign-core\campaign_gateway.obj" kernel32.lib
+          link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:"runtime-stubs\IGPLib_x86_campaign.def" /out:"prebuilt\campaign-core\IGPLib_x86.dll" "prebuilt\campaign-core\CampaignCore.obj" "prebuilt\campaign-core\CampaignCatalog.obj" "prebuilt\campaign-core\CampaignEventCatalog.obj" "prebuilt\campaign-core\CampaignObjectiveCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeUiMap.obj" "prebuilt\campaign-core\CampaignStoreCatalog.obj" "prebuilt\campaign-core\CampaignStoreAdapter.obj" "prebuilt\campaign-core\CampaignCareerAdapter.obj" "prebuilt\campaign-core\CampaignUpgradeAdapter.obj" "prebuilt\campaign-core\CampaignPresentation.obj" "prebuilt\campaign-core\CampaignPresentationCatalog.obj" "prebuilt\campaign-core\CampaignPresentationBindings.obj" "prebuilt\campaign-core\CampaignPhotoBindings.obj" "prebuilt\campaign-core\campaign_gateway.obj" kernel32.lib
           if errorlevel 1 exit /b 14
 
           dumpbin.exe /headers /imports "prebuilt\campaign-core\IGPLib_x86.dll" > "prebuilt\campaign-core\DUMPBIN.txt"
@@ -147,6 +152,7 @@ jobs:
           Remove-Item ".\prebuilt\campaign-core\CampaignPresentation.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignPresentationCatalog.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignPresentationBindings.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignPhotoBindings.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\campaign_gateway.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignPresentationTest.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignPresentationTest.exe" -ErrorAction SilentlyContinue
@@ -207,6 +213,8 @@ jobs:
             PhotoFrameSelector = "0xC0DEB003"
             PhotoFrameBindingRegistry = "config/photo-frame-binding.verified.json"
             PhotoFrameBindingVerified = $false
+            PhotoBindingCatalog = "CampaignPhotoBindings.dat"
+            PhotoFreeCameraRequiresCompleteBindings = $true
             PresentationSettings = "ReXtremePresentation.dat"
             ReplayFormat = ".rexreplay"
             ReplayRuntimeFoundation = $true
