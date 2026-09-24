@@ -48,7 +48,8 @@ enum CampaignCommandOp {
     CAMPAIGN_OP_PURCHASE_OFFER = 80,
 
     CAMPAIGN_OP_SAVE = 90,
-    CAMPAIGN_OP_RELOAD = 91
+    CAMPAIGN_OP_RELOAD = 91,
+    CAMPAIGN_OP_DIAGNOSTICS = 92
 };
 
 typedef struct CampaignCommand {
