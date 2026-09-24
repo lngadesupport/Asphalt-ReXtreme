@@ -77,6 +77,20 @@ public sealed class ProjectService
         if (manifest.SdkApi < 1)
             output.Add(new("ERROR", "manifest.sdk_api", "sdk_api deve ser >= 1.", manifestPath));
 
+        var dependencyIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var dep in manifest.Dependencies)
+        {
+            if (string.IsNullOrWhiteSpace(dep.Id))
+            {
+                output.Add(new("ERROR", "manifest.dependency_id", "Dependência sem ID.", manifestPath));
+                continue;
+            }
+            if (dep.Id.Equals(manifest.Id, StringComparison.OrdinalIgnoreCase))
+                output.Add(new("ERROR", "manifest.dependency_self", "Um mod não pode depender de si mesmo.", manifestPath));
+            if (!dependencyIds.Add(dep.Id))
+                output.Add(new("ERROR", "manifest.dependency_duplicate", $"Dependência duplicada: {dep.Id}", manifestPath));
+        }
+
         var ids = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var contentDir = Path.Combine(root, "content");
         if (Directory.Exists(contentDir))
@@ -133,6 +147,34 @@ public sealed class ProjectService
         if (output.Count == 0)
             output.Add(new("INFO", "project.valid", "Projeto válido para a fundação atual do ReXtreme SDK.", root));
         return output;
+    }
+
+    public void SaveManifest(RxManifest manifest)
+    {
+        RequireProject();
+        SaveJson(Path.Combine(CurrentProjectPath!, "manifest.json"), manifest);
+    }
+
+    public void AddDependency(string id, string version)
+    {
+        var manifest = LoadManifest();
+        id = id.Trim();
+        version = string.IsNullOrWhiteSpace(version) ? "*" : version.Trim();
+        if (string.IsNullOrWhiteSpace(id))
+            throw new InvalidDataException("ID da dependência é obrigatório.");
+        if (id.Equals(manifest.Id, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("O projeto não pode depender de si mesmo.");
+
+        manifest.Dependencies.RemoveAll(x => x.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
+        manifest.Dependencies.Add(new RxDependency { Id = id, Version = version });
+        SaveManifest(manifest);
+    }
+
+    public void RemoveDependency(string id)
+    {
+        var manifest = LoadManifest();
+        manifest.Dependencies.RemoveAll(x => x.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
+        SaveManifest(manifest);
     }
 
     public string ImportMusic(string file, string id, string title, string artist, string scope)
