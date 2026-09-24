@@ -14,6 +14,7 @@ typedef struct CampaignPresentationCatalogHeader {
 } CampaignPresentationCatalogHeader;
 
 static CampaignPresentationCapability g_entries[CAMPAIGN_PRESENTATION_CAPABILITY_MAX];
+static CampaignPresentationCapability g_load_entries[CAMPAIGN_PRESENTATION_CAPABILITY_MAX];
 static uint32_t g_count;
 static volatile LONG g_loaded;
 
@@ -92,7 +93,7 @@ int CampaignPresentationCatalogLoad(void) {
     HANDLE h;
     DWORD got;
     CampaignPresentationCatalogHeader header;
-    CampaignPresentationCapability temp[CAMPAIGN_PRESENTATION_CAPABILITY_MAX];
+    CampaignPresentationCapability* temp = g_load_entries;
     uint32_t i;
 
     ZeroBytes(g_entries, (uint32_t)sizeof(g_entries));
