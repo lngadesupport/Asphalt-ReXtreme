@@ -98,6 +98,11 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--project-root", type=Path, required=True)
     ap.add_argument("--output", type=Path)
+    ap.add_argument(
+        "--require-complete",
+        action="store_true",
+        help="return nonzero unless the literal rebuilt subsystems are all READY",
+    )
     ns = ap.parse_args()
 
     root = ns.project_root.resolve()
@@ -241,8 +246,12 @@ def main() -> int:
     output.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
     print(json.dumps(report, indent=2, ensure_ascii=False))
 
-    # Return success for a stable playable Campaign build. The JSON separately
-    # states whether the literal full rebuild is complete.
+    if ns.require_complete:
+        if not report["playable_ready"]:
+            return 2
+        return 0 if report["complete_rebuild"] else 3
+
+    # Non-strict mode remains useful during development.
     return 0 if report["playable_ready"] else 2
 
 
