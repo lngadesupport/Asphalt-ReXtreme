@@ -777,11 +777,18 @@ static int FinishEventRaceMetricsUnlocked(CampaignRaceMetrics* metrics) {
 
 static int CancelEventRaceUnlocked(uint32_t session_id) {
     CampaignRaceSession* session = &g_race_session_buffer;
+    uint32_t actual_session_id;
 
     RecoverConsumingRaceSessionUnlocked();
-    if (!ReadRaceSessionFile(g_race_session_path, session)) return 1;
+    if (!ReadRaceSessionFile(g_race_session_path, session)) {
+        if (session_id != 0) CampaignActivityContextClear(session_id);
+        return 1;
+    }
     if (session_id != 0 && session->session_id != session_id) return 0;
-    return DeleteFileW(g_race_session_path) ? 1 : 0;
+    actual_session_id = session->session_id;
+    if (!DeleteFileW(g_race_session_path)) return 0;
+    CampaignActivityContextClear(actual_session_id);
+    return 1;
 }
 
 static int SaveStateUnlocked(void) {
@@ -2093,6 +2100,7 @@ int __cdecl CampaignBeginRaceFromGui(void* game_mode_gui) {
 
     LockState();
     EnsureLoadedUnlocked();
+    RecoverActivityContextUnlocked();
 
     RecoverConsumingRaceSessionUnlocked();
 
@@ -2237,17 +2245,26 @@ int __cdecl CampaignFinishRaceFromGui(void* game_mode_gui) {
     finish_status = FinishEventRaceMetricsUnlocked(&metrics);
 
     if (finish_status == 2) {
+        RecoverActivityContextUnlocked();
         UnlockState();
         return 1;
     }
 
     if (finish_status == 1) {
+        CaptureActivityResultUnlocked(
+            g_race_session_buffer.session_id,
+            metrics.placement
+        );
         result = CommitMutationUnlocked();
         if (result) {
             DeleteFileW(g_race_session_consuming_path);
-            /* Challenge sidecar is secondary: a failure never invalidates the race commit. */
+            /* Secondary sidecars never invalidate the already committed race. */
             CampaignChallengesOnRace(g_race_session_buffer.event_id, &metrics);
-            ChampionshipsOnCommittedRaceUnlocked(g_race_session_buffer.event_id, &metrics);
+            CaptureActivityResultUnlocked(
+                g_race_session_buffer.session_id,
+                metrics.placement
+            );
+            ApplyActivityContextUnlocked(g_race_session_buffer.session_id);
             CampaignLastResultRecord(
                 g_race_session_buffer.event_id,
                 g_race_session_buffer.car_id > 0 ? g_race_session_buffer.car_id : 0,
@@ -2571,6 +2588,10 @@ static int ExecuteUnlocked(CampaignCommand* c) {
                 return 0;
             }
 
+            CaptureActivityResultUnlocked(
+                g_race_session_buffer.session_id,
+                c->b
+            );
             result = CommitMutationUnlocked();
             if (!result) {
                 CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
@@ -2583,6 +2604,11 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             }
 
             DeleteFileW(g_race_session_consuming_path);
+            CaptureActivityResultUnlocked(
+                g_race_session_buffer.session_id,
+                c->b
+            );
+            ApplyActivityContextUnlocked(g_race_session_buffer.session_id);
         }
         break;
 
@@ -2604,6 +2630,7 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             finish_status = FinishEventRaceMetricsUnlocked(metrics);
 
             if (finish_status == 2) {
+                RecoverActivityContextUnlocked();
                 c->out0 = 0;
                 c->out1 = 0;
                 c->out2 = 0;
@@ -2617,6 +2644,10 @@ static int ExecuteUnlocked(CampaignCommand* c) {
                 return 0;
             }
 
+            CaptureActivityResultUnlocked(
+                g_race_session_buffer.session_id,
+                metrics->placement
+            );
             result = CommitMutationUnlocked();
             if (!result) {
                 CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
@@ -2634,9 +2665,13 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             }
 
             DeleteFileW(g_race_session_consuming_path);
-            /* Only full metric finishes contribute to Challenges. */
+            /* Only full metric finishes contribute to Challenges/statistics. */
             CampaignChallengesOnRace(g_race_session_buffer.event_id, metrics);
-            ChampionshipsOnCommittedRaceUnlocked(g_race_session_buffer.event_id, metrics);
+            CaptureActivityResultUnlocked(
+                g_race_session_buffer.session_id,
+                metrics->placement
+            );
+            ApplyActivityContextUnlocked(g_race_session_buffer.session_id);
             CampaignLastResultRecord(
                 g_race_session_buffer.event_id,
                 g_race_session_buffer.car_id > 0 ? g_race_session_buffer.car_id : 0,
@@ -3215,6 +3250,7 @@ int __cdecl CampaignBeginRaceAdapter(const CampaignRaceBeginArgs* args) {
 
     LockState();
     EnsureLoadedUnlocked();
+    RecoverActivityContextUnlocked();
     result = BeginEventRaceUnlocked(args->event_id, args->car_id, &session_id);
     if (result) {
         CampaignReplayBeginLifecycleUnlocked(args->event_id, args->car_id, session_id);
@@ -3232,6 +3268,7 @@ int __cdecl CampaignFinishRaceAdapter(const CampaignRaceFinishArgs* args) {
 
     LockState();
     EnsureLoadedUnlocked();
+    RecoverActivityContextUnlocked();
 
     CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
 
@@ -3266,6 +3303,10 @@ int __cdecl CampaignFinishRaceAdapter(const CampaignRaceFinishArgs* args) {
         return 0;
     }
 
+    CaptureActivityResultUnlocked(
+        g_race_session_buffer.session_id,
+        args->position
+    );
     result = CommitMutationUnlocked();
     if (!result) {
         CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
@@ -3279,6 +3320,11 @@ int __cdecl CampaignFinishRaceAdapter(const CampaignRaceFinishArgs* args) {
     }
 
     DeleteFileW(g_race_session_consuming_path);
+    CaptureActivityResultUnlocked(
+        g_race_session_buffer.session_id,
+        args->position
+    );
+    ApplyActivityContextUnlocked(g_race_session_buffer.session_id);
     UnlockState();
     return 1;
 }
@@ -3350,6 +3396,7 @@ int __cdecl CampaignExecuteCommand(CampaignCommand* command) {
 
     LockState();
     EnsureLoadedUnlocked();
+    RecoverActivityContextUnlocked();
     result = ExecuteUnlocked(command);
     UnlockState();
 
