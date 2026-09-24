@@ -1,0 +1,50 @@
+name: ReXtreme Game Foundation Tests
+
+on:
+  push:
+    branches:
+      - rextreme-game-next
+    paths:
+      - "tools/campaign_rebuilder.py"
+      - "tools/audit_presentation_capabilities.py"
+      - "tools/build_presentation_capability_catalog.py"
+      - "config/presentation-capabilities.verified.json"
+      - "tests/test_campaign_rebuilder.py"
+      - "tests/test_audit_presentation_capabilities.py"
+      - "tests/test_build_presentation_capability_catalog.py"
+      - ".github/workflows/rextreme-game-tests.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: rextreme-game-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pytest
+        run: python -m pip install pytest
+      - name: Run focused game tests
+        run: >
+          python -m pytest -q
+          tests/test_campaign_rebuilder.py
+          tests/test_audit_presentation_capabilities.py
+          tests/test_build_presentation_capability_catalog.py
+      - name: Build safe empty presentation catalog
+        run: >
+          python tools/build_presentation_capability_catalog.py
+          config/presentation-capabilities.verified.json
+          CampaignPresentationOptions.dat
+          --report CampaignPresentationOptions.report.json
+      - name: Verify empty allowlist
+        shell: pwsh
+        run: |
+          $r = Get-Content CampaignPresentationOptions.report.json -Raw | ConvertFrom-Json
+          if ($r.count -ne 0) { throw "Unverified options leaked into runtime catalog" }
+          if (-not $r.safe_empty_catalog) { throw "Expected safe empty catalog" }
+          if ((Get-Item CampaignPresentationOptions.dat).Length -ne 16) { throw "Unexpected empty catalog size" }
