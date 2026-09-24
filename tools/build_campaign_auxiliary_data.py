@@ -204,8 +204,30 @@ def build_objectives(career: dict, output: Path, report: Path):
     if unresolved:
         return False, payload
 
+    if not rows:
+        payload["unresolved"].append({
+            "reason": "career data produced zero Campaign objectives"
+        })
+        payload["unresolved_count"] = len(payload["unresolved"])
+        report.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        return False, payload
+
     entries = objective_binary.normalize(rows)
     output.write_bytes(objective_binary.build(entries))
+    if not output.is_file() or output.stat().st_size <= 20:
+        payload["unresolved"].append({
+            "reason": "CampaignObjectives.dat was not materialized correctly"
+        })
+        payload["unresolved_count"] = len(payload["unresolved"])
+        report.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        output.unlink(missing_ok=True)
+        return False, payload
     return True, payload
 
 
@@ -342,6 +364,12 @@ def main() -> int:
     # the upgrade adapter; all other rebuilt systems remain buildable.
     if not obj_ok:
         return 3
+    if not (package / "CampaignObjectives.dat").is_file():
+        print("CampaignObjectives.dat missing after successful objective build")
+        return 4
+    if not (package / "CampaignUpgradeUiMap.dat").is_file():
+        print("CampaignUpgradeUiMap.dat missing after auxiliary build")
+        return 5
     return 0
 
 
