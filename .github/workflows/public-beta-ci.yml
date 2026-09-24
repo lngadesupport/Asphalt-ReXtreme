@@ -30,7 +30,8 @@ jobs:
           foreach ($script in @(
             "tools/public_beta.ps1",
             "tools/capture_beta_runtime.ps1",
-            "tools/beta_startup_bisect.ps1"
+            "tools/beta_startup_bisect.ps1",
+            "tools/test_profile_only.ps1"
           )) {
             $tokens = $null
             $errors = $null
