@@ -3,8 +3,58 @@
 #include <stdint.h>
 #include "CampaignPresentation.h"
 
+typedef struct TestCatalogHeader {
+    uint32_t magic;
+    uint32_t version;
+    uint32_t count;
+    uint32_t entry_size;
+} TestCatalogHeader;
+
 static int Fail(int code) {
     return code;
+}
+
+static int WriteTestCapabilityCatalog(void) {
+    const WCHAR* path = L"prebuilt\\campaign-core\\CampaignPresentationOptions.dat";
+    TestCatalogHeader header;
+    CampaignPresentationCapability capability;
+    HANDLE h;
+    DWORD written = 0;
+    const char id[] = "fov";
+    uint32_t i;
+
+    ZeroMemory(&header, sizeof(header));
+    ZeroMemory(&capability, sizeof(capability));
+
+    header.magic = 0x43505852u;
+    header.version = 1;
+    header.count = 1;
+    header.entry_size = sizeof(CampaignPresentationCapability);
+
+    for (i = 0; i < sizeof(id); ++i) capability.id[i] = id[i];
+    capability.kind = CAMPAIGN_PRESENTATION_CAPABILITY_SLIDER;
+    capability.minimum = 5000;
+    capability.maximum = 10000;
+    capability.step = 100;
+    capability.original_value = 7000;
+    capability.flags = CAMPAIGN_PRESENTATION_CAPABILITY_VERIFIED;
+
+    h = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+    if (h == INVALID_HANDLE_VALUE) return 0;
+
+    if (!WriteFile(h, &header, sizeof(header), &written, 0) || written != sizeof(header)) {
+        CloseHandle(h);
+        return 0;
+    }
+
+    written = 0;
+    if (!WriteFile(h, &capability, sizeof(capability), &written, 0) || written != sizeof(capability)) {
+        CloseHandle(h);
+        return 0;
+    }
+
+    CloseHandle(h);
+    return 1;
 }
 
 int main(void) {
@@ -108,11 +158,34 @@ int main(void) {
     if (!CampaignPhotoExit()) return Fail(43);
 
     if (CampaignPresentationCatalogCount() != 0) return Fail(50);
+    if (!WriteTestCapabilityCatalog()) return Fail(51);
+    if (!CampaignPresentationCatalogLoad()) return Fail(52);
+    if (CampaignPresentationCatalogCount() != 1) return Fail(53);
+
+    {
+        int32_t value = 0;
+        if (!CampaignPresentationCatalogGetValue(0, &value)) return Fail(54);
+        if (value != 7000) return Fail(55);
+        if (!CampaignPresentationCatalogSetValue(0, 7500)) return Fail(56);
+        if (CampaignPresentationCatalogSetValue(0, 7555)) return Fail(57);
+        if (!CampaignPresentationCatalogGetValue(0, &value) || value != 7500) return Fail(58);
+        if (!CampaignPresentationCatalogResetValue(0)) return Fail(59);
+        if (!CampaignPresentationCatalogGetValue(0, &value) || value != 7000) return Fail(60);
+    }
+
+    ZeroMemory(&loaded, sizeof(loaded));
+    loaded.size = sizeof(loaded);
+    if (!CampaignPresentationGetSettings(&loaded)) return Fail(61);
+    settings = loaded;
+    settings.fov_x100 = 7500;
+    if (!CampaignPresentationSetSettings(&settings)) return Fail(62);
 
     DeleteFileW(replay_path);
     DeleteFileW(L"prebuilt\\campaign-core\\ReXtremePresentation.dat");
     DeleteFileW(L"prebuilt\\campaign-core\\ReXtremePresentation.tmp");
     DeleteFileW(L"prebuilt\\campaign-core\\ReXtremePresentation.bak");
+    DeleteFileW(L"prebuilt\\campaign-core\\CampaignPresentationOptions.dat");
+    DeleteFileW(L"prebuilt\\campaign-core\\ReXtreme.ini");
 
     return 0;
 }
