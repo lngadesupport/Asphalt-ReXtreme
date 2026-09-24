@@ -11,7 +11,7 @@ File Type: DLL
 FILE HEADER VALUES
              14C machine (x86)
                4 number of sections
-        6AB4E773 time date stamp Thu Sep 24 09:03:47 2026
+        6AB4E796 time date stamp Thu Sep 24 09:04:22 2026
                0 file pointer to symbol table
                0 number of symbols
               E0 size of optional header
@@ -23,20 +23,20 @@ FILE HEADER VALUES
 OPTIONAL HEADER VALUES
              10B magic # (PE32)
            14.51 linker version
-            6000 size of code
-           E3E00 size of initialized data
+            6400 size of code
+           F3E00 size of initialized data
                0 size of uninitialized data
                0 entry point
             1000 base of code
-            7000 base of data
-        10000000 image base (10000000 to 100EBFFF)
+            8000 base of data
+        10000000 image base (10000000 to 100FCFFF)
             1000 section alignment
              200 file alignment
             6.00 operating system version
             0.00 image version
             6.00 subsystem version
                0 Win32 version
-           EC000 size of image
+           FD000 size of image
              400 size of headers
                0 checksum
                2 subsystem (Windows GUI)
@@ -49,19 +49,19 @@ OPTIONAL HEADER VALUES
             1000 size of heap commit
                0 loader flags
               10 number of directories
-            7480 [     354] RVA [size] of Export Directory
-            78D8 [      28] RVA [size] of Import Directory
+            8480 [     354] RVA [size] of Export Directory
+            88D8 [      28] RVA [size] of Import Directory
                0 [       0] RVA [size] of Resource Directory
                0 [       0] RVA [size] of Exception Directory
                0 [       0] RVA [size] of Certificates Directory
-           EB000 [     8A8] RVA [size] of Base Relocation Directory
-            7464 [      1C] RVA [size] of Debug Directory
+           FC000 [     8F4] RVA [size] of Base Relocation Directory
+            8464 [      1C] RVA [size] of Debug Directory
                0 [       0] RVA [size] of Architecture Directory
                0 [       0] RVA [size] of Global Pointer Directory
                0 [       0] RVA [size] of Thread Storage Directory
                0 [       0] RVA [size] of Load Configuration Directory
                0 [       0] RVA [size] of Bound Import Directory
-            7000 [      48] RVA [size] of Import Address Table Directory
+            8000 [      48] RVA [size] of Import Address Table Directory
                0 [       0] RVA [size] of Delay Import Directory
                0 [       0] RVA [size] of COM Descriptor Directory
                0 [       0] RVA [size] of Reserved Directory
@@ -69,10 +69,10 @@ OPTIONAL HEADER VALUES
 
 SECTION HEADER #1
    .text name
-    5F62 virtual size
-    1000 virtual address (10001000 to 10006F61)
-    6000 size of raw data
-     400 file pointer to raw data (00000400 to 000063FF)
+    6292 virtual size
+    1000 virtual address (10001000 to 10007291)
+    6400 size of raw data
+     400 file pointer to raw data (00000400 to 000067FF)
        0 file pointer to relocation table
        0 file pointer to line numbers
        0 number of relocations
@@ -84,9 +84,9 @@ SECTION HEADER #1
 SECTION HEADER #2
   .rdata name
      A5A virtual size
-    7000 virtual address (10007000 to 10007A59)
+    8000 virtual address (10008000 to 10008A59)
      C00 size of raw data
-    6400 file pointer to raw data (00006400 to 00006FFF)
+    6800 file pointer to raw data (00006800 to 000073FF)
        0 file pointer to relocation table
        0 file pointer to line numbers
        0 number of relocations
@@ -99,13 +99,13 @@ SECTION HEADER #2
 
         Time Type        Size      RVA  Pointer
     -------- ------- -------- -------- --------
-    6AB4E773 coffgrp       DC 000077EC     6BEC
+    6AB4E796 coffgrp       DC 000087EC     6FEC
 
   Section contains the following imports:
 
     KERNEL32.dll
-              10007000 Import Address Table
-              10007900 Import Name Table
+              10008000 Import Address Table
+              10008900 Import Name Table
                      0 time date stamp
                      0 Index of first forwarder reference
 
@@ -128,8 +128,8 @@ SECTION HEADER #2
 
 SECTION HEADER #3
    .data name
-   E2678 virtual size
-    8000 virtual address (10008000 to 100EA677)
+   F2680 virtual size
+    9000 virtual address (10009000 to 100FB67F)
        0 size of raw data
        0 file pointer to raw data
        0 file pointer to relocation table
@@ -142,10 +142,10 @@ C0000040 flags
 
 SECTION HEADER #4
   .reloc name
-     8A8 virtual size
-   EB000 virtual address (100EB000 to 100EB8A7)
+     8F4 virtual size
+   FC000 virtual address (100FC000 to 100FC8F3)
      A00 size of raw data
-    7000 file pointer to raw data (00007000 to 000079FF)
+    7400 file pointer to raw data (00007400 to 00007DFF)
        0 file pointer to relocation table
        0 file pointer to line numbers
        0 number of relocations
@@ -157,7 +157,7 @@ SECTION HEADER #4
 
   Summary
 
-       E3000 .data
+       F3000 .data
         1000 .rdata
         1000 .reloc
-        6000 .text
+        7000 .text
