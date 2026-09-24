@@ -85,7 +85,10 @@
                                       SelectionChanged="VehicleBaseProfileBox_SelectionChanged"/>
                             <TextBlock x:Name="VehicleProfileStatusText"
                                        Text="Nenhum perfil original verificado carregado."
-                                       Foreground="{StaticResource EditorMuted}" Margin="0,0,0,16" TextWrapping="Wrap"/>
+                                       Foreground="{StaticResource EditorMuted}" Margin="0,0,0,6" TextWrapping="Wrap"/>
+                            <Button Content="Importar Original Vehicle Registry"
+                                    HorizontalAlignment="Left" Margin="0,0,0,16"
+                                    Click="ImportVehicleRegistry_Click"/>
 
                             <TextBlock Text="DESEMPENHO — barras do jogo" FontWeight="Bold" Margin="0,0,0,8"/>
                             <TextBlock Text="Velocidade"/>
