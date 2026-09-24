@@ -9,8 +9,7 @@ typedef struct CampaignSpecialEventPeriodEntry {
     int32_t special_event_id;
     uint32_t period_key;
     uint32_t stage_count;
-    uint32_t reserved;
-    uint32_t baseline_completion[CAMPAIGN_SPECIAL_EVENT_STAGE_MAX];
+    uint32_t completed_mask;
 } CampaignSpecialEventPeriodEntry;
 
 typedef struct CampaignSpecialEventPeriodFile {
@@ -76,12 +75,16 @@ static int BuildPaths(void){
 static uint32_t Checksum(const CampaignSpecialEventPeriodFile* f){
     return SpHash(f,(uint32_t)sizeof(*f)-(uint32_t)sizeof(uint32_t));
 }
+static uint32_t ValidMask(uint32_t stage_count){
+    if(stage_count==0||stage_count>CAMPAIGN_SPECIAL_EVENT_STAGE_MAX)return 0;
+    return stage_count==32u?0xFFFFFFFFu:((1u<<stage_count)-1u);
+}
 static int EntryValid(const CampaignSpecialEventPeriodEntry* e){
-    uint32_t i;
-    if(!e||e->special_event_id<=0||e->period_key==0||
+    uint32_t mask;
+    if(!e||e->special_event_id<=0||
        e->stage_count==0||e->stage_count>CAMPAIGN_SPECIAL_EVENT_STAGE_MAX)return 0;
-    for(i=e->stage_count;i<CAMPAIGN_SPECIAL_EVENT_STAGE_MAX;++i)
-        if(e->baseline_completion[i]!=0)return 0;
+    mask=ValidMask(e->stage_count);
+    if((e->completed_mask&~mask)!=0)return 0;
     return 1;
 }
 static int FileValid(const CampaignSpecialEventPeriodFile* f){
@@ -116,7 +119,7 @@ static int WriteUnlocked(void){
     return 1;
 }
 static int EnsureLoaded(void){
-    HANDLE h;DWORD got=0;
+    HANDLE h;DWORD got=0;int rewrite=0;
     if(InterlockedCompareExchange(&g_loaded,1,1))return 1;
     SpLock();
     if(g_loaded){SpUnlock();return 1;}
@@ -127,14 +130,17 @@ static int EnsureLoaded(void){
     h=CreateFileW(g_path,GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE,0,
                   OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0);
     if(h!=INVALID_HANDLE_VALUE){
-        if(ReadFile(h,&g_load,sizeof(g_load),&got,0)&&got==sizeof(g_load)&&FileValid(&g_load))
+        if(ReadFile(h,&g_load,sizeof(g_load),&got,0)&&got==sizeof(g_load)&&FileValid(&g_load)){
             SpCopy(&g_period,&g_load,sizeof(g_period));
+        }else{
+            rewrite=1; /* v1/invalid sidecar resets only Special Event-local progress. */
+        }
         CloseHandle(h);
+    }else{
+        rewrite=1;
     }
     InterlockedExchange(&g_loaded,1);
-    if(GetFileAttributesW(g_path)==INVALID_FILE_ATTRIBUTES&&!WriteUnlocked()){
-        SpUnlock();return 0;
-    }
+    if(rewrite&&!WriteUnlocked()){SpUnlock();return 0;}
     SpUnlock();return 1;
 }
 static CampaignSpecialEventPeriodEntry* FindEntry(int32_t id){
@@ -143,76 +149,98 @@ static CampaignSpecialEventPeriodEntry* FindEntry(int32_t id){
         if(g_period.entries[i].special_event_id==id)return &g_period.entries[i];
     return 0;
 }
-static int IsRotating(const CampaignSpecialEventDefinition* d){
+static uint32_t ExpectedPeriodKey(const CampaignSpecialEventDefinition* d,uint32_t day_key){
     if(!d)return 0;
-    return d->schedule==CAMPAIGN_SPECIAL_EVENT_DAILY||
-           d->schedule==CAMPAIGN_SPECIAL_EVENT_WEEKLY||
-           d->schedule==CAMPAIGN_SPECIAL_EVENT_MONTHLY;
+    return CampaignSpecialEventPeriodKey(d,day_key);
 }
-
-int CampaignSpecialEventPeriodStateEvaluate(
-    const CampaignSpecialEventDefinition* def,
-    uint32_t day_key,
-    const uint32_t* completion_counts,
-    uint32_t completion_count,
-    uint32_t* completed_mask,
-    uint32_t* completed_count
+static int EnsureEntryUnlocked(
+    const CampaignSpecialEventDefinition* d,
+    uint32_t period_key,
+    CampaignSpecialEventPeriodEntry** out,
+    int* changed
 ){
-    uint32_t i,mask=0,count=0,period_key;
     CampaignSpecialEventPeriodEntry* e;
-    int changed=0;
+    if(out)*out=0;if(changed)*changed=0;
+    if(!d||d->stage_count==0||d->stage_count>CAMPAIGN_SPECIAL_EVENT_STAGE_MAX)return 0;
 
-    if(completed_mask)*completed_mask=0;
-    if(completed_count)*completed_count=0;
-    if(!def||!completion_counts||completion_count!=def->stage_count||
-       def->stage_count==0||def->stage_count>CAMPAIGN_SPECIAL_EVENT_STAGE_MAX)return 0;
-
-    if(!IsRotating(def)){
-        for(i=0;i<def->stage_count;++i){
-            if(completion_counts[i]>0){
-                mask|=(1u<<i);++count;
-            }
-        }
-        if(completed_mask)*completed_mask=mask;
-        if(completed_count)*completed_count=count;
-        return 1;
-    }
-
-    period_key=CampaignSpecialEventPeriodKey(def,day_key);
-    if(period_key==0||!EnsureLoaded())return 0;
-
-    SpLock();
-    e=FindEntry(def->special_event_id);
+    e=FindEntry(d->special_event_id);
     if(!e){
-        if(g_period.count>=CAMPAIGN_SPECIAL_EVENT_MAX){SpUnlock();return 0;}
+        if(g_period.count>=CAMPAIGN_SPECIAL_EVENT_MAX)return 0;
         e=&g_period.entries[g_period.count++];
         SpZero(e,sizeof(*e));
-        e->special_event_id=def->special_event_id;
+        e->special_event_id=d->special_event_id;
         e->period_key=period_key;
-        e->stage_count=def->stage_count;
-        for(i=0;i<def->stage_count;++i)e->baseline_completion[i]=completion_counts[i];
-        changed=1;
-    }else if(e->period_key!=period_key||e->stage_count!=def->stage_count){
+        e->stage_count=d->stage_count;
+        if(changed)*changed=1;
+    }else if(e->period_key!=period_key||e->stage_count!=d->stage_count){
         int32_t id=e->special_event_id;
         SpZero(e,sizeof(*e));
         e->special_event_id=id;
         e->period_key=period_key;
-        e->stage_count=def->stage_count;
-        for(i=0;i<def->stage_count;++i)e->baseline_completion[i]=completion_counts[i];
-        changed=1;
+        e->stage_count=d->stage_count;
+        if(changed)*changed=1;
     }
+    if(out)*out=e;
+    return 1;
+}
 
-    for(i=0;i<def->stage_count;++i){
-        if(completion_counts[i]>e->baseline_completion[i]){
-            mask|=(1u<<i);++count;
-        }
-    }
+int CampaignSpecialEventPeriodStateGet(
+    const CampaignSpecialEventDefinition* d,
+    uint32_t day_key,
+    uint32_t* completed_mask,
+    uint32_t* completed_count
+){
+    CampaignSpecialEventPeriodEntry* e;
+    uint32_t period_key,mask,count=0,i;
+    int changed=0;
 
+    if(completed_mask)*completed_mask=0;
+    if(completed_count)*completed_count=0;
+    if(!d||!EnsureLoaded())return 0;
+
+    period_key=ExpectedPeriodKey(d,day_key);
+    SpLock();
+    if(!EnsureEntryUnlocked(d,period_key,&e,&changed)){SpUnlock();return 0;}
+    mask=e->completed_mask&ValidMask(d->stage_count);
     if(changed&&!WriteUnlocked()){SpUnlock();return 0;}
     SpUnlock();
+
+    for(i=0;i<d->stage_count;++i)if(mask&(1u<<i))++count;
     if(completed_mask)*completed_mask=mask;
     if(completed_count)*completed_count=count;
     return 1;
+}
+
+int CampaignSpecialEventPeriodStateMarkStage(
+    const CampaignSpecialEventDefinition* d,
+    uint32_t period_key,
+    uint32_t stage_index
+){
+    CampaignSpecialEventPeriodEntry* e;
+    uint32_t bit;
+    int changed=0;
+
+    if(!d||stage_index>=d->stage_count||!EnsureLoaded())return 0;
+    /*
+      Permanent/unlock/manual use period_key 0. Rotating callers must pass the
+      exact period key captured when the stage race started.
+    */
+    if((d->schedule==CAMPAIGN_SPECIAL_EVENT_DAILY||
+        d->schedule==CAMPAIGN_SPECIAL_EVENT_WEEKLY||
+        d->schedule==CAMPAIGN_SPECIAL_EVENT_MONTHLY)&&period_key==0)return 0;
+    if((d->schedule==CAMPAIGN_SPECIAL_EVENT_PERMANENT||
+        d->schedule==CAMPAIGN_SPECIAL_EVENT_UNLOCK||
+        d->schedule==CAMPAIGN_SPECIAL_EVENT_MANUAL)&&period_key!=0)return 0;
+
+    SpLock();
+    if(!EnsureEntryUnlocked(d,period_key,&e,&changed)){SpUnlock();return 0;}
+    bit=1u<<stage_index;
+    if(!(e->completed_mask&bit)){
+        e->completed_mask|=bit;
+        changed=1;
+    }
+    if(changed&&!WriteUnlocked()){SpUnlock();return 0;}
+    SpUnlock();return 1;
 }
 
 int CampaignSpecialEventPeriodStateReload(void){
