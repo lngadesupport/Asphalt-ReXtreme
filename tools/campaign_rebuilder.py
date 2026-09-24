@@ -38,6 +38,7 @@ DEFAULT_PHOTO_BINDINGS = Path("config/photo-bindings.verified.json")
 DEFAULT_REPLAY_BINDINGS = Path("config/replay-bindings.verified.json")
 DEFAULT_ORIGINAL_UI_BINDINGS = Path("config/original-ui-bindings.verified.json")
 DEFAULT_RACE_HUD_BINDINGS = Path("config/race-hud-bindings.verified.json")
+DEFAULT_CHALLENGES = Path("config/campaign_challenges.json")
 
 
 class BuildError(RuntimeError):
@@ -384,6 +385,40 @@ def build_race_hud_bindings(output: Path, source: Path, builder: Path) -> dict:
     }
 
 
+def build_challenge_catalog(output: Path, source: Path, builder: Path) -> dict:
+    if not source.is_file():
+        raise BuildError(f"Challenge source not found: {source}")
+    if not builder.is_file():
+        raise BuildError(f"Challenge builder not found: {builder}")
+
+    target = output / "CampaignChallenges.dat"
+    report = output / "CampaignChallenges.report.json"
+    cmd = [
+        sys.executable,
+        str(builder),
+        str(source),
+        str(target),
+        "--report",
+        str(report),
+    ]
+    result = subprocess.run(cmd, text=True)
+    if result.returncode != 0:
+        raise BuildError(f"Challenge catalog build failed with exit code {result.returncode}")
+
+    try:
+        summary = json.loads(report.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BuildError(f"Invalid Challenge report: {exc}") from exc
+
+    return {
+        "catalog": target.name,
+        "report": report.name,
+        "count": int(summary.get("count", 0)),
+        "state": "UserData/CampaignEdition/ChallengeState.dat",
+        "portable": True,
+    }
+
+
 def overlay_directory(output: Path, overlay: Path) -> list[str]:
     if not overlay.is_dir():
         raise BuildError(f"Overlay directory not found: {overlay}")
@@ -411,6 +446,7 @@ def write_status(
     replay_bindings: dict,
     original_ui_bindings: dict,
     race_hud_bindings: dict,
+    challenge_catalog: dict,
     portable_user_data: list[str],
 ) -> Path:
     status = {
@@ -433,6 +469,9 @@ def write_status(
         "race_hud_binding_catalog": race_hud_bindings,
         "race_hud_original_elements_only": True,
         "race_hud_new_widgets_allowed": False,
+        "challenge_catalog": challenge_catalog,
+        "challenge_state_portable": True,
+        "challenge_metrics_source": "CampaignRaceMetrics-v1",
         "portable_user_data": portable_user_data,
         "package_metadata_moved_out_of_runtime_root": moved_metadata,
         "portable_startup_ready": False,
@@ -485,6 +524,11 @@ def main() -> int:
         type=Path,
         default=DEFAULT_RACE_HUD_BINDINGS,
     )
+    parser.add_argument(
+        "--challenges",
+        type=Path,
+        default=DEFAULT_CHALLENGES,
+    )
     parser.add_argument("--offline-overlay", type=Path)
     parser.add_argument("--verify-only", action="store_true")
     args = parser.parse_args()
@@ -499,6 +543,7 @@ def main() -> int:
     replay_bindings_path = args.replay_bindings.resolve()
     original_ui_bindings_path = args.original_ui_bindings.resolve()
     race_hud_bindings_path = args.race_hud_bindings.resolve()
+    challenges_path = args.challenges.resolve()
     tools_dir = Path(__file__).resolve().parent
     patcher = (tools_dir / "patcher.py").resolve()
     presentation_builder = (tools_dir / "build_presentation_capability_catalog.py").resolve()
@@ -507,6 +552,7 @@ def main() -> int:
     replay_binding_builder = (tools_dir / "build_replay_binding_catalog.py").resolve()
     original_ui_binding_builder = (tools_dir / "build_original_ui_binding_catalog.py").resolve()
     race_hud_binding_builder = (tools_dir / "build_race_hud_binding_catalog.py").resolve()
+    challenge_builder = (tools_dir / "build_campaign_challenge_catalog.py").resolve()
 
     if not source.is_dir():
         print(f"ERROR: source directory not found: {source}", file=sys.stderr)
@@ -602,6 +648,17 @@ def main() -> int:
             f"(new widgets allowed={race_hud_bindings['create_new_hud_widgets']})"
         )
 
+        challenge_catalog = build_challenge_catalog(
+            output,
+            challenges_path,
+            challenge_builder,
+        )
+        print(
+            "[CHALLENGES] definitions: "
+            f"{challenge_catalog['count']} "
+            f"(portable state={challenge_catalog['portable']})"
+        )
+
         overlay_files: list[str] = []
         if args.offline_overlay:
             overlay_files = overlay_directory(output, args.offline_overlay.resolve())
@@ -618,6 +675,7 @@ def main() -> int:
             replay_bindings,
             original_ui_bindings,
             race_hud_bindings,
+            challenge_catalog,
             portable_user_data,
         )
         print(f"[STATUS] {status_path}")
