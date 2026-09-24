@@ -127,7 +127,6 @@ for($i=1;$i-lt$records.Count;$i++){
 
 Write-Host ""
 Write-Host "Known steps:"
-Write-Host "   1 = trace writer probe after Campaign local boot"
 Write-Host "  10 = patched GBBW build callback entered"
 Write-Host "  11 = GS_Garage owner resolved"
 Write-Host "  20 = local build completion, before UI latch clear"
