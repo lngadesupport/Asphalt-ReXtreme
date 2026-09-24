@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rextreme.local/schema/photo-v1.json",
+  "title": "ReXtreme Photo Mode Preset",
+  "type": "object",
+  "required": ["id", "name", "entry_points"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "id": {"type": "string"},
+    "name": {"type": "string"},
+    "entry_points": {"type": "array", "items": {"enum": ["pause-menu", "replay-pause"]}},
+    "free_camera": {"type": "boolean"},
+    "orbit_camera": {"type": "boolean"},
+    "fov": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 180},
+    "camera_distance": {"type": "number"},
+    "camera_height": {"type": "number"},
+    "camera_roll": {"type": "number"},
+    "hide_hud": {"type": "boolean"},
+    "screenshot": {"type": "boolean"},
+    "renderer_effects": {
+      "type": "array",
+      "description": "Must only contain effects confirmed by the original renderer audit.",
+      "items": {"type": "string"}
+    }
+  }
+}
