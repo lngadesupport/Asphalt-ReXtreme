@@ -25,10 +25,11 @@ $raw="https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme"
 $files=@(
   @{Commit="f87c87f03fb493e232ab0d196887323522ba7f74"; Path="tools/campaign_frontend_boot_v1.py"},
   @{Commit="47639fcc57ded4c234c300e847b5d5b8aa27f824"; Path="tools/campaign_frontend_garage_v2.py"},
-  @{Commit="d9ad618f0255ebd8f90a213f914f9e185103f7c1"; Path="tools/test_frontend_only_v2.ps1"},
+  @{Commit="ce29e56bf81f0d185a08bb922f01aa19101c5424"; Path="tools/test_frontend_only_v2.ps1"},
   @{Commit="4cd77ca30e43796c925eff48df961d166ad63457"; Path="tools/campaign_career_adapter_v3.py"},
   @{Commit="e20ac2b853e71220e4eb2ef66bd3c77872cc0ff6"; Path="tools/campaign_career_adapter_v2.py"},
-  @{Commit="58f00930d4ba68629a4a740648f8fa4b387b7eba"; Path="prebuilt/campaign-core/IGPLib_x86.dll"}
+  @{Commit="e9b74d4acfb10b61031032603b441d3348a00618"; Path="tools/read_garage_trace.ps1"},
+  @{Commit="15a1578cfe036a4bf09c4afdf817549b69f70b80"; Path="prebuilt/campaign-core/IGPLib_x86.dll"}
 )
 
 foreach($f in $files){
@@ -45,7 +46,7 @@ foreach($f in $files){
 }
 
 $core=Join-Path $ProjectRoot "prebuilt\campaign-core\IGPLib_x86.dll"
-$expected="18aa2fc12a3f27ad38cfef2f30a9f558e43d8ac24fcbaad727ddd70822fe7dc6"
+$expected="8f6149631b1956efed4133a7601b9ef84f4785580e364467aa39505b792407ca"
 $got=(Get-FileHash -LiteralPath $core -Algorithm SHA256).Hash.ToLowerInvariant()
 if($got-ne$expected){
   throw "Campaign Core SHA256 mismatch. Expected $expected got $got"
