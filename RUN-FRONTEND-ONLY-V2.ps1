@@ -31,7 +31,7 @@ $files=@(
   @{Commit="e9b74d4acfb10b61031032603b441d3348a00618"; Path="tools/read_garage_trace.ps1"},
   @{Commit="8af8ad7e3dc124536159bb9bebf1550e1768581a"; Path="prebuilt/campaign-core/IGPLib_x86.dll"},
   @{Commit="9a912f2335ed1eb6cc61f568916862a602865fa8"; Path="config/OFFLINE-AUTHORITY.json"},
-  @{Commit="bdeaea35e04faf7ffb8a141df35fe0a2b75707e0"; Path="tools/audit_offline_authority.py"},
+  @{Commit="d9e151dbf01d72c0096ee1be354c25bfe5ce8a2a"; Path="tools/audit_offline_authority.py"},
   @{Commit="ac1d30cc3e0e347d482b1d33ed2968d2d48aedbd"; Path="tools/map_online_surface.py"}
 )
 
