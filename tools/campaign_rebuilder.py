@@ -33,6 +33,7 @@ PACKAGE_METADATA_DIRS = (
 DEFAULT_MANIFEST = Path("patches/1.7.3.8-x86.json")
 DEFAULT_CONFIG = Path("config/ReXtreme-1.0.ini")
 DEFAULT_PRESENTATION_CAPABILITIES = Path("config/presentation-capabilities.verified.json")
+DEFAULT_PRESENTATION_BINDINGS = Path("config/presentation-bindings.verified.json")
 
 
 class BuildError(RuntimeError):
@@ -187,6 +188,49 @@ def build_presentation_catalog(output: Path, source: Path, builder: Path) -> dic
     }
 
 
+def build_presentation_bindings(
+    output: Path,
+    source: Path,
+    capability_source: Path,
+    builder: Path,
+) -> dict:
+    if not source.is_file():
+        raise BuildError(f"Presentation binding source not found: {source}")
+    if not capability_source.is_file():
+        raise BuildError(f"Presentation capability source not found: {capability_source}")
+    if not builder.is_file():
+        raise BuildError(f"Presentation binding builder not found: {builder}")
+
+    target = output / "CampaignPresentationBindings.dat"
+    report = output / "CampaignPresentationBindings.report.json"
+    cmd = [
+        sys.executable,
+        str(builder),
+        str(source),
+        str(capability_source),
+        str(target),
+        "--report",
+        str(report),
+    ]
+    result = subprocess.run(cmd, text=True)
+    if result.returncode != 0:
+        raise BuildError(
+            f"Presentation binding catalog build failed with exit code {result.returncode}"
+        )
+
+    try:
+        summary = json.loads(report.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BuildError(f"Invalid presentation binding report: {exc}") from exc
+
+    return {
+        "catalog": target.name,
+        "report": report.name,
+        "count": int(summary.get("count", 0)),
+        "safe_empty_catalog": bool(summary.get("safe_empty_catalog", False)),
+    }
+
+
 def overlay_directory(output: Path, overlay: Path) -> list[str]:
     if not overlay.is_dir():
         raise BuildError(f"Overlay directory not found: {overlay}")
@@ -209,6 +253,7 @@ def write_status(
     moved_metadata: list[str],
     overlay_files: list[str],
     presentation_catalog: dict,
+    presentation_bindings: dict,
     portable_user_data: list[str],
 ) -> Path:
     status = {
@@ -218,6 +263,8 @@ def write_status(
         "verified_core_patches_applied": True,
         "offline_overlay_files": overlay_files,
         "presentation_capability_catalog": presentation_catalog,
+        "presentation_binding_catalog": presentation_bindings,
+        "presentation_values_require_verified_binding": True,
         "portable_user_data": portable_user_data,
         "package_metadata_moved_out_of_runtime_root": moved_metadata,
         "portable_startup_ready": False,
@@ -245,6 +292,11 @@ def main() -> int:
         type=Path,
         default=DEFAULT_PRESENTATION_CAPABILITIES,
     )
+    parser.add_argument(
+        "--presentation-bindings",
+        type=Path,
+        default=DEFAULT_PRESENTATION_BINDINGS,
+    )
     parser.add_argument("--offline-overlay", type=Path)
     parser.add_argument("--verify-only", action="store_true")
     args = parser.parse_args()
@@ -254,9 +306,11 @@ def main() -> int:
     manifest_path = args.manifest.resolve()
     config_path = args.config.resolve()
     presentation_capabilities_path = args.presentation_capabilities.resolve()
+    presentation_bindings_path = args.presentation_bindings.resolve()
     tools_dir = Path(__file__).resolve().parent
     patcher = (tools_dir / "patcher.py").resolve()
     presentation_builder = (tools_dir / "build_presentation_capability_catalog.py").resolve()
+    presentation_binding_builder = (tools_dir / "build_presentation_binding_catalog.py").resolve()
 
     if not source.is_dir():
         print(f"ERROR: source directory not found: {source}", file=sys.stderr)
@@ -296,6 +350,18 @@ def main() -> int:
             f"(safe empty={presentation_catalog['safe_empty_catalog']})"
         )
 
+        presentation_bindings = build_presentation_bindings(
+            output,
+            presentation_bindings_path,
+            presentation_capabilities_path,
+            presentation_binding_builder,
+        )
+        print(
+            "[PRESENTATION] verified bindings: "
+            f"{presentation_bindings['count']} "
+            f"(safe empty={presentation_bindings['safe_empty_catalog']})"
+        )
+
         overlay_files: list[str] = []
         if args.offline_overlay:
             overlay_files = overlay_directory(output, args.offline_overlay.resolve())
@@ -307,6 +373,7 @@ def main() -> int:
             moved,
             overlay_files,
             presentation_catalog,
+            presentation_bindings,
             portable_user_data,
         )
         print(f"[STATUS] {status_path}")
