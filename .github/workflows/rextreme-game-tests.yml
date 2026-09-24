@@ -13,7 +13,9 @@ on:
       - "tests/test_audit_presentation_capabilities.py"
       - "tests/test_build_presentation_capability_catalog.py"
       - "tools/audit_original_settings_ui.py"
+      - "tools/audit_replay_frame_hooks.py"
       - "tests/test_audit_original_settings_ui.py"
+      - "tests/test_audit_replay_frame_hooks.py"
       - ".github/workflows/rextreme-game-tests.yml"
   workflow_dispatch:
 
@@ -38,6 +40,7 @@ jobs:
           tests/test_audit_presentation_capabilities.py
           tests/test_build_presentation_capability_catalog.py
           tests/test_audit_original_settings_ui.py
+          tests/test_audit_replay_frame_hooks.py
       - name: Build safe empty presentation catalog
         run: >
           python tools/build_presentation_capability_catalog.py
