@@ -149,7 +149,6 @@ static void Cleanup(void) {
 
 int main(void) {
     const CampaignSpecialEventDefinition* def;
-    uint32_t counts[3];
     uint32_t mask = 0;
     uint32_t completed = 0;
 
@@ -171,34 +170,34 @@ int main(void) {
     if (CampaignSpecialEventPeriodKey(def, 20261001u) != 202640u) return 12;
 
     if (!CampaignSpecialEventPeriodStateReset()) return 13;
-    counts[0] = 5; counts[1] = 2; counts[2] = 0;
-    if (!CampaignSpecialEventPeriodStateEvaluate(
-            def, 20260924u, counts, 3, &mask, &completed)) return 14;
+    if (!CampaignSpecialEventPeriodStateGet(
+            def, 20260924u, &mask, &completed)) return 14;
     if (mask != 0 || completed != 0) return 15;
 
-    counts[0] = 6; counts[1] = 2; counts[2] = 1;
-    if (!CampaignSpecialEventPeriodStateEvaluate(
-            def, 20260924u, counts, 3, &mask, &completed)) return 16;
-    if (mask != 5u || completed != 2u) return 17;
+    if (!CampaignSpecialEventPeriodStateMarkStage(def, 202639u, 0)) return 16;
+    if (!CampaignSpecialEventPeriodStateMarkStage(def, 202639u, 2)) return 17;
+    if (!CampaignSpecialEventPeriodStateGet(
+            def, 20260924u, &mask, &completed)) return 18;
+    if (mask != 5u || completed != 2u) return 19;
 
-    /* New weekly period snapshots the permanent Career counts as a new baseline. */
-    if (!CampaignSpecialEventPeriodStateEvaluate(
-            def, 20261001u, counts, 3, &mask, &completed)) return 18;
-    if (mask != 0 || completed != 0) return 19;
+    /* New weekly period resets only Special Event-local progress. */
+    if (!CampaignSpecialEventPeriodStateGet(
+            def, 20261001u, &mask, &completed)) return 20;
+    if (mask != 0 || completed != 0) return 21;
 
-    counts[1] = 3;
-    if (!CampaignSpecialEventPeriodStateEvaluate(
-            def, 20261001u, counts, 3, &mask, &completed)) return 20;
-    if (mask != 2u || completed != 1u) return 21;
+    if (!CampaignSpecialEventPeriodStateMarkStage(def, 202640u, 1)) return 25;
+    if (!CampaignSpecialEventPeriodStateGet(
+            def, 20261001u, &mask, &completed)) return 26;
+    if (mask != 2u || completed != 1u) return 27;
 
     def = CampaignSpecialEventCatalogFind(5002);
     if (!def || def->schedule != CAMPAIGN_SPECIAL_EVENT_MANUAL) return 8;
     if (!CampaignSpecialEventDateAvailable(def, 20260924u)) return 9;
     if (CampaignSpecialEventPeriodKey(def, 20260924u) != 0) return 22;
-    counts[0] = 4;
-    if (!CampaignSpecialEventPeriodStateEvaluate(
-            def, 20260924u, counts, 1, &mask, &completed)) return 23;
-    if (mask != 1u || completed != 1u) return 24;
+    if (!CampaignSpecialEventPeriodStateMarkStage(def, 0, 0)) return 23;
+    if (!CampaignSpecialEventPeriodStateGet(
+            def, 20260924u, &mask, &completed)) return 24;
+    if (mask != 1u || completed != 1u) return 28;
 
     if (!CampaignSpecialEventCatalogGet(0) ||
         CampaignSpecialEventCatalogGet(2)) return 10;
