@@ -65,6 +65,7 @@ int main(void) {
     CampaignReplayMarker marker;
     CampaignReplayMarker marker_readback;
     CampaignReplayInfo info;
+    CampaignReplayPlaybackState playback;
     CampaignPhotoState photo;
     CampaignPhotoState photo_readback;
     const WCHAR* replay_path = L"prebuilt\\campaign-core\\presentation-test.rexreplay";
@@ -76,6 +77,7 @@ int main(void) {
     ZeroMemory(&marker, sizeof(marker));
     ZeroMemory(&marker_readback, sizeof(marker_readback));
     ZeroMemory(&info, sizeof(info));
+    ZeroMemory(&playback, sizeof(playback));
     ZeroMemory(&photo, sizeof(photo));
     ZeroMemory(&photo_readback, sizeof(photo_readback));
 
@@ -146,6 +148,32 @@ int main(void) {
     if (marker_readback.type != CAMPAIGN_REPLAY_MARKER_JUMP ||
         marker_readback.time_ms != 150) return Fail(36);
 
+    playback.size = sizeof(playback);
+    if (!CampaignReplayGetPlaybackState(&playback)) return Fail(37);
+    if (!playback.loaded || playback.first_time_ms != 100 || playback.last_time_ms != 200) return Fail(38);
+
+    if (!CampaignReplaySetSpeed(250)) return Fail(39);
+    if (CampaignReplaySetSpeed(333)) return Fail(70);
+    if (!CampaignReplaySeek(150)) return Fail(71);
+    if (CampaignReplaySeek(250)) return Fail(72);
+    if (!CampaignReplayPlay()) return Fail(73);
+
+    ZeroMemory(&playback, sizeof(playback));
+    playback.size = sizeof(playback);
+    if (!CampaignReplayGetPlaybackState(&playback)) return Fail(44);
+    if (!playback.playing || playback.current_time_ms != 150 || playback.speed_permille != 250) return Fail(45);
+    if (!CampaignReplayPause()) return Fail(46);
+
+    ZeroMemory(&readback, sizeof(readback));
+    if (!CampaignReplayGetSampleAtTime(170, 0, &readback)) return Fail(47);
+    if (readback.time_ms != 200) return Fail(48);
+
+    ZeroMemory(&marker_readback, sizeof(marker_readback));
+    if (!CampaignReplayNextMarker(100, &marker_readback)) return Fail(49);
+    if (marker_readback.time_ms != 150) return Fail(80);
+    if (!CampaignReplayPreviousMarker(200, &marker_readback)) return Fail(81);
+    if (marker_readback.time_ms != 150) return Fail(82);
+
     photo.size = sizeof(photo);
     photo.camera_mode = CAMPAIGN_PHOTO_CAMERA_FREE;
     photo.hide_hud = 1;
@@ -160,25 +188,25 @@ int main(void) {
     if (CampaignPresentationCatalogCount() != 0) return Fail(50);
     if (!WriteTestCapabilityCatalog()) return Fail(51);
     if (!CampaignPresentationCatalogLoad()) return Fail(52);
-    if (CampaignPresentationCatalogCount() != 1) return Fail(53);
+    if (CampaignPresentationCatalogCount() != 1) return Fail(83);
 
     {
         int32_t value = 0;
-        if (!CampaignPresentationCatalogGetValue(0, &value)) return Fail(54);
-        if (value != 7000) return Fail(55);
-        if (!CampaignPresentationCatalogSetValue(0, 7500)) return Fail(56);
-        if (CampaignPresentationCatalogSetValue(0, 7555)) return Fail(57);
-        if (!CampaignPresentationCatalogGetValue(0, &value) || value != 7500) return Fail(58);
-        if (!CampaignPresentationCatalogResetValue(0)) return Fail(59);
-        if (!CampaignPresentationCatalogGetValue(0, &value) || value != 7000) return Fail(60);
+        if (!CampaignPresentationCatalogGetValue(0, &value)) return Fail(84);
+        if (value != 7000) return Fail(85);
+        if (!CampaignPresentationCatalogSetValue(0, 7500)) return Fail(86);
+        if (CampaignPresentationCatalogSetValue(0, 7555)) return Fail(87);
+        if (!CampaignPresentationCatalogGetValue(0, &value) || value != 7500) return Fail(88);
+        if (!CampaignPresentationCatalogResetValue(0)) return Fail(89);
+        if (!CampaignPresentationCatalogGetValue(0, &value) || value != 7000) return Fail(90);
     }
 
     ZeroMemory(&loaded, sizeof(loaded));
     loaded.size = sizeof(loaded);
-    if (!CampaignPresentationGetSettings(&loaded)) return Fail(61);
+    if (!CampaignPresentationGetSettings(&loaded)) return Fail(91);
     settings = loaded;
     settings.fov_x100 = 7500;
-    if (!CampaignPresentationSetSettings(&settings)) return Fail(62);
+    if (!CampaignPresentationSetSettings(&settings)) return Fail(92);
 
     DeleteFileW(replay_path);
     DeleteFileW(L"prebuilt\\campaign-core\\ReXtremePresentation.dat");
