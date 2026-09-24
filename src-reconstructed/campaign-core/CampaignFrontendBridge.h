@@ -41,6 +41,7 @@ int __cdecl CampaignFrontendPoll(CampaignEvent* event);
 int __cdecl CampaignFrontendBoot(void);
 int __cdecl CampaignFrontendLobbyReady(void);
 int __cdecl CampaignFrontendGarageBuild(void* gs_garage);
+int __cdecl CampaignFrontendGarageBuildFromWidget(void* garage_bottom_bar_widget);
 int __cdecl CampaignFrontendIsOwned(int32_t car_id);
 
 #ifdef __cplusplus
