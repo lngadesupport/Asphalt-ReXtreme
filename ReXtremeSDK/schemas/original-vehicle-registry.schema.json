@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReXtreme Original Vehicle Registry",
+  "type": "object",
+  "required": ["schema_version", "archetypes", "profiles"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "archetypes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "display_name"],
+        "properties": {
+          "id": { "enum": ["buggy", "rally-car", "suv", "muscle-car", "pickup", "truck", "monster-truck"] },
+          "display_name": { "type": "string" }
+        }
+      }
+    },
+    "profiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "car_id", "archetype", "performance_class", "source_verified"],
+        "properties": {
+          "id": { "type": "string" },
+          "car_id": { "type": "integer", "minimum": 1 },
+          "car_def": { "type": "string" },
+          "display_name": { "type": "string" },
+          "archetype": { "enum": ["buggy", "rally-car", "suv", "muscle-car", "pickup", "truck", "monster-truck"] },
+          "performance_class": { "enum": ["D", "C", "B", "A", "S"] },
+          "base_rank": { "type": "number" },
+          "performance_bars": { "type": ["object", "null"] },
+          "physics": { "type": "object" },
+          "source_verified": { "const": true }
+        }
+      }
+    }
+  }
+}
