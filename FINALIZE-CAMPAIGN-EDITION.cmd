@@ -53,7 +53,7 @@ call :get tools/build_campaign_auxiliary_data.py tools\build_campaign_auxiliary_
 call :get tools/build_campaign_store_catalog.py tools\build_campaign_store_catalog.py || goto :download_fail
 call :get tools/build_campaign_store_from_shop.py tools\build_campaign_store_from_shop.py || goto :download_fail
 call :get tools/audit_campaign_store_keys_from_package.py tools\audit_campaign_store_keys_from_package.py || goto :download_fail
-call :get tools/campaign_profile_adapter_v1.py tools\campaign_profile_adapter_v1.py || goto :download_fail
+call :get tools/campaign_profile_adapter_v2.py tools\campaign_profile_adapter_v2.py || goto :download_fail
 call :get tools/campaign_garage_v2.py tools\campaign_garage_v2.py || goto :download_fail
 call :get tools/campaign_career_adapter_v2.py tools\campaign_career_adapter_v2.py || goto :download_fail
 call :get tools/campaign_career_adapter_v3.py tools\campaign_career_adapter_v3.py || goto :download_fail
@@ -133,7 +133,7 @@ if errorlevel 1 (
 
 echo.
 echo [PATCH 0/5] Perfil local / GlobalSync offline...
-python.exe "%TOOLS%\campaign_profile_adapter_v1.py" --project-root "%ROOT%"
+python.exe "%TOOLS%\campaign_profile_adapter_v2.py" --project-root "%ROOT%"
 if errorlevel 1 goto :patch_fail
 
 echo.
