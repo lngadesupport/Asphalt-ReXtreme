@@ -42,6 +42,7 @@ DEFAULT_CHALLENGES = Path("config/campaign_challenges.json")
 DEFAULT_ACHIEVEMENTS = Path("config/campaign_achievements.json")
 DEFAULT_SPECIAL_EVENTS = Path("config/campaign_special_events.json")
 DEFAULT_CHAMPIONSHIPS = Path("config/campaign_championships.json")
+DEFAULT_SEASONS = Path("config/campaign_seasons.json")
 
 
 class BuildError(RuntimeError):
@@ -560,6 +561,55 @@ def build_championship_catalog(output: Path, source: Path, builder: Path) -> dic
     }
 
 
+def build_season_catalog(output: Path, source: Path, builder: Path) -> dict:
+    if not source.is_file():
+        raise BuildError(f"Season source not found: {source}")
+    if not builder.is_file():
+        raise BuildError(f"Season builder not found: {builder}")
+
+    target = output / "CampaignSeasons.dat"
+    report = output / "CampaignSeasons.report.json"
+    event_catalog = output / "CampaignEvents.dat"
+    cmd = [
+        sys.executable,
+        str(builder),
+        str(source),
+        str(target),
+        "--report",
+        str(report),
+    ]
+    if event_catalog.is_file():
+        cmd.extend(["--event-catalog", str(event_catalog)])
+
+    result = subprocess.run(cmd, text=True)
+    if result.returncode != 0:
+        raise BuildError(
+            "Career Season catalog build failed. Non-empty Seasons require "
+            "a valid CampaignEvents.dat in the staging tree."
+        )
+
+    try:
+        summary = json.loads(report.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BuildError(f"Invalid Career Season report: {exc}") from exc
+
+    if not summary.get("uses_existing_campaign_events_only", False):
+        raise BuildError("Career Seasons must reuse existing Campaign events")
+    if summary.get("online_backend_required", True):
+        raise BuildError("Career Seasons unexpectedly require online backend")
+
+    return {
+        "catalog": target.name,
+        "report": report.name,
+        "count": int(summary.get("count", 0)),
+        "validated_against_event_catalog": bool(
+            summary.get("validated_against_event_catalog", False)
+        ),
+        "uses_existing_campaign_events_only": True,
+        "online_backend_required": False,
+    }
+
+
 def overlay_directory(output: Path, overlay: Path) -> list[str]:
     if not overlay.is_dir():
         raise BuildError(f"Overlay directory not found: {overlay}")
@@ -591,6 +641,7 @@ def write_status(
     achievement_catalog: dict,
     special_event_catalog: dict,
     championship_catalog: dict,
+    season_catalog: dict,
     portable_user_data: list[str],
 ) -> Path:
     status = {
@@ -639,6 +690,10 @@ def write_status(
         "championships_reuse_campaign_events": True,
         "championships_online_backend_required": False,
         "championships_ui_requires_original_templates": True,
+        "season_catalog": season_catalog,
+        "career_seasons_reuse_campaign_events": True,
+        "career_seasons_online_backend_required": False,
+        "career_seasons_ui_requires_original_templates": True,
         "activity_context_state": "UserData/CampaignEdition/ActivityContext.dat",
         "special_event_and_championship_progress_requires_explicit_context": True,
         "career_races_do_not_advance_special_modes_by_event_id": True,
@@ -714,6 +769,11 @@ def main() -> int:
         type=Path,
         default=DEFAULT_CHAMPIONSHIPS,
     )
+    parser.add_argument(
+        "--seasons",
+        type=Path,
+        default=DEFAULT_SEASONS,
+    )
     parser.add_argument("--offline-overlay", type=Path)
     parser.add_argument("--verify-only", action="store_true")
     args = parser.parse_args()
@@ -732,6 +792,7 @@ def main() -> int:
     achievements_path = args.achievements.resolve()
     special_events_path = args.special_events.resolve()
     championships_path = args.championships.resolve()
+    seasons_path = args.seasons.resolve()
     tools_dir = Path(__file__).resolve().parent
     patcher = (tools_dir / "patcher.py").resolve()
     presentation_builder = (tools_dir / "build_presentation_capability_catalog.py").resolve()
@@ -744,6 +805,7 @@ def main() -> int:
     achievement_builder = (tools_dir / "build_campaign_achievement_catalog.py").resolve()
     special_event_builder = (tools_dir / "build_campaign_special_event_catalog.py").resolve()
     championship_builder = (tools_dir / "build_campaign_championship_catalog.py").resolve()
+    season_builder = (tools_dir / "build_campaign_season_catalog.py").resolve()
 
     if not source.is_dir():
         print(f"ERROR: source directory not found: {source}", file=sys.stderr)
@@ -883,6 +945,17 @@ def main() -> int:
             f"(offline={not championship_catalog['online_backend_required']})"
         )
 
+        season_catalog = build_season_catalog(
+            output,
+            seasons_path,
+            season_builder,
+        )
+        print(
+            "[SEASONS] definitions: "
+            f"{season_catalog['count']} "
+            f"(offline={not season_catalog['online_backend_required']})"
+        )
+
         overlay_files: list[str] = []
         if args.offline_overlay:
             overlay_files = overlay_directory(output, args.offline_overlay.resolve())
@@ -903,6 +976,7 @@ def main() -> int:
             achievement_catalog,
             special_event_catalog,
             championship_catalog,
+            season_catalog,
             portable_user_data,
         )
         print(f"[STATUS] {status_path}")
