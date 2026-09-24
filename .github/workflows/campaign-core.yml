@@ -235,7 +235,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "git commit failed" }
 
           git push origin "HEAD:$env:GITHUB_REF_NAME"
-          if ($LASTEXITCODE -ne 0) { throw "git push failed" }
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Branch advanced during build; skipping prebuilt branch publish. The verified artifact will still be uploaded by this workflow run."
+            git fetch origin "$env:GITHUB_REF_NAME"
+            git reset --hard "origin/$env:GITHUB_REF_NAME"
+            exit 0
+          }
 
       - uses: actions/upload-artifact@v4
         with:
