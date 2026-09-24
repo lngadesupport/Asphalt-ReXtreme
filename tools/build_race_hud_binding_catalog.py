@@ -31,6 +31,7 @@ PROPERTIES = {
 BASE = {
     "module_rva": 1,
     "pointer_rva": 2,
+    "gui_argument": 3,
 }
 VALUE = {
     "i32": 1,
@@ -125,8 +126,11 @@ def normalize(raw: dict, seen: set[tuple[str, str]]) -> tuple[bytes, tuple[str, 
     base = raw.get("base")
     if base not in BASE:
         raise BindingError(f"{element}.{prop}: invalid base")
-    rva = parse_int(raw.get("target_rva"), f"{element}.{prop}.target_rva")
-    if rva <= 0:
+    rva = parse_int(raw.get("target_rva", 0), f"{element}.{prop}.target_rva")
+    if base == "gui_argument":
+        if rva != 0:
+            raise BindingError(f"{element}.{prop}: gui_argument target_rva must be 0")
+    elif rva <= 0:
         raise BindingError(f"{element}.{prop}: target_rva must be positive")
 
     field_offset = parse_int(raw.get("field_offset", 0), f"{element}.{prop}.field_offset")
