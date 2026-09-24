@@ -26,6 +26,11 @@
     "ChallengeRewardsClaiming":  "revision-journaled",
     "StatisticsState":  "UserData\\\\CampaignEdition\\\\CampaignStatistics.dat",
     "StatisticsSource":  "CampaignRaceMetrics-v1",
+    "AchievementCatalog":  "CampaignAchievements.dat",
+    "AchievementState":  "UserData\\\\CampaignEdition\\\\AchievementState.dat",
+    "AchievementMetricsSource":  "CampaignStatistics-v1",
+    "AchievementRewards":  "none",
+    "AchievementUiRequiresOriginalTemplates":  true,
     "UpgradeCatalog":  "CampaignUpgrades.dat",
     "UpgradeUiMap":  "CampaignUpgradeUiMap.dat",
     "StoreCatalog":  "CampaignStore.dat",
@@ -67,6 +72,6 @@
     "RaceHudNewWidgetsAllowed":  false,
     "RaceHudLayout":  "UserData\\\\RaceHudLayout.dat",
     "RaceHudLayoutPortable":  true,
-    "Size":  79872,
-    "SHA256":  "c85fce2af413c2c09d192f506e14672c18871dceb664af9cd26482d5cdfff091"
+    "Size":  83968,
+    "SHA256":  "a3eb53d1a87c7e75aada309045d6810a80f98f9df696c611d70431eff8960aba"
 }
