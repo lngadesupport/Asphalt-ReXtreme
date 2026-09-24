@@ -187,8 +187,18 @@ if not "%REXTREME_NO_PAUSE%"=="1" pause
 exit /b %VALERR%
 
 :get
-curl.exe -fL --retry 3 "%BASE%/%~1" -o "%ROOT%\%~2"
-exit /b %ERRORLEVEL%
+set "GET_DST=%ROOT%\%~2"
+set "GET_TMP=%ROOT%\%~2.download"
+del /q "%GET_TMP%" 2>nul
+curl.exe -fL --retry 3 -H "Cache-Control: no-cache" "%BASE%/%~1?channel=beta1-hotfix" -o "%GET_TMP%"
+if errorlevel 1 (
+  del /q "%GET_TMP%" 2>nul
+  exit /b 1
+)
+if not exist "%GET_TMP%" exit /b 1
+move /y "%GET_TMP%" "%GET_DST%" >nul
+if errorlevel 1 exit /b 1
+exit /b 0
 
 :download_fail
 echo.
