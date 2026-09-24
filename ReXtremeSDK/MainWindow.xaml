@@ -74,18 +74,18 @@
                             <TextBox x:Name="VehicleIdBox" Text="com.author.vehicle.custom" Margin="0,4,0,10" Padding="6"/>
                             <TextBlock Text="Nome"/>
                             <TextBox x:Name="VehicleNameBox" Text="Custom Vehicle" Margin="0,4,0,10" Padding="6"/>
-                            <TextBlock Text="Categoria original"/>
-                            <ComboBox x:Name="VehicleCategoryBox" Margin="0,4,0,10" SelectedIndex="0">
-                                <ComboBoxItem Content="rally"/>
-                                <ComboBoxItem Content="monster-truck"/>
-                                <ComboBoxItem Content="buggy"/>
-                                <ComboBoxItem Content="suv"/>
-                                <ComboBoxItem Content="truck"/>
-                                <ComboBoxItem Content="muscle"/>
-                                <ComboBoxItem Content="pickup"/>
-                            </ComboBox>
-                            <TextBlock Text="Perfil original de física"/>
-                            <TextBox x:Name="VehicleBaseProfileBox" Text="original.profile.pending-extraction" Margin="0,4,0,16" Padding="6"/>
+                            <TextBlock Text="Arquétipo original"/>
+                            <ComboBox x:Name="VehicleCategoryBox" Margin="0,4,0,10"
+                                      SelectionChanged="VehicleCategoryBox_SelectionChanged"/>
+                            <TextBlock Text="Classe de performance"/>
+                            <ComboBox x:Name="VehicleClassBox" Margin="0,4,0,10"
+                                      SelectionChanged="VehicleClassBox_SelectionChanged"/>
+                            <TextBlock Text="Perfil original de física (registry verificado)"/>
+                            <ComboBox x:Name="VehicleBaseProfileBox" Margin="0,4,0,4"
+                                      SelectionChanged="VehicleBaseProfileBox_SelectionChanged"/>
+                            <TextBlock x:Name="VehicleProfileStatusText"
+                                       Text="Nenhum perfil original verificado carregado."
+                                       Foreground="{StaticResource EditorMuted}" Margin="0,0,0,16" TextWrapping="Wrap"/>
 
                             <TextBlock Text="DESEMPENHO — barras do jogo" FontWeight="Bold" Margin="0,0,0,8"/>
                             <TextBlock Text="Velocidade"/>
