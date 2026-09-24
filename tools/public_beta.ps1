@@ -371,6 +371,7 @@ function Update-Beta {
         "tools/capture_beta_runtime.ps1",
         "tools/beta_startup_bisect.ps1",
         "tools/campaign_garage_startup_probe.py",
+        "tools/campaign_profile_adapter_v1.py",
         "tools/xtea_assets.py",
         "tools/rextreme_economy.py",
         "tools/economy_audit.py",
