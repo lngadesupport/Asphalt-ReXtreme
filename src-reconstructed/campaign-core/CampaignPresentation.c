@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <stdint.h>
 #include "CampaignPresentation.h"
+#include "CampaignPresentationCatalog.h"
 
 #define RXPS_MAGIC 0x53505852u /* RXPS */
 #define RXRP_MAGIC 0x50525852u /* RXRP */
@@ -733,6 +734,28 @@ int __cdecl CampaignPresentationInvoke(CampaignPresentationCommand* command) {
         break;
     case CAMPAIGN_PRESENTATION_OP_RESET_SETTINGS:
         command->status = CampaignPresentationResetSettings();
+        break;
+
+    case CAMPAIGN_PRESENTATION_OP_CAPABILITY_RELOAD:
+        command->status = CampaignPresentationCatalogLoad();
+        command->out0 = (int32_t)CampaignPresentationCatalogCount();
+        break;
+    case CAMPAIGN_PRESENTATION_OP_CAPABILITY_COUNT:
+        command->out0 = (int32_t)CampaignPresentationCatalogCount();
+        command->status = 1;
+        break;
+    case CAMPAIGN_PRESENTATION_OP_CAPABILITY_GET:
+        {
+            const CampaignPresentationCapability* capability;
+            capability = CampaignPresentationCatalogGet((uint32_t)command->a);
+            if (!capability || !command->ptr0) break;
+            CopyBytes(
+                (void*)(uintptr_t)command->ptr0,
+                capability,
+                (uint32_t)sizeof(CampaignPresentationCapability)
+            );
+            command->status = 1;
+        }
         break;
 
     case CAMPAIGN_PRESENTATION_OP_REPLAY_START:
