@@ -249,6 +249,24 @@ uint32_t CampaignPresentationCatalogCount(void) {
     return g_count;
 }
 
+uint32_t CampaignPresentationCatalogRuntimeReadyCount(void) {
+    uint32_t i;
+    uint32_t count = 0;
+    EnsureLoaded();
+    for (i = 0; i < g_count; ++i) {
+        if (CampaignPresentationBindingsFind(g_entries[i].id)) ++count;
+    }
+    return count;
+}
+
+int CampaignPresentationCapabilityRuntimeReady(uint32_t index) {
+    const CampaignPresentationCapability* capability;
+    capability = CampaignPresentationCatalogGet(index);
+    if (!capability) return 0;
+    if (!(capability->flags & CAMPAIGN_PRESENTATION_CAPABILITY_VERIFIED)) return 0;
+    return CampaignPresentationBindingsFind(capability->id) ? 1 : 0;
+}
+
 const CampaignPresentationCapability* CampaignPresentationCatalogGet(uint32_t index) {
     EnsureLoaded();
     if (index >= g_count) return 0;
