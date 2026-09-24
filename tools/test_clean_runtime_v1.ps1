@@ -12,14 +12,15 @@ if([string]::IsNullOrWhiteSpace($ProjectRoot)){
 $pkg=Join-Path $ProjectRoot "_PACKAGE_PHASE5"
 $ams=Join-Path $pkg "AMS.exe"
 $igp=Join-Path $pkg "IGPLib_x86.dll"
-$phase2=Join-Path $ProjectRoot "_AMS_PHASE2\AMS.exe"
+$cleanBase=Join-Path $ProjectRoot "_AMS_CLEAN_BASE\AMS.exe"
+$cleanBaseBuilder=Join-Path $ProjectRoot "tools\build_clean_ams_base_v1.ps1"
 $runtime=Join-Path $ProjectRoot "prebuilt\campaign-runtime\IGPLib_x86.dll"
 $python=Join-Path $ProjectRoot "runtime\python312-x86\python.exe"
 $shell=Join-Path $ProjectRoot "tools\campaign_frontend_shell_v1.py"
 $catalog=Join-Path $pkg "CampaignCatalog.dat"
 $manifest=Join-Path $pkg "AppxManifest.xml"
 
-foreach($p in @($ams,$igp,$phase2,$runtime,$python,$shell,$catalog,$manifest)){
+foreach($p in @($ams,$igp,$runtime,$python,$shell,$catalog,$manifest,$cleanBaseBuilder)){
   if(-not(Test-Path -LiteralPath $p -PathType Leaf)){throw "Missing: $p"}
 }
 
@@ -31,8 +32,12 @@ Copy-Item $igp (Join-Path $backup "IGPLib.before.bin") -Force
 
 Get-Process AMS -ErrorAction SilentlyContinue|Stop-Process -Force -ErrorAction SilentlyContinue
 
-# Clean baseline: no transitional Boot/Garage/Career adapters are applied.
-Copy-Item $phase2 $ams -Force
+# Build a pristine-derived clean base. No Phase2 gameplay patches participate.
+& powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $cleanBaseBuilder -ProjectRoot $ProjectRoot
+if($LASTEXITCODE-ne0){throw "Clean AMS Base V1 build failed: $LASTEXITCODE"}
+if(-not(Test-Path -LiteralPath $cleanBase -PathType Leaf)){throw "Missing: $cleanBase"}
+
+Copy-Item $cleanBase $ams -Force
 Copy-Item $runtime $igp -Force
 
 & $python $shell --project-root $ProjectRoot
@@ -57,6 +62,8 @@ Write-Host ("Runtime SHA256: "+$runtimeHash)
 Write-Host ""
 Write-Host "Original code allowed:"
 Write-Host "  frontend/render/widgets/assets only"
+Write-Host "Clean base:"
+Write-Host "  pristine AMS + IsOnline hard FALSE only"
 Write-Host ""
 Write-Host "Original gameplay structures:"
 Write-Host "  NONE"
