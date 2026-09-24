@@ -23,8 +23,9 @@
     "UiSelector":  "0xC0DE7701",
     "OnlinePolicySelector":  "0xC0DE7702",
     "EventPollSelector":  "0xC0DE7703",
+    "FrontendSelector":  "0xC0DE7704",
     "CareerPreSelector":  "0xC0DECA72",
     "CareerPostSelector":  "0xC0DECA73",
-    "Size":  27648,
-    "SHA256":  "00a91d6b98969524bad6e0c82e0fb854908fdd307676050922254985564a8cf7"
+    "Size":  28160,
+    "SHA256":  "5190910f2c048208aea3f9ac15242d93afd7a3c2711c3e6e0fa942f6da0b28ad"
 }
