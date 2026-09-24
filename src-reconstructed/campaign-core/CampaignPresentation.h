@@ -207,7 +207,12 @@ enum CampaignPresentationOp {
 
     CAMPAIGN_PRESENTATION_OP_ORIGINAL_UI_RELOAD = 70,
     CAMPAIGN_PRESENTATION_OP_ORIGINAL_UI_COUNT = 71,
-    CAMPAIGN_PRESENTATION_OP_ORIGINAL_UI_FEATURE_READY = 72
+    CAMPAIGN_PRESENTATION_OP_ORIGINAL_UI_FEATURE_READY = 72,
+
+    CAMPAIGN_PRESENTATION_OP_RACE_HUD_RELOAD = 80,
+    CAMPAIGN_PRESENTATION_OP_RACE_HUD_COUNT = 81,
+    CAMPAIGN_PRESENTATION_OP_RACE_HUD_ELEMENT_READY = 82,
+    CAMPAIGN_PRESENTATION_OP_RACE_HUD_APPLY_ELEMENT = 83
 };
 
 typedef struct CampaignPresentationDiagnostics {
@@ -229,6 +234,8 @@ typedef struct CampaignPresentationDiagnostics {
     uint32_t replay_recording_ready;
     uint32_t original_ui_binding_count;
     uint32_t original_ui_feature_mask;
+    uint32_t race_hud_binding_count;
+    uint32_t race_hud_original_ui_ready;
 } CampaignPresentationDiagnostics;
 
 typedef struct CampaignPresentationCommand {
