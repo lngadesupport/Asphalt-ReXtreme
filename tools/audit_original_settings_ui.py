@@ -31,7 +31,8 @@ UI_KEYWORDS = (
     "controls", "slider", "toggle", "checkbox", "button", "popup", "dialog",
     "resolution", "fullscreen", "vsync", "quality", "shadow", "texture",
     "fov", "replay", "photo", "hud", "pause", "resume", "back", "apply",
-    "accept", "cancel", "restore", "default",
+    "accept", "cancel", "restore", "default", "screen", "panel", "list",
+    "tab", "label", "text", "menu", "item", "widget", "container",
 )
 
 SCAN_SUFFIXES = {
