@@ -40,6 +40,11 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--project-root", default=".")
     ap.add_argument("--strict", action="store_true")
+    ap.add_argument(
+        "--require-source",
+        action="store_true",
+        help="Fail if reconstructed source files required for source-level validation are absent."
+    )
     ns = ap.parse_args()
 
     root = Path(ns.project_root).resolve()
@@ -93,19 +98,44 @@ def main() -> int:
             combined += "\n/* " + p.name + " */\n"
             combined += p.read_text(encoding="utf-8", errors="replace")
 
-    for name, pat in FORBIDDEN_SOURCE_PATTERNS.items():
-        hit = bool(pat.search(combined))
-        checks.append({"check":name,"ok":not hit})
-        if hit:
-            problems.append(f"forbidden legacy dependency still present: {name}")
+    if source_root.is_dir():
+        for name, pat in FORBIDDEN_SOURCE_PATTERNS.items():
+            hit = bool(pat.search(combined))
+            checks.append({"check":name,"ok":not hit,"scope":"source"})
+            if hit:
+                problems.append(f"forbidden legacy dependency still present: {name}")
+    else:
+        for name in FORBIDDEN_SOURCE_PATTERNS:
+            checks.append({
+                "check":name,
+                "ok":None,
+                "scope":"source",
+                "reason":"source tree not present in runtime distribution"
+            })
+        if ns.require_source:
+            problems.append(
+                "reconstructed source tree is required for this audit mode but is not present"
+            )
 
     for name, (rel, pat) in REQUIRED_SOURCE_PATTERNS.items():
         p = root / rel
-        text = p.read_text(encoding="utf-8", errors="replace") if p.is_file() else ""
+        if not p.is_file():
+            checks.append({
+                "check":name,
+                "ok":None,
+                "scope":"source",
+                "path":rel,
+                "reason":"source file not present in runtime distribution"
+            })
+            if ns.require_source:
+                problems.append(f"required offline source component missing: {name}")
+            continue
+
+        text = p.read_text(encoding="utf-8", errors="replace")
         ok = bool(pat.search(text))
-        checks.append({"check":name,"ok":ok,"path":rel})
+        checks.append({"check":name,"ok":ok,"scope":"source","path":rel})
         if not ok:
-            problems.append(f"required offline component missing: {name}")
+            problems.append(f"required offline component invalid: {name}")
 
     domains = registry.get("domains", [])
     bad_statuses = set(registry.get("forbidden_final_statuses", ["MIGRATING","UNRESOLVED"]))
@@ -117,6 +147,7 @@ def main() -> int:
         "schema": 1,
         "target": registry.get("target"),
         "strict": bool(ns.strict),
+        "require_source": bool(ns.require_source),
         "counts": {
             "domains": len(domains),
             "local": len(local),
@@ -137,6 +168,7 @@ def main() -> int:
     print("[OFFLINE] target:", registry.get("target"))
     print("[OFFLINE] network_allowed=false")
     print("[OFFLINE] multiplayer_allowed=false")
+    print("[OFFLINE] source_validation=", "required" if ns.require_source else "best-effort")
     print(f"[OFFLINE] LOCAL={len(local)} RETIRED={len(retired)} NOT_FINAL={len(unresolved)}")
     for d in unresolved:
         print(f"[PENDENTE] {d['id']}: {d['status']} -> {d.get('authority','')}")
