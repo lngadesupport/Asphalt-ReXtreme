@@ -128,8 +128,38 @@ int main(void) {
     if (!Status(4, &s) || s.progress != 59000 || !s.completed) return 34;
 
     if (!CampaignChallengesCanClaim(1, &s) || s.claimed) return 35;
-    if (!CampaignChallengesMarkClaimed(1)) return 36;
-    if (!Status(1, &s) || !s.claimed || CampaignChallengesCanClaim(1, 0)) return 37;
+    {
+        CampaignChallengeClaim claim;
+        CampaignChallengeClaim pending;
+        ZeroMemory(&claim, sizeof(claim));
+        ZeroMemory(&pending, sizeof(pending));
+        claim.size = sizeof(claim);
+        pending.size = sizeof(pending);
+
+        if (!CampaignChallengesBeginClaim(1, 10, &claim)) return 36;
+        if (claim.challenge_id != 1 ||
+            claim.start_campaign_revision != 10 ||
+            claim.reward_credits != 500) return 37;
+        if (!CampaignChallengesGetPendingClaim(&pending) ||
+            pending.challenge_id != 1) return 38;
+
+        /* Non-zero reward cannot finalize before Campaign revision advances. */
+        if (CampaignChallengesFinalizeClaim(1, 10)) return 39;
+        if (!CampaignChallengesFinalizeClaim(1, 11)) return 40;
+        if (!Status(1, &s) || !s.claimed || CampaignChallengesCanClaim(1, 0)) return 41;
+    }
+
+    /* Recovery path: revision advance finalizes pending claim without regrant. */
+    {
+        CampaignChallengeClaim claim;
+        ZeroMemory(&claim, sizeof(claim));
+        claim.size = sizeof(claim);
+        if (!CampaignChallengesBeginClaim(2, 20, &claim)) return 42;
+        if (!CampaignChallengesRecoverClaim(20)) return 43;
+        if (!Status(2, &s) || s.claimed) return 44;
+        if (!CampaignChallengesRecoverClaim(21)) return 45;
+        if (!Status(2, &s) || !s.claimed) return 46;
+    }
 
     /* Event-filter behavior: no definitions in this fixture are filtered. */
     metrics.placement = 2;
@@ -139,5 +169,7 @@ int main(void) {
     DeleteFileW(L"prebuilt\\campaign-core\\CampaignChallenges.dat");
     DeleteFileW(L"prebuilt\\campaign-core\\UserData\\CampaignEdition\\ChallengeState.dat");
     DeleteFileW(L"prebuilt\\campaign-core\\UserData\\CampaignEdition\\ChallengeState.tmp");
+    DeleteFileW(L"prebuilt\\campaign-core\\UserData\\CampaignEdition\\ChallengeClaimPending.dat");
+    DeleteFileW(L"prebuilt\\campaign-core\\UserData\\CampaignEdition\\ChallengeClaimPending.tmp");
     return 0;
 }
