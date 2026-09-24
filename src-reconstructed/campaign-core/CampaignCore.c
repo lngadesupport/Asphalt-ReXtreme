@@ -2234,6 +2234,30 @@ static int ExecuteUnlocked(CampaignCommand* c) {
         c->revision = g_state.revision;
         return 1;
 
+    case CAMPAIGN_OP_GET_PROFILE_SUMMARY:
+        switch (c->a) {
+        case CAMPAIGN_PROFILE_SUMMARY_PROGRESS:
+            c->out0 = (int32_t)g_state.race_count;
+            c->out1 = (int32_t)g_state.total_stars;
+            c->out2 = (int32_t)g_state.owned_count;
+            break;
+        case CAMPAIGN_PROFILE_SUMMARY_ECONOMY:
+            c->out0 = g_state.credits;
+            c->out1 = g_state.premium_currency;
+            c->out2 = (int32_t)g_state.craft_count;
+            break;
+        case CAMPAIGN_PROFILE_SUMMARY_GARAGE:
+            c->out0 = g_state.selected_car_id;
+            c->out1 = g_state.last_acquired_car_id;
+            c->out2 = (int32_t)g_state.event_state_count;
+            break;
+        default:
+            return 0;
+        }
+        c->status = 1;
+        c->revision = g_state.revision;
+        return 1;
+
     default:
         return 0;
     }
