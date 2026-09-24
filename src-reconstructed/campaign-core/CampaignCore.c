@@ -640,6 +640,7 @@ static int BeginEventRaceUnlocked(
     session.start_revision = g_state.revision;
     session.checksum = RaceSessionChecksum(&session);
 
+    CampaignActivityContextReset();
     if (!WriteRaceSessionUnlocked(&session)) return 0;
     if (session_id) *session_id = session.session_id;
     return 1;
@@ -2412,10 +2413,18 @@ int __cdecl CampaignFinishRaceFromGui(void* game_mode_gui) {
     }
 
     if (finish_status == 1) {
-        CaptureActivityResultUnlocked(
-            g_race_session_buffer.session_id,
-            metrics.placement
-        );
+        if (!CaptureActivityResultUnlocked(
+                g_race_session_buffer.session_id,
+                metrics.placement)) {
+            CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+            MoveFileExW(
+                g_race_session_consuming_path,
+                g_race_session_path,
+                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+            );
+            UnlockState();
+            return 0;
+        }
         result = CommitMutationUnlocked();
         if (result) {
             DeleteFileW(g_race_session_consuming_path);
@@ -2750,10 +2759,17 @@ static int ExecuteUnlocked(CampaignCommand* c) {
                 return 0;
             }
 
-            CaptureActivityResultUnlocked(
-                g_race_session_buffer.session_id,
-                c->b
-            );
+            if (!CaptureActivityResultUnlocked(
+                    g_race_session_buffer.session_id,
+                    c->b)) {
+                CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+                MoveFileExW(
+                    g_race_session_consuming_path,
+                    g_race_session_path,
+                    MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+                );
+                return 0;
+            }
             result = CommitMutationUnlocked();
             if (!result) {
                 CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
@@ -2806,10 +2822,17 @@ static int ExecuteUnlocked(CampaignCommand* c) {
                 return 0;
             }
 
-            CaptureActivityResultUnlocked(
-                g_race_session_buffer.session_id,
-                metrics->placement
-            );
+            if (!CaptureActivityResultUnlocked(
+                    g_race_session_buffer.session_id,
+                    metrics->placement)) {
+                CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+                MoveFileExW(
+                    g_race_session_consuming_path,
+                    g_race_session_path,
+                    MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+                );
+                return 0;
+            }
             result = CommitMutationUnlocked();
             if (!result) {
                 CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
@@ -3513,10 +3536,18 @@ int __cdecl CampaignFinishRaceAdapter(const CampaignRaceFinishArgs* args) {
         return 0;
     }
 
-    CaptureActivityResultUnlocked(
-        g_race_session_buffer.session_id,
-        args->position
-    );
+    if (!CaptureActivityResultUnlocked(
+            g_race_session_buffer.session_id,
+            args->position)) {
+        CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
+        MoveFileExW(
+            g_race_session_consuming_path,
+            g_race_session_path,
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+        );
+        UnlockState();
+        return 0;
+    }
     result = CommitMutationUnlocked();
     if (!result) {
         CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
