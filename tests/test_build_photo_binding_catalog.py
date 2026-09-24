@@ -93,3 +93,15 @@ def test_unverified_binding_rejected(tmp_path: Path):
         assert "verified" in str(exc)
     else:
         raise AssertionError("unverified Photo binding was accepted")
+
+
+def test_nonempty_photo_catalog_requires_target_fingerprint(tmp_path: Path):
+    src = tmp_path / "photo.json"
+    out = tmp_path / "out.dat"
+    write_source(src, [bind("pitch")])
+    try:
+        mod.build(src, out)
+    except mod.PhotoBindingError as exc:
+        assert "target_pe" in str(exc)
+    else:
+        raise AssertionError("Photo binding catalog without PE fingerprint was accepted")
