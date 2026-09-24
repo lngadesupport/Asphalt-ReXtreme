@@ -39,7 +39,7 @@ def main() -> int:
     ns = ap.parse_args()
 
     pkg = ns.package.resolve()
-    report = {"package": str(pkg), "files": {}, "blocking": []}
+    report = {"package": str(pkg), "beta_fail_closed_upgrade_map": True, "files": {}, "blocking": []}
 
     for name, (magic, version, require_nonzero, required) in EXPECTED.items():
         p = pkg / name
