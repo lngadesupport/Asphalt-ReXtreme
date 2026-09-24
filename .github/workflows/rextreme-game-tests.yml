@@ -33,6 +33,7 @@ on:
       - "tools/audit_original_settings_ui.py"
       - "tools/rank_original_ui_candidates.py"
       - "tools/audit_original_ui_rtti.py"
+      - "tools/audit_race_hud_fields.py"
       - "tools/audit_replay_frame_hooks.py"
       - "tools/audit_replay_transform_bindings.py"
       - "tools/apply_replay_frame_binding.py"
@@ -41,6 +42,7 @@ on:
       - "tests/test_audit_original_settings_ui.py"
       - "tests/test_rank_original_ui_candidates.py"
       - "tests/test_audit_original_ui_rtti.py"
+      - "tests/test_audit_race_hud_fields.py"
       - "tests/test_audit_replay_frame_hooks.py"
       - "tests/test_audit_replay_transform_bindings.py"
       - "tests/test_apply_replay_frame_binding.py"
@@ -77,6 +79,7 @@ jobs:
           tests/test_audit_original_settings_ui.py
           tests/test_rank_original_ui_candidates.py
           tests/test_audit_original_ui_rtti.py
+          tests/test_audit_race_hud_fields.py
           tests/test_audit_replay_frame_hooks.py
           tests/test_audit_replay_transform_bindings.py
           tests/test_apply_replay_frame_binding.py
