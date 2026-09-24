@@ -119,3 +119,26 @@ def test_unverified_binding_rejected(tmp_path: Path):
         assert "verified" in str(exc)
     else:
         raise AssertionError("unverified binding was accepted")
+
+
+def test_nonempty_catalog_requires_target_fingerprint(tmp_path: Path):
+    caps = tmp_path / "caps.json"
+    src = tmp_path / "bindings.json"
+    out = tmp_path / "out.dat"
+    write_caps(caps, [verified_fov_cap()])
+    write_bindings(src, [{
+        "id": "fov",
+        "base_kind": "module_rva",
+        "target_rva": "0x1234",
+        "field_offset": 0,
+        "value_kind": "i32",
+        "scale_divisor": 1,
+        "verified": True,
+        "evidence": [{"source": "AMS.exe"}],
+    }])
+    try:
+        mod.build(src, caps, out)
+    except mod.BindingCatalogError as exc:
+        assert "target_pe" in str(exc)
+    else:
+        raise AssertionError("binding catalog without PE fingerprint was accepted")
