@@ -19,6 +19,7 @@ EXTERN _CampaignFrontendSubmit:PROC
 EXTERN _CampaignFrontendBoot:PROC
 EXTERN _CampaignFrontendLobbyReady:PROC
 EXTERN _CampaignFrontendGarageBuild:PROC
+EXTERN _CampaignFrontendGarageBuildFromWidget:PROC
 EXTERN _CampaignFrontendIsOwned:PROC
 EXTERN _CampaignFeatureQueryLocal:PROC
 
@@ -39,6 +40,7 @@ CAMPAIGN_FRONTEND_BOOT_MAGIC  EQU 0C0DE7710h
 CAMPAIGN_FRONTEND_LOBBY_MAGIC EQU 0C0DE7711h
 CAMPAIGN_FRONTEND_OWNERSHIP_MAGIC EQU 0C0DE7712h
 CAMPAIGN_FRONTEND_GARAGE_BUILD_MAGIC EQU 0C0DE7713h
+CAMPAIGN_FRONTEND_GARAGE_WIDGET_BUILD_MAGIC EQU 0C0DE7714h
 CAMPAIGN_FEATURE_POLICY_MAGIC EQU 0C0DE7720h
 
 .code
@@ -123,6 +125,9 @@ campaign_gateway PROC
 
     cmp eax, CAMPAIGN_FRONTEND_GARAGE_BUILD_MAGIC
     je campaign_frontend_garage_build
+
+    cmp eax, CAMPAIGN_FRONTEND_GARAGE_WIDGET_BUILD_MAGIC
+    je campaign_frontend_garage_widget_build
 
     cmp eax, CAMPAIGN_FEATURE_POLICY_MAGIC
     je campaign_feature_policy
@@ -227,6 +232,12 @@ campaign_frontend_ownership:
 campaign_frontend_garage_build:
     push ecx
     call _CampaignFrontendGarageBuild
+    add esp, 4
+    ret 4
+
+campaign_frontend_garage_widget_build:
+    push ecx
+    call _CampaignFrontendGarageBuildFromWidget
     add esp, 4
     ret 4
 
