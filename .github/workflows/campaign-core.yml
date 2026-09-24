@@ -41,6 +41,8 @@ on:
       - "src-reconstructed/campaign-core/CampaignStartupService.h"
       - "src-reconstructed/campaign-core/CampaignGarageFlow.c"
       - "src-reconstructed/campaign-core/CampaignGarageFlow.h"
+      - "src-reconstructed/campaign-core/CampaignTutorialBuildConsumer.c"
+      - "src-reconstructed/campaign-core/CampaignTutorialBuildConsumer.h"
       - "runtime-stubs/campaign_gateway.asm"
       - "runtime-stubs/IGPLib_x86_campaign.def"
       - "docs/CAMPAIGN-CORE-V2.md"
@@ -127,10 +129,13 @@ jobs:
           cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignGarageFlow.obj" "src-reconstructed\campaign-core\CampaignGarageFlow.c"
           if errorlevel 1 exit /b 29
 
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignTutorialBuildConsumer.obj" "src-reconstructed\campaign-core\CampaignTutorialBuildConsumer.c"
+          if errorlevel 1 exit /b 30
+
           ml.exe /nologo /c /coff /Fo"prebuilt\campaign-core\campaign_gateway.obj" "runtime-stubs\campaign_gateway.asm"
           if errorlevel 1 exit /b 13
 
-          link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:"runtime-stubs\IGPLib_x86_campaign.def" /out:"prebuilt\campaign-core\IGPLib_x86.dll" "prebuilt\campaign-core\CampaignCore.obj" "prebuilt\campaign-core\CampaignCatalog.obj" "prebuilt\campaign-core\CampaignEventCatalog.obj" "prebuilt\campaign-core\CampaignObjectiveCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeUiMap.obj" "prebuilt\campaign-core\CampaignStoreCatalog.obj" "prebuilt\campaign-core\CampaignStoreAdapter.obj" "prebuilt\campaign-core\CampaignCareerAdapter.obj" "prebuilt\campaign-core\CampaignUpgradeAdapter.obj" "prebuilt\campaign-core\CampaignEventBus.obj" "prebuilt\campaign-core\CampaignOnlinePolicy.obj" "prebuilt\campaign-core\CampaignUiService.obj" "prebuilt\campaign-core\CampaignFrontendBridge.obj" "prebuilt\campaign-core\CampaignServices.obj" "prebuilt\campaign-core\CampaignStartupService.obj" "prebuilt\campaign-core\CampaignGarageFlow.obj" "prebuilt\campaign-core\campaign_gateway.obj" kernel32.lib
+          link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:"runtime-stubs\IGPLib_x86_campaign.def" /out:"prebuilt\campaign-core\IGPLib_x86.dll" "prebuilt\campaign-core\CampaignCore.obj" "prebuilt\campaign-core\CampaignCatalog.obj" "prebuilt\campaign-core\CampaignEventCatalog.obj" "prebuilt\campaign-core\CampaignObjectiveCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeUiMap.obj" "prebuilt\campaign-core\CampaignStoreCatalog.obj" "prebuilt\campaign-core\CampaignStoreAdapter.obj" "prebuilt\campaign-core\CampaignCareerAdapter.obj" "prebuilt\campaign-core\CampaignUpgradeAdapter.obj" "prebuilt\campaign-core\CampaignEventBus.obj" "prebuilt\campaign-core\CampaignOnlinePolicy.obj" "prebuilt\campaign-core\CampaignUiService.obj" "prebuilt\campaign-core\CampaignFrontendBridge.obj" "prebuilt\campaign-core\CampaignServices.obj" "prebuilt\campaign-core\CampaignStartupService.obj" "prebuilt\campaign-core\CampaignGarageFlow.obj" "prebuilt\campaign-core\CampaignTutorialBuildConsumer.obj" "prebuilt\campaign-core\campaign_gateway.obj" kernel32.lib
           if errorlevel 1 exit /b 14
 
           dumpbin.exe /headers /imports "prebuilt\campaign-core\IGPLib_x86.dll" > "prebuilt\campaign-core\DUMPBIN.txt"
@@ -160,6 +165,7 @@ jobs:
           Remove-Item ".\prebuilt\campaign-core\CampaignServices.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignStartupService.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignGarageFlow.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignTutorialBuildConsumer.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\campaign_gateway.obj" -ErrorAction SilentlyContinue
           Remove-Item $batPath -ErrorAction SilentlyContinue
 
