@@ -3,6 +3,7 @@
 #include "CampaignStartupService.h"
 #include "CampaignServices.h"
 #include "CampaignEventBus.h"
+#include "CampaignGarageUiTrace.h"
 
 static volatile LONG g_startup_lock;
 static uint32_t g_startup_state;
@@ -47,6 +48,13 @@ int __cdecl CampaignStartupBegin(void) {
         UnlockStartup();
         return 0;
     }
+
+    /*
+      Runtime probe: proves GarageUiTrace path/writer before the garage exists.
+      If step 1 exists but step 10 does not, the patched MONTAR callback was
+      not the callback actually used by the tutorial screen.
+    */
+    CampaignGarageUiTraceWrite(1, 0, 0);
 
     LockStartup();
     g_startup_state = CAMPAIGN_STARTUP_PROFILE_READY;
