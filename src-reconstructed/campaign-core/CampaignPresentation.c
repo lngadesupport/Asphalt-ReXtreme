@@ -8,6 +8,7 @@
 #include "CampaignReplayBindings.h"
 #include "CampaignOriginalUiBindings.h"
 #include "CampaignRaceHudBindings.h"
+#include "CampaignRaceHudLayout.h"
 
 #define RXPS_MAGIC 0x53505852u /* RXPS */
 #define RXRP_MAGIC 0x50525852u /* RXRP */
@@ -1731,6 +1732,7 @@ int __cdecl CampaignPresentationGetDiagnostics(CampaignPresentationDiagnostics* 
     out->race_hud_binding_count = CampaignRaceHudBindingsCount();
     out->race_hud_original_ui_ready =
         CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_RACE_HUD) ? 1u : 0u;
+    out->race_hud_layout_count = CampaignRaceHudLayoutCount();
 
     PresentationUnlock();
     return 1;
@@ -2013,6 +2015,35 @@ int __cdecl CampaignPresentationInvoke(CampaignPresentationCommand* command) {
         command->status = CampaignRaceHudApplyElement(
             (const CampaignRaceHudElementState*)(uintptr_t)command->ptr0
         );
+        break;
+    case CAMPAIGN_PRESENTATION_OP_RACE_HUD_LAYOUT_LOAD:
+        command->status = CampaignRaceHudLayoutLoad();
+        command->out0 = (int32_t)CampaignRaceHudLayoutCount();
+        break;
+    case CAMPAIGN_PRESENTATION_OP_RACE_HUD_LAYOUT_SAVE:
+        command->status = CampaignRaceHudLayoutSave();
+        break;
+    case CAMPAIGN_PRESENTATION_OP_RACE_HUD_LAYOUT_RESET:
+        command->status = CampaignRaceHudLayoutReset();
+        command->out0 = (int32_t)CampaignRaceHudLayoutCount();
+        break;
+    case CAMPAIGN_PRESENTATION_OP_RACE_HUD_LAYOUT_COUNT:
+        command->out0 = (int32_t)CampaignRaceHudLayoutCount();
+        command->status = 1;
+        break;
+    case CAMPAIGN_PRESENTATION_OP_RACE_HUD_LAYOUT_GET:
+        command->status = CampaignRaceHudLayoutGet(
+            (uint32_t)command->a,
+            (CampaignRaceHudElementState*)(uintptr_t)command->ptr0
+        );
+        break;
+    case CAMPAIGN_PRESENTATION_OP_RACE_HUD_LAYOUT_SET:
+        command->status = CampaignRaceHudLayoutSet(
+            (const CampaignRaceHudElementState*)(uintptr_t)command->ptr0
+        );
+        break;
+    case CAMPAIGN_PRESENTATION_OP_RACE_HUD_LAYOUT_APPLY:
+        command->status = CampaignRaceHudLayoutApply();
         break;
     default:
         return 0;
