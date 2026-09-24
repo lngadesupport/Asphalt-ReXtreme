@@ -37,6 +37,16 @@ enum CampaignPresentationFlags {
     CAMPAIGN_PRESENTATION_PHOTO_ENABLED  = 1u << 1
 };
 
+typedef struct CampaignSimpleFovControl {
+    uint32_t size;
+    uint32_t available;
+    int32_t current_x100;
+    int32_t minimum_x100;
+    int32_t maximum_x100;
+    int32_t step_x100;
+    int32_t original_x100;
+} CampaignSimpleFovControl;
+
 typedef struct CampaignReplayMetadata {
     uint32_t size;
     uint32_t version;
@@ -154,6 +164,9 @@ enum CampaignPresentationOp {
     CAMPAIGN_PRESENTATION_OP_GET_SETTINGS = 3,
     CAMPAIGN_PRESENTATION_OP_SET_SETTINGS = 4,
     CAMPAIGN_PRESENTATION_OP_RESET_SETTINGS = 5,
+    CAMPAIGN_PRESENTATION_OP_FOV_SIMPLE_GET = 6,
+    CAMPAIGN_PRESENTATION_OP_FOV_SIMPLE_SET = 7,
+    CAMPAIGN_PRESENTATION_OP_FOV_SIMPLE_RESET = 8,
 
     CAMPAIGN_PRESENTATION_OP_CAPABILITY_RELOAD = 10,
     CAMPAIGN_PRESENTATION_OP_CAPABILITY_COUNT = 11,
@@ -271,6 +284,9 @@ int __cdecl CampaignPresentationSaveSettings(void);
 int __cdecl CampaignPresentationGetSettings(CampaignPresentationSettings* out);
 int __cdecl CampaignPresentationSetSettings(const CampaignPresentationSettings* settings);
 int __cdecl CampaignPresentationResetSettings(void);
+int __cdecl CampaignPresentationSimpleFovGet(CampaignSimpleFovControl* out);
+int __cdecl CampaignPresentationSimpleFovSet(int32_t fov_x100);
+int __cdecl CampaignPresentationSimpleFovReset(void);
 
 int __cdecl CampaignReplayGetAutoPath(wchar_t* out, uint32_t capacity_chars);
 int __cdecl CampaignReplaySaveAuto(void);
