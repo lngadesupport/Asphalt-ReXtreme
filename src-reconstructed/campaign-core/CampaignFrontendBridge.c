@@ -248,20 +248,28 @@ static void CampaignGarageTraceWrite(
     uint32_t revision
 ) {
     WCHAR localAppData[1024];
-    WCHAR path[1200];
+    WCHAR family[256];
+    WCHAR path[1400];
     HANDLE f;
     DWORD n;
     CampaignGarageTraceRecord r;
     DWORD i;
-    const WCHAR suffix[] = L"\\Packages\\GAMELOFTSA.AsphaltXtreme_0pp20fcewvvtj\\LocalState\\CampaignEdition\\GarageTrace.bin";
+    UINT32 family_len = 256;
+    const WCHAR packages[] = L"\\Packages\\";
+    const WCHAR suffix[] = L"\\LocalState\\CampaignEdition\\GarageTrace.bin";
 
     if (!GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData, 1024)) return;
+    if (GetCurrentPackageFamilyName(&family_len, family) != ERROR_SUCCESS) return;
 
-    for (i = 0; localAppData[i] && i < 1023; ++i) path[i] = localAppData[i];
-    if (i >= 1023) return;
+    for (i = 0; localAppData[i] && i < 1399; ++i) path[i] = localAppData[i];
+    if (i >= 1399) return;
     {
         DWORD j = 0;
-        while (suffix[j] && i < 1199) path[i++] = suffix[j++];
+        while (packages[j] && i < 1399) path[i++] = packages[j++];
+        j = 0;
+        while (family[j] && i < 1399) path[i++] = family[j++];
+        j = 0;
+        while (suffix[j] && i < 1399) path[i++] = suffix[j++];
         path[i] = 0;
     }
 
