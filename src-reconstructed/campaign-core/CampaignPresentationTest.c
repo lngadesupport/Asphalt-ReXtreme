@@ -200,7 +200,26 @@ int main(void) {
     playback.size = sizeof(playback);
     if (!CampaignReplayGetPlaybackState(&playback)) return Fail(44);
     if (!playback.playing || playback.current_time_ms != 150 || playback.speed_permille != 250) return Fail(45);
-    if (!CampaignReplayPause()) return Fail(46);
+
+    if (!CampaignReplayAdvance(100)) return Fail(46);
+    ZeroMemory(&playback, sizeof(playback));
+    playback.size = sizeof(playback);
+    if (!CampaignReplayGetPlaybackState(&playback)) return Fail(47);
+    if (!playback.playing || playback.current_time_ms != 175) return Fail(48);
+
+    if (!CampaignReplayStep(1, 0)) return Fail(49);
+    ZeroMemory(&playback, sizeof(playback));
+    playback.size = sizeof(playback);
+    if (!CampaignReplayGetPlaybackState(&playback)) return Fail(50);
+    if (playback.playing || playback.current_time_ms != 200) return Fail(51);
+
+    if (!CampaignReplayStep(-1, 0)) return Fail(52);
+    ZeroMemory(&playback, sizeof(playback));
+    playback.size = sizeof(playback);
+    if (!CampaignReplayGetPlaybackState(&playback)) return Fail(53);
+    if (playback.current_time_ms != 100) return Fail(54);
+    if (!CampaignReplaySeek(150)) return Fail(55);
+    if (!CampaignReplayPause()) return Fail(56);
 
     ZeroMemory(&readback, sizeof(readback));
     if (!CampaignReplayGetSampleAtTime(170, 0, &readback)) return Fail(47);
