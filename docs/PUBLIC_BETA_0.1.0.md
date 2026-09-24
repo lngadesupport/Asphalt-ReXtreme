@@ -15,6 +15,19 @@ v3, local upgrades/Pro Kits and the local Campaign store are in scope.
 Replay, Photo Mode and any UI path that still lacks a verified original binding
 are not release blockers and should remain fail-closed.
 
+### Known beta limitation: Upgrade UI raw-id mapping
+
+The production package does not expose the legacy upgrade/pro-kit UI raw ids in
+the decoded XML shape originally assumed by the auxiliary builder. Beta 1
+therefore installs a valid zero-entry `CampaignUpgradeUiMap.dat` when no
+verified mapping is available.
+
+The Campaign upgrade adapter is still installed, so the old online
+`upgrade_car.php` path does not regain authority. Upgrade/Pro-Kit actions are
+rejected locally until the raw UI id -> `kind + part_slot` mapping is
+reconstructed from the preserved client UI. This state is reported as
+`upgrade = BLOCKED_DATA`, not `READY`.
+
 ## Distribution
 
 The repository does not redistribute original Asphalt Xtreme executables,
