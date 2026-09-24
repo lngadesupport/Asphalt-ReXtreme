@@ -1,3 +1,5 @@
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 #include <stdint.h>
 #include "CampaignFrontendBridge.h"
 #include "CampaignCore.h"
@@ -154,4 +156,85 @@ int __cdecl CampaignFrontendLobbyReady(void) {
     request.size = (uint32_t)sizeof(request);
     request.type = CAMPAIGN_FRONTEND_ENTER_LOBBY;
     return CampaignFrontendSubmit(&request);
+}
+
+
+#define CAMPAIGN_AMS_OWNERSHIP_ROOT_RVA 0x0153A1D0u
+
+static int32_t CampaignFrontendSelectedCarId(void* gs_garage) {
+    unsigned char* gs = (unsigned char*)gs_garage;
+    void* holder;
+    void* selected;
+
+    if (!gs) return 0;
+    holder = *(void**)(gs + 0x2D4);
+    if (!holder) return 0;
+    selected = *(void**)holder;
+    if (!selected) return 0;
+    return *(int32_t*)((unsigned char*)selected + 0xC0);
+}
+
+static void* CampaignFrontendOwnershipContainer(void) {
+    HMODULE ams = GetModuleHandleW(0);
+    void* root;
+
+    if (!ams) return 0;
+    root = *(void**)((unsigned char*)ams + CAMPAIGN_AMS_OWNERSHIP_ROOT_RVA);
+    if (!root) return 0;
+    return *(void**)((unsigned char*)root + 0x3C);
+}
+
+static int CampaignLegacyIntVectorContains(void* container, const int32_t* value) {
+    const int32_t* begin;
+    const int32_t* end;
+    const int32_t* p;
+    uintptr_t bytes;
+
+    if (!container || !value) return 0;
+
+    begin = *(const int32_t**)((unsigned char*)container + 0x44);
+    end = *(const int32_t**)((unsigned char*)container + 0x48);
+
+    if (!begin || !end) return begin == end ? 0 : 0;
+    if (end < begin) return 0;
+
+    bytes = (uintptr_t)((const unsigned char*)end - (const unsigned char*)begin);
+    if ((bytes & 3u) != 0u || bytes > (4u * 65536u)) return 0;
+
+    for (p = begin; p != end; ++p) {
+        if (*p == *value) return 1;
+    }
+    return 0;
+}
+
+int __cdecl CampaignFrontendGarageBuild(void* gs_garage) {
+    CampaignGarageResult out;
+    int32_t car_id;
+
+    car_id = CampaignFrontendSelectedCarId(gs_garage);
+    if (car_id <= 0) return 0;
+
+    ZeroBytes(&out, (uint32_t)sizeof(out));
+    out.size = (uint32_t)sizeof(out);
+
+    if (!CampaignServiceGarageAcquire(car_id, &out)) return 0;
+    return out.owned ? 1 : 0;
+}
+
+int __cdecl CampaignFrontendOwnershipContains(void* legacy_container, const int32_t* value) {
+    CampaignGarageResult out;
+    void* ownership_container;
+
+    if (!legacy_container || !value) return 0;
+
+    ownership_container = CampaignFrontendOwnershipContainer();
+    if (ownership_container && legacy_container == ownership_container) {
+        ZeroBytes(&out, (uint32_t)sizeof(out));
+        out.size = (uint32_t)sizeof(out);
+        if (!CampaignServiceGarageIsOwned(*value, &out)) return 0;
+        return out.owned ? 1 : 0;
+    }
+
+    /* Preserve the exact generic membership semantics for non-ownership users. */
+    return CampaignLegacyIntVectorContains(legacy_container, value);
 }
