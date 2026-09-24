@@ -12,6 +12,7 @@
 #include "CampaignPhotoBindings.h"
 #include "CampaignReplayBindings.h"
 #include "CampaignOriginalUiBindings.h"
+#include "CampaignRaceHudLayout.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
 #define CAMPAIGN_VERSION 3u
@@ -1880,23 +1881,36 @@ int __cdecl CampaignBeginRaceFromGui(void* game_mode_gui) {
 int __cdecl CampaignReplayFrameFromGui(void* game_mode_gui) {
     CampaignPresentationDiagnostics diagnostics;
     CampaignReplaySample sample;
+    int handled = 0;
 
     if (!game_mode_gui) return 0;
 
+    /*
+      The verified per-frame GameModeGUIBase hook is also the natural place to
+      keep a saved layout applied to the live original HUD instance. The layout
+      adapter itself remains fail-closed on UI + field bindings.
+    */
+    if (CampaignRaceHudLayoutCount() > 0 &&
+        CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_RACE_HUD) &&
+        CampaignRaceHudLayoutApplyFromGui(game_mode_gui)) {
+        handled = 1;
+    }
+
     ZeroBytes(&diagnostics, (uint32_t)sizeof(diagnostics));
     diagnostics.size = (uint32_t)sizeof(diagnostics);
-    if (!CampaignPresentationGetDiagnostics(&diagnostics)) return 0;
-    if (!diagnostics.replay_recording) return 0;
+    if (!CampaignPresentationGetDiagnostics(&diagnostics)) return handled;
+    if (!diagnostics.replay_recording) return handled;
 
     /*
       Fail closed until the exact player transform chain for 1.7.3.8 is
       represented by CampaignReplayBindings.dat. No offsets are hardcoded here.
     */
-    if (!CampaignReplayBindingsReady()) return 0;
+    if (!CampaignReplayBindingsReady()) return handled;
 
     ZeroBytes(&sample, (uint32_t)sizeof(sample));
-    if (!CampaignReplayBindingsSample(game_mode_gui, &sample)) return 0;
-    return CampaignReplayRecordFrame(&sample);
+    if (!CampaignReplayBindingsSample(game_mode_gui, &sample)) return handled;
+    if (CampaignReplayRecordFrame(&sample)) handled = 1;
+    return handled;
 }
 
 int __cdecl CampaignPhotoFrameFromGui(void* game_mode_gui) {
