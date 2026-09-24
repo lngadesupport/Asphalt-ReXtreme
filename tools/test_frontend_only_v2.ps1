@@ -58,7 +58,9 @@ $p=Get-AppxPackage -Name $name|Sort-Object Version -Descending|Select-Object -Fi
 if(-not$p){throw "Package not registered"}
 
 $garageTrace=Join-Path $env:LOCALAPPDATA ("Packages\"+$p.PackageFamilyName+"\LocalState\CampaignEdition\GarageTrace.bin")
+$garageUiTrace=Join-Path $env:LOCALAPPDATA ("Packages\"+$p.PackageFamilyName+"\LocalState\CampaignEdition\GarageUiTrace.bin")
 Remove-Item -LiteralPath $garageTrace -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $garageUiTrace -Force -ErrorAction SilentlyContinue
 
 Write-Host ""
 Write-Host "================================================================"
@@ -83,6 +85,7 @@ Write-Host "Career:"
 Write-Host "  Race/UI              : preserved frontend/engine"
 Write-Host "  Progress/rewards     : Campaign Career v3"
 Write-Host ("  Garage trace         : "+$garageTrace)
+Write-Host ("  Garage UI trace      : "+$garageUiTrace)
 Write-Host ""
 Write-Host "Teste:"
 Write-Host "  1. passar da tela Gameloft"
