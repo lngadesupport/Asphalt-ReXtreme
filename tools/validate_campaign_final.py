@@ -52,12 +52,12 @@ def patch_status(root: Path, ams_data: bytes):
     tools = root / "tools"
     result = {}
 
-    p = load_module(tools / "campaign_profile_adapter_v1.py", "cp")
+    p = load_module(tools / "campaign_profile_adapter_v2.py", "cp")
     if p:
         profile_ready = (
             bytes_at(ams_data, p.ONLINE_OFF, len(p.ONLINE_FALSE)) == p.ONLINE_FALSE
             and bytes_at(ams_data, p.POPUP_OFF, len(p.POPUP_SAFE)) == p.POPUP_SAFE
-            and bytes_at(ams_data, p.SYNC_SUBMIT_OFF, len(p.SYNC_SUBMIT_LOCAL)) == p.SYNC_SUBMIT_LOCAL
+            and bytes_at(ams_data, p.SYNC_SUBMIT_OFF, len(p.SYNC_SUBMIT_ORIG)) == p.SYNC_SUBMIT_ORIG
             and all(
                 bytes_at(ams_data, off, len(patched)) == patched
                 for _label, off, _original, patched in p.PATCHES
@@ -66,7 +66,7 @@ def patch_status(root: Path, ams_data: bytes):
         result["profile"] = {
             "ready": profile_ready,
             "logical_connectivity": "offline/false",
-            "remote_sync_transport": "retired" if profile_ready else "unknown",
+            "global_sync_submit": "original/preserved" if profile_ready else "unknown",
         }
 
     g = load_module(tools / "campaign_garage_v2.py", "cg")
