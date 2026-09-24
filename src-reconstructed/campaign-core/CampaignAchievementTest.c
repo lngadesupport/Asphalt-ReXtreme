@@ -118,6 +118,11 @@ int main(void) {
     if (!CampaignAchievementsGetStatus(1001, &status)) return 6;
     if (status.completed || status.current_value != 0 || status.threshold != 1) return 7;
 
+    ZeroMemory(&status, sizeof(status));
+    status.size = sizeof(status);
+    if (!CampaignAchievementsGetStatus(1002, &status)) return 17;
+    if (status.completed || status.current_value != 0 || status.threshold != 60000) return 18;
+
     ZeroMemory(&metrics, sizeof(metrics));
     metrics.size = sizeof(metrics);
     metrics.version = CAMPAIGN_RACE_METRICS_VERSION;
