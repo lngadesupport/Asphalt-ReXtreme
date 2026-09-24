@@ -76,3 +76,22 @@ def test_binding_requires_evidence_and_pe(tmp_path: Path):
         assert "PE fingerprint" in str(exc)
     else:
         raise AssertionError("non-empty HUD catalog without PE fingerprint was accepted")
+
+
+def test_gui_argument_binding_uses_zero_rva(tmp_path: Path):
+    src = tmp_path / "hud.json"
+    out = tmp_path / "out.dat"
+    write(src, bindings=[{
+        "element": "nitro",
+        "property": "x",
+        "base": "gui_argument",
+        "target_rva": 0,
+        "field_offset": 4,
+        "value_kind": "float_scaled",
+        "scale_divisor": 1000,
+        "verified": True,
+        "evidence": [{"source": "verified GameModeGUIBase field"}],
+    }], pe={"time_date_stamp": 1, "size_of_image": 2})
+    result = mod.build(src, out)
+    assert result["count"] == 1
+    assert len(out.read_bytes()) == mod.HEADER.size + mod.ENTRY.size
