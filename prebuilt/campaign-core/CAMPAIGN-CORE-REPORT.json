@@ -26,8 +26,9 @@
     "FrontendSelector":  "0xC0DE7704",
     "FrontendOwnershipSelector":  "0xC0DE7712",
     "FrontendGarageBuildSelector":  "0xC0DE7713",
+    "FeaturePolicySelector":  "0xC0DE7720",
     "CareerPreSelector":  "0xC0DECA72",
     "CareerPostSelector":  "0xC0DECA73",
     "Size":  33280,
-    "SHA256":  "39ba4be14f1cc7a95ff268f1599f077459d0dfb4f9f74dff9e4f3c9a96954ed4"
+    "SHA256":  "e59505ff5be8990a77457e1e18a0f6cb7920d7e973ba990a55e21a3244df4cfd"
 }
