@@ -91,6 +91,7 @@ class CampaignRebuilderTests(unittest.TestCase):
                 {"catalog": "CampaignPresentationOptions.dat", "report": "CampaignPresentationOptions.report.json", "count": 0, "safe_empty_catalog": True},
                 {"catalog": "CampaignPresentationBindings.dat", "report": "CampaignPresentationBindings.report.json", "count": 0, "safe_empty_catalog": True},
                 {"catalog": "CampaignPhotoBindings.dat", "report": "CampaignPhotoBindings.report.json", "count": 0, "free_camera_ready": False, "safe_empty_catalog": True},
+                {"catalog": "CampaignReplayBindings.dat", "report": "CampaignReplayBindings.report.json", "count": 0, "recording_ready": False, "safe_empty_catalog": True},
                 ["UserData/CampaignEdition/", "UserData/Replays/", "UserData/Screenshots/"],
             )
             data = json.loads(status_path.read_text(encoding="utf-8"))
@@ -100,6 +101,8 @@ class CampaignRebuilderTests(unittest.TestCase):
             self.assertEqual(data["presentation_binding_catalog"]["count"], 0)
             self.assertEqual(data["photo_binding_catalog"]["count"], 0)
             self.assertFalse(data["photo_free_camera_ready"])
+            self.assertEqual(data["replay_binding_catalog"]["count"], 0)
+            self.assertFalse(data["replay_recording_ready"])
 
 
 if __name__ == "__main__":
