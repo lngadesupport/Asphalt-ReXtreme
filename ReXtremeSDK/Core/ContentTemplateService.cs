@@ -126,6 +126,52 @@ public static class ContentTemplateService
         return path;
     }
 
+    public static string CreateReplayPreset(string projectRoot, string id, string name) =>
+        Write(projectRoot, "content/replay", id, new
+        {
+            schema_version = 1,
+            id,
+            name,
+            timeline = true,
+            speed_steps = new[] { 0.10, 0.25, 0.50, 1.0, 2.0, 4.0 },
+            frame_step = true,
+            event_markers = new[] { "start", "takedown", "jump", "wreck", "overtake", "finish" },
+            cameras = new[] { "follow", "chase", "front", "rear", "side", "wheel", "bumper", "hood", "cinematic", "track", "free" },
+            allow_target_switch = true,
+            hud_toggle = true,
+            photo_mode = true
+        });
+
+    public static string CreatePhotoPreset(string projectRoot, string id, string name) =>
+        Write(projectRoot, "content/photo", id, new
+        {
+            schema_version = 1,
+            id,
+            name,
+            entry_points = new[] { "pause-menu", "replay-pause" },
+            free_camera = true,
+            orbit_camera = true,
+            fov = 55.0,
+            camera_distance = 1.0,
+            camera_height = 0.0,
+            camera_roll = 0.0,
+            hide_hud = true,
+            screenshot = true,
+            renderer_effects = Array.Empty<string>()
+        });
+
+    public static string CreateGraphicsCapabilityPreset(string projectRoot, string id, string name) =>
+        Write(projectRoot, "content/graphics", id, new
+        {
+            schema_version = 1,
+            id,
+            name,
+            capability_source = "original-renderer-audit",
+            original_default = true,
+            options = Array.Empty<object>(),
+            notes = "Only populate options confirmed by Asphalt Xtreme renderer/config/runtime audit."
+        });
+
     private static string Write(string root, string folder, string id, object value)
     {
         var dir = Path.Combine(root, folder.Replace('/', Path.DirectorySeparatorChar));
