@@ -12,11 +12,13 @@ on:
       - "tools/build_photo_binding_catalog.py"
       - "tools/build_replay_binding_catalog.py"
       - "tools/build_original_ui_binding_catalog.py"
+      - "tools/build_race_hud_binding_catalog.py"
       - "config/presentation-capabilities.verified.json"
       - "config/presentation-bindings.verified.json"
       - "config/photo-bindings.verified.json"
       - "config/replay-bindings.verified.json"
       - "config/original-ui-bindings.verified.json"
+      - "config/race-hud-bindings.verified.json"
       - "config/replay-frame-binding.verified.json"
       - "config/photo-frame-binding.verified.json"
       - "config/photo-toggle-binding.verified.json"
@@ -27,6 +29,7 @@ on:
       - "tests/test_build_photo_binding_catalog.py"
       - "tests/test_build_replay_binding_catalog.py"
       - "tests/test_build_original_ui_binding_catalog.py"
+      - "tests/test_build_race_hud_binding_catalog.py"
       - "tools/audit_original_settings_ui.py"
       - "tools/rank_original_ui_candidates.py"
       - "tools/audit_original_ui_rtti.py"
@@ -70,6 +73,7 @@ jobs:
           tests/test_build_photo_binding_catalog.py
           tests/test_build_replay_binding_catalog.py
           tests/test_build_original_ui_binding_catalog.py
+          tests/test_build_race_hud_binding_catalog.py
           tests/test_audit_original_settings_ui.py
           tests/test_rank_original_ui_candidates.py
           tests/test_audit_original_ui_rtti.py
@@ -152,3 +156,18 @@ jobs:
           if ($r.custom_ui_assets_allowed) { throw "Custom in-game UI assets must remain forbidden" }
           if ($r.fallback_if_unmapped -ne "feature-hidden") { throw "Unmapped UI features must remain hidden" }
           if ((Get-Item CampaignOriginalUiBindings.dat).Length -ne 28) { throw "Unexpected original UI catalog size" }
+
+      - name: Build safe empty race HUD binding catalog
+        run: >
+          python tools/build_race_hud_binding_catalog.py
+          config/race-hud-bindings.verified.json
+          CampaignRaceHudBindings.dat
+          --report CampaignRaceHudBindings.report.json
+      - name: Verify race HUD remains original-only
+        shell: pwsh
+        run: |
+          $r = Get-Content CampaignRaceHudBindings.report.json -Raw | ConvertFrom-Json
+          if ($r.count -ne 0) { throw "Unverified HUD bindings leaked into runtime catalog" }
+          if (-not $r.original_elements_only) { throw "HUD original-elements-only policy was disabled" }
+          if ($r.create_new_hud_widgets) { throw "New HUD widgets must remain forbidden" }
+          if ((Get-Item CampaignRaceHudBindings.dat).Length -ne 28) { throw "Unexpected HUD catalog size" }
