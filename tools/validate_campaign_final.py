@@ -65,15 +65,20 @@ def patch_status(root: Path, ams_data: bytes):
             )
         }
 
-    c = load_module(tools / "campaign_career_adapter_v2.py", "cc")
+    c = load_module(tools / "campaign_career_adapter_v3.py", "cc3")
     if c:
+        v2 = c.v2
         result["career"] = {
             "ready": (
-                bytes_at(ams_data, c.PRE_SITE_OFF, 5) == c.PRE_SITE_PATCH
-                and bytes_at(ams_data, c.PRE_STUB_OFF, len(c.PRE_STUB)) == c.PRE_STUB
-                and bytes_at(ams_data, c.POST_FACTORY_OFF, len(c.POST_FACTORY_STUB)) == c.POST_FACTORY_STUB
-                and bytes_at(ams_data, c.POST_NOTIFY_OFF, len(c.POST_NOTIFY_STUB)) == c.POST_NOTIFY_STUB
-            )
+                bytes_at(ams_data, v2.PRE_SITE_OFF, 5) == v2.PRE_SITE_PATCH
+                and bytes_at(ams_data, v2.PRE_STUB_OFF, len(v2.PRE_STUB)) == v2.PRE_STUB
+                and bytes_at(ams_data, v2.POST_FACTORY_OFF, len(v2.POST_FACTORY_ORIG)) == v2.POST_FACTORY_ORIG
+                and bytes_at(ams_data, c.POST_CALL_OFF, c.POST_CALL_LEN) == c.POST_CALL_V3
+                and bytes_at(ams_data, v2.POST_NOTIFY_OFF, len(v2.POST_NOTIFY_STUB)) == v2.POST_NOTIFY_STUB
+                and bytes_at(ams_data, c.BRIDGE_OFF, c.BRIDGE_LEN) == c.BRIDGE
+            ),
+            "objective_catalog_required": False,
+            "star_result_source": "PostCareerEventRequest star1/star2/star3",
         }
 
     u = load_module(tools / "campaign_upgrade_adapter_v1.py", "cu")
@@ -167,7 +172,7 @@ def main() -> int:
             "entry_count": count,
         }
 
-    for name in ("CampaignCatalog.dat", "CampaignEvents.dat", "CampaignObjectives.dat", "CampaignUpgrades.dat"):
+    for name in ("CampaignCatalog.dat", "CampaignEvents.dat", "CampaignUpgrades.dat"):
         if not report["data"][name]["exists"]:
             report["blocking"].append(f"{name} missing")
 
