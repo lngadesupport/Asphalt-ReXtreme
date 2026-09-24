@@ -170,6 +170,11 @@ static WCHAR g_v2_archive_path[1024];
 static WCHAR g_race_session_path[1024];
 static WCHAR g_race_session_tmp_path[1024];
 static WCHAR g_race_session_consuming_path[1024];
+static WCHAR g_config_path[1024];
+static WCHAR g_legacy_campaign_dir[1024];
+static WCHAR g_legacy_state_path[1024];
+static WCHAR g_legacy_backup_path[1024];
+static volatile LONG g_portable_save;
 static CampaignRaceSession g_race_session_buffer;
 
 static void LockState(void) {
@@ -249,11 +254,83 @@ static void InitDefaultState(CampaignStateV3* s) {
     s->checksum = StateChecksumV3(s);
 }
 
-static int BuildPaths(void) {
+static int EnsureDirectory(const WCHAR* path) {
+    DWORD attrs;
+    if (!path || !path[0]) return 0;
+    attrs = GetFileAttributesW(path);
+    if (attrs != INVALID_FILE_ATTRIBUTES) {
+        return (attrs & FILE_ATTRIBUTE_DIRECTORY) ? 1 : 0;
+    }
+    if (CreateDirectoryW(path, 0)) return 1;
+    return GetLastError() == ERROR_ALREADY_EXISTS ? 1 : 0;
+}
+
+static int BuildExecutableDirectory(WCHAR* out, uint32_t cap) {
+    DWORD n;
+    int i;
+
+    if (!out || cap < 8) return 0;
+    ZeroBytes(out, cap * (uint32_t)sizeof(WCHAR));
+    n = GetModuleFileNameW(0, out, cap);
+    if (n == 0 || n >= cap) return 0;
+
+    i = (int)n - 1;
+    while (i >= 0 && out[i] != L'\\' && out[i] != L'/') --i;
+    if (i < 0) return 0;
+    out[i + 1] = 0;
+    return 1;
+}
+
+static int BuildLegacyPackagePaths(void) {
     WCHAR local[512];
     DWORD n;
 
     ZeroBytes(local, (uint32_t)sizeof(local));
+    ZeroBytes(g_legacy_campaign_dir, (uint32_t)sizeof(g_legacy_campaign_dir));
+    ZeroBytes(g_legacy_state_path, (uint32_t)sizeof(g_legacy_state_path));
+    ZeroBytes(g_legacy_backup_path, (uint32_t)sizeof(g_legacy_backup_path));
+
+    n = GetEnvironmentVariableW(L"LOCALAPPDATA", local, 512);
+    if (n == 0 || n >= 512) return 0;
+
+    if (!WideAppend(g_legacy_campaign_dir, 1024, local)) return 0;
+    if (!WideAppend(
+            g_legacy_campaign_dir,
+            1024,
+            L"\\Packages\\A278AB0D.AsphaltXtreme_h6adky7gbf63m\\LocalState\\CampaignEdition")) {
+        return 0;
+    }
+
+    if (!WideAppend(g_legacy_state_path, 1024, g_legacy_campaign_dir)) return 0;
+    if (!WideAppend(g_legacy_state_path, 1024, L"\\CampaignSave.dat")) return 0;
+
+    if (!WideAppend(g_legacy_backup_path, 1024, g_legacy_campaign_dir)) return 0;
+    if (!WideAppend(g_legacy_backup_path, 1024, L"\\CampaignSave.bak")) return 0;
+    return 1;
+}
+
+static int ImportLegacyPackageSaveIfNeeded(void) {
+    if (!g_portable_save) return 1;
+    if (!g_legacy_state_path[0]) return 1;
+    if (GetFileAttributesW(g_state_path) != INVALID_FILE_ATTRIBUTES) return 1;
+    if (GetFileAttributesW(g_legacy_state_path) == INVALID_FILE_ATTRIBUTES) return 1;
+
+    if (!CopyFileW(g_legacy_state_path, g_state_path, TRUE)) return 0;
+
+    if (GetFileAttributesW(g_legacy_backup_path) != INVALID_FILE_ATTRIBUTES &&
+        GetFileAttributesW(g_backup_path) == INVALID_FILE_ATTRIBUTES) {
+        CopyFileW(g_legacy_backup_path, g_backup_path, TRUE);
+    }
+    return 1;
+}
+
+static int BuildPaths(void) {
+    WCHAR exe_dir[1024];
+    WCHAR user_dir[1024];
+    int portable_requested = 1;
+
+    ZeroBytes(exe_dir, (uint32_t)sizeof(exe_dir));
+    ZeroBytes(user_dir, (uint32_t)sizeof(user_dir));
     ZeroBytes(g_campaign_dir, (uint32_t)sizeof(g_campaign_dir));
     ZeroBytes(g_state_path, (uint32_t)sizeof(g_state_path));
     ZeroBytes(g_tmp_path, (uint32_t)sizeof(g_tmp_path));
@@ -261,13 +338,37 @@ static int BuildPaths(void) {
     ZeroBytes(g_race_session_path, (uint32_t)sizeof(g_race_session_path));
     ZeroBytes(g_race_session_tmp_path, (uint32_t)sizeof(g_race_session_tmp_path));
     ZeroBytes(g_race_session_consuming_path, (uint32_t)sizeof(g_race_session_consuming_path));
+    ZeroBytes(g_config_path, (uint32_t)sizeof(g_config_path));
 
-    n = GetEnvironmentVariableW(L"LOCALAPPDATA", local, 512);
-    if (n == 0 || n >= 512) return 0;
+    if (!BuildExecutableDirectory(exe_dir, 1024)) return 0;
 
-    if (!WideAppend(g_campaign_dir, 1024, local)) return 0;
-    if (!WideAppend(g_campaign_dir, 1024, L"\\Packages\\A278AB0D.AsphaltXtreme_h6adky7gbf63m\\LocalState\\CampaignEdition")) return 0;
-    CreateDirectoryW(g_campaign_dir, 0);
+    if (!WideAppend(g_config_path, 1024, exe_dir)) return 0;
+    if (!WideAppend(g_config_path, 1024, L"ReXtreme.ini")) return 0;
+    portable_requested = GetPrivateProfileIntW(L"Save", L"PortableSave", 1, g_config_path) ? 1 : 0;
+
+    BuildLegacyPackagePaths();
+
+    if (portable_requested) {
+        if (!WideAppend(user_dir, 1024, exe_dir)) return 0;
+        if (!WideAppend(user_dir, 1024, L"UserData")) return 0;
+
+        if (EnsureDirectory(user_dir)) {
+            if (!WideAppend(g_campaign_dir, 1024, user_dir)) return 0;
+            if (!WideAppend(g_campaign_dir, 1024, L"\\CampaignEdition")) return 0;
+            if (EnsureDirectory(g_campaign_dir)) {
+                InterlockedExchange(&g_portable_save, 1);
+            } else {
+                ZeroBytes(g_campaign_dir, (uint32_t)sizeof(g_campaign_dir));
+            }
+        }
+    }
+
+    if (!g_campaign_dir[0]) {
+        if (!g_legacy_campaign_dir[0]) return 0;
+        if (!WideAppend(g_campaign_dir, 1024, g_legacy_campaign_dir)) return 0;
+        if (!EnsureDirectory(g_campaign_dir)) return 0;
+        InterlockedExchange(&g_portable_save, 0);
+    }
 
     if (!WideAppend(g_state_path, 1024, g_campaign_dir)) return 0;
     if (!WideAppend(g_state_path, 1024, L"\\CampaignSave.dat")) return 0;
@@ -287,6 +388,7 @@ static int BuildPaths(void) {
     if (!WideAppend(g_race_session_consuming_path, 1024, g_campaign_dir)) return 0;
     if (!WideAppend(g_race_session_consuming_path, 1024, L"\\CampaignRaceSession.consuming")) return 0;
 
+    if (!ImportLegacyPackageSaveIfNeeded()) return 0;
     return 1;
 }
 
