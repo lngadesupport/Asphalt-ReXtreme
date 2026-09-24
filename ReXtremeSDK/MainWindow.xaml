@@ -86,9 +86,10 @@
                             <TextBlock x:Name="VehicleProfileStatusText"
                                        Text="Nenhum perfil original verificado carregado."
                                        Foreground="{StaticResource EditorMuted}" Margin="0,0,0,6" TextWrapping="Wrap"/>
-                            <Button Content="Importar Original Vehicle Registry"
-                                    HorizontalAlignment="Left" Margin="0,0,0,16"
-                                    Click="ImportVehicleRegistry_Click"/>
+                            <WrapPanel Margin="0,0,0,16">
+                                <Button Content="Escanear DB original" Click="ScanOriginalVehicleDb_Click"/>
+                                <Button Content="Importar Vehicle Registry" Click="ImportVehicleRegistry_Click"/>
+                            </WrapPanel>
 
                             <TextBlock Text="DESEMPENHO — barras do jogo" FontWeight="Bold" Margin="0,0,0,8"/>
                             <TextBlock Text="Velocidade"/>
