@@ -236,6 +236,27 @@
                     </Grid>
                 </TabItem>
 
+                <TabItem Header="Pista">
+                    <ScrollViewer Background="{StaticResource EditorBackground}">
+                        <StackPanel Margin="20" MaxWidth="850" HorizontalAlignment="Left">
+                            <TextBlock Text="TRACK EDITOR" FontSize="22" FontWeight="Bold" Margin="0,0,0,14"/>
+                            <TextBlock Text="ID"/>
+                            <TextBox x:Name="TrackIdBox" Text="local.track.new" Padding="6" Margin="0,3,0,8"/>
+                            <TextBlock Text="Nome"/>
+                            <TextBox x:Name="TrackNameBox" Text="New Track" Padding="6" Margin="0,3,0,8"/>
+                            <TextBlock Text="Geometria"/>
+                            <TextBox x:Name="TrackGeometryBox" Text="assets/models/track.glb" Padding="6" Margin="0,3,0,8"/>
+                            <TextBlock Text="Collision mesh (opcional)"/>
+                            <TextBox x:Name="TrackCollisionBox" Padding="6" Margin="0,3,0,8"/>
+                            <TextBlock Text="Environment ID (opcional)"/>
+                            <TextBox x:Name="TrackEnvironmentBox" Padding="6" Margin="0,3,0,8"/>
+                            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource EditorMuted}" Margin="0,4,0,12"
+                                       Text="O template já reserva start grid, finish, checkpoints, respawns, AI routes, shortcuts, replay cameras e audio zones. A edição 3D desses nós será ligada ao viewport."/>
+                            <Button Content="Salvar definição da pista" Width="200" HorizontalAlignment="Left" Click="SaveTrack_Click"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
                 <TabItem Header="Pintura / Livery">
                     <ScrollViewer Background="{StaticResource EditorBackground}">
                         <StackPanel Margin="20" MaxWidth="850" HorizontalAlignment="Left">
