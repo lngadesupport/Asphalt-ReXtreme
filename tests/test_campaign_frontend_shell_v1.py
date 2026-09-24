@@ -23,6 +23,10 @@ class CleanFrontendShellTests(unittest.TestCase):
         )
         self.assertEqual(p[-3:],b"\xC2\x08\x00")
 
+    def test_exact_frontend_cave_size(self):
+        self.assertEqual(m.CAVE_LEN,47)
+        self.assertLessEqual(len(m.BOOT_STUB)+len(m.LOBBY_STUB),m.CAVE_LEN)
+
     def test_clean_runtime_selectors_only(self):
         self.assertEqual(m.RT_BOOT,0xC0DE9005)
         self.assertEqual(m.RT_LOBBY,0xC0DE9006)
