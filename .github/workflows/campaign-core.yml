@@ -230,6 +230,7 @@ jobs:
             FrontendSelector = "0xC0DE7704"
             FrontendOwnershipSelector = "0xC0DE7712"
             FrontendGarageBuildSelector = "0xC0DE7713"
+            FrontendGarageWidgetBuildSelector = "0xC0DE7714"
             FeaturePolicySelector = "0xC0DE7720"
             CareerPreSelector = "0xC0DECA72"
             CareerPostSelector = "0xC0DECA73"
