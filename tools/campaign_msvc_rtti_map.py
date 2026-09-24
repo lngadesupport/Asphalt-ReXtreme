@@ -23,6 +23,7 @@ class PE32:
             raise ValueError("invalid PE signature")
 
         number_of_sections = self.u16(pe + 6)
+        self.time_date_stamp = self.u32(pe + 8)
         optional_size = self.u16(pe + 20)
         optional = pe + 24
 
@@ -30,6 +31,7 @@ class PE32:
             raise ValueError("expected PE32")
 
         self.image_base = self.u32(optional + 28)
+        self.size_of_image = self.u32(optional + 56)
         section_table = optional + optional_size
 
         for i in range(number_of_sections):
