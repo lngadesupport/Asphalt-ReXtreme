@@ -51,6 +51,10 @@ static WCHAR g_settings_tmp[1024];
 static WCHAR g_settings_bak[1024];
 static WCHAR g_replay_auto_path[1024];
 static WCHAR g_replay_auto_dir[1024];
+static CampaignReplayLibraryEntry g_replay_library[CAMPAIGN_REPLAY_LIBRARY_MAX];
+static uint32_t g_replay_library_count;
+static WCHAR g_replay_library_pattern[1024];
+static WCHAR g_replay_library_path[1024];
 
 static void PresentationLock(void) {
     while (InterlockedCompareExchange(&g_presentation_lock, 1, 0) != 0) Sleep(0);
@@ -145,13 +149,12 @@ static int AppendHex8(WCHAR* dst, uint32_t cap, uint32_t value) {
     return WideAppend(dst, cap, text);
 }
 
-static int BuildReplayAutoPathUnlocked(void) {
+static int BuildReplayDirectoryUnlocked(void) {
     WCHAR exe[1024];
     DWORD n;
     int i;
 
     ZeroBytes(exe, (uint32_t)sizeof(exe));
-    ZeroBytes(g_replay_auto_path, (uint32_t)sizeof(g_replay_auto_path));
     ZeroBytes(g_replay_auto_dir, (uint32_t)sizeof(g_replay_auto_dir));
 
     n = GetModuleFileNameW(0, exe, 1024);
@@ -167,6 +170,12 @@ static int BuildReplayAutoPathUnlocked(void) {
     if (!EnsureDirectoryPath(g_replay_auto_dir)) return 0;
     if (!WideAppend(g_replay_auto_dir, 1024, L"\\Replays")) return 0;
     if (!EnsureDirectoryPath(g_replay_auto_dir)) return 0;
+    return 1;
+}
+
+static int BuildReplayAutoPathUnlocked(void) {
+    ZeroBytes(g_replay_auto_path, (uint32_t)sizeof(g_replay_auto_path));
+    if (!BuildReplayDirectoryUnlocked()) return 0;
 
     if (!WideCopy(g_replay_auto_path, 1024, g_replay_auto_dir)) return 0;
     if (!WideAppend(g_replay_auto_path, 1024, L"\\Replay-E")) return 0;
@@ -1120,6 +1129,242 @@ int __cdecl CampaignReplayStep(int32_t direction, int32_t entity_id) {
     return found;
 }
 
+static int ReplayLibraryHeaderValid(
+    const CampaignReplayFileHeader* header,
+    const WIN32_FIND_DATAW* find_data
+) {
+    ULARGE_INTEGER file_size;
+    ULARGE_INTEGER expected;
+
+    if (!header || !find_data) return 0;
+    if (header->magic != RXRP_MAGIC) return 0;
+    if (header->version != CAMPAIGN_REPLAY_FORMAT_VERSION) return 0;
+    if (header->sample_size != (uint32_t)sizeof(CampaignReplaySample)) return 0;
+    if (header->marker_size != (uint32_t)sizeof(CampaignReplayMarker)) return 0;
+    if (header->sample_count == 0 || header->sample_count > RX_REPLAY_MAX_CAPACITY) return 0;
+    if (header->marker_count > CAMPAIGN_REPLAY_MARKER_MAX) return 0;
+    if (header->metadata.size != (uint32_t)sizeof(CampaignReplayMetadata)) return 0;
+    if (header->metadata.version != CAMPAIGN_REPLAY_FORMAT_VERSION) return 0;
+
+    file_size.LowPart = find_data->nFileSizeLow;
+    file_size.HighPart = find_data->nFileSizeHigh;
+
+    expected.QuadPart = (ULONGLONG)sizeof(CampaignReplayFileHeader);
+    expected.QuadPart += (ULONGLONG)header->sample_count *
+        (ULONGLONG)sizeof(CampaignReplaySample);
+    expected.QuadPart += (ULONGLONG)header->marker_count *
+        (ULONGLONG)sizeof(CampaignReplayMarker);
+
+    return file_size.QuadPart == expected.QuadPart ? 1 : 0;
+}
+
+static int ReadReplayLibraryEntryUnlocked(
+    const WCHAR* filename,
+    const WIN32_FIND_DATAW* find_data,
+    CampaignReplayLibraryEntry* out
+) {
+    HANDLE h;
+    DWORD got = 0;
+    CampaignReplayFileHeader header;
+
+    if (!filename || !find_data || !out) return 0;
+    if (!BuildReplayDirectoryUnlocked()) return 0;
+
+    ZeroBytes(g_replay_library_path, (uint32_t)sizeof(g_replay_library_path));
+    if (!WideCopy(g_replay_library_path, 1024, g_replay_auto_dir)) return 0;
+    if (!WideAppend(g_replay_library_path, 1024, L"\\")) return 0;
+    if (!WideAppend(g_replay_library_path, 1024, filename)) return 0;
+
+    h = CreateFileW(
+        g_replay_library_path,
+        GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        0,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        0
+    );
+    if (h == INVALID_HANDLE_VALUE) return 0;
+
+    ZeroBytes(&header, (uint32_t)sizeof(header));
+    if (!ReadFile(h, &header, (DWORD)sizeof(header), &got, 0) ||
+        got != (DWORD)sizeof(header)) {
+        CloseHandle(h);
+        return 0;
+    }
+    CloseHandle(h);
+
+    if (!ReplayLibraryHeaderValid(&header, find_data)) return 0;
+
+    ZeroBytes(out, (uint32_t)sizeof(*out));
+    out->size = (uint32_t)sizeof(*out);
+    if (!WideCopy(
+            out->filename,
+            CAMPAIGN_REPLAY_FILENAME_MAX,
+            filename)) {
+        return 0;
+    }
+
+    CopyBytes(&out->metadata, &header.metadata, (uint32_t)sizeof(out->metadata));
+    out->sample_count = header.sample_count;
+    out->marker_count = header.marker_count;
+    out->first_time_ms = header.first_time_ms;
+    out->last_time_ms = header.last_time_ms;
+    out->duration_ms = header.last_time_ms >= header.first_time_ms ?
+        header.last_time_ms - header.first_time_ms : 0;
+    out->file_size_low = find_data->nFileSizeLow;
+    out->file_size_high = find_data->nFileSizeHigh;
+    out->modified_time_low = find_data->ftLastWriteTime.dwLowDateTime;
+    out->modified_time_high = find_data->ftLastWriteTime.dwHighDateTime;
+    return 1;
+}
+
+static int ReplayLibraryEntryNewer(
+    const CampaignReplayLibraryEntry* a,
+    const CampaignReplayLibraryEntry* b
+) {
+    if (a->modified_time_high != b->modified_time_high) {
+        return a->modified_time_high > b->modified_time_high;
+    }
+    return a->modified_time_low > b->modified_time_low;
+}
+
+int __cdecl CampaignReplayLibraryRefresh(void) {
+    WIN32_FIND_DATAW find_data;
+    HANDLE find;
+    CampaignReplayLibraryEntry candidate;
+    uint32_t i;
+
+    PresentationLock();
+    ZeroBytes(g_replay_library, (uint32_t)sizeof(g_replay_library));
+    g_replay_library_count = 0;
+
+    if (!BuildReplayDirectoryUnlocked()) {
+        PresentationUnlock();
+        return 0;
+    }
+
+    ZeroBytes(g_replay_library_pattern, (uint32_t)sizeof(g_replay_library_pattern));
+    if (!WideCopy(g_replay_library_pattern, 1024, g_replay_auto_dir) ||
+        !WideAppend(g_replay_library_pattern, 1024, L"\\*.rexreplay")) {
+        PresentationUnlock();
+        return 0;
+    }
+
+    ZeroBytes(&find_data, (uint32_t)sizeof(find_data));
+    find = FindFirstFileW(g_replay_library_pattern, &find_data);
+    if (find == INVALID_HANDLE_VALUE) {
+        DWORD err = GetLastError();
+        PresentationUnlock();
+        return err == ERROR_FILE_NOT_FOUND ? 1 : 0;
+    }
+
+    do {
+        if (!(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
+            g_replay_library_count < CAMPAIGN_REPLAY_LIBRARY_MAX) {
+            ZeroBytes(&candidate, (uint32_t)sizeof(candidate));
+            if (ReadReplayLibraryEntryUnlocked(
+                    find_data.cFileName,
+                    &find_data,
+                    &candidate)) {
+                uint32_t pos = g_replay_library_count;
+                while (pos > 0 &&
+                       ReplayLibraryEntryNewer(
+                           &candidate,
+                           &g_replay_library[pos - 1u])) {
+                    CopyBytes(
+                        &g_replay_library[pos],
+                        &g_replay_library[pos - 1u],
+                        (uint32_t)sizeof(CampaignReplayLibraryEntry)
+                    );
+                    --pos;
+                }
+                CopyBytes(
+                    &g_replay_library[pos],
+                    &candidate,
+                    (uint32_t)sizeof(CampaignReplayLibraryEntry)
+                );
+                ++g_replay_library_count;
+            }
+        }
+    } while (FindNextFileW(find, &find_data));
+
+    FindClose(find);
+    PresentationUnlock();
+    return 1;
+}
+
+uint32_t __cdecl CampaignReplayLibraryCount(void) {
+    uint32_t count;
+    PresentationLock();
+    count = g_replay_library_count;
+    PresentationUnlock();
+    return count;
+}
+
+int __cdecl CampaignReplayLibraryGet(
+    uint32_t index,
+    CampaignReplayLibraryEntry* out
+) {
+    if (!out || out->size < (uint32_t)sizeof(*out)) return 0;
+
+    PresentationLock();
+    if (index >= g_replay_library_count) {
+        PresentationUnlock();
+        return 0;
+    }
+    CopyBytes(
+        out,
+        &g_replay_library[index],
+        (uint32_t)sizeof(CampaignReplayLibraryEntry)
+    );
+    PresentationUnlock();
+    return 1;
+}
+
+static int ReplayLibraryBuildIndexedPath(
+    uint32_t index,
+    WCHAR* out,
+    uint32_t capacity_chars
+) {
+    int result = 0;
+
+    if (!out || capacity_chars == 0) return 0;
+
+    PresentationLock();
+    if (index < g_replay_library_count &&
+        BuildReplayDirectoryUnlocked() &&
+        WideCopy(out, capacity_chars, g_replay_auto_dir) &&
+        WideAppend(out, capacity_chars, L"\\") &&
+        WideAppend(
+            out,
+            capacity_chars,
+            g_replay_library[index].filename)) {
+        result = 1;
+    }
+    PresentationUnlock();
+    return result;
+}
+
+int __cdecl CampaignReplayLibraryLoad(uint32_t index) {
+    WCHAR path[1024];
+    ZeroBytes(path, (uint32_t)sizeof(path));
+    if (!ReplayLibraryBuildIndexedPath(index, path, 1024)) return 0;
+    return CampaignReplayLoad(path);
+}
+
+int __cdecl CampaignReplayLibraryDelete(uint32_t index) {
+    WCHAR path[1024];
+    int result;
+
+    ZeroBytes(path, (uint32_t)sizeof(path));
+    if (!ReplayLibraryBuildIndexedPath(index, path, 1024)) return 0;
+
+    result = DeleteFileW(path) ? 1 : 0;
+    if (result) CampaignReplayLibraryRefresh();
+    return result;
+}
+
 int __cdecl CampaignPhotoEnter(const CampaignPhotoState* initial) {
     PresentationLock();
     ZeroBytes(&g_photo, (uint32_t)sizeof(g_photo));
@@ -1386,6 +1631,30 @@ int __cdecl CampaignPresentationInvoke(CampaignPresentationCommand* command) {
         command->status = CampaignPhotoSet(
             (const CampaignPhotoState*)(uintptr_t)command->ptr0
         );
+        break;
+
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_LIBRARY_REFRESH:
+        command->status = CampaignReplayLibraryRefresh();
+        command->out0 = (int32_t)CampaignReplayLibraryCount();
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_LIBRARY_COUNT:
+        command->out0 = (int32_t)CampaignReplayLibraryCount();
+        command->status = 1;
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_LIBRARY_GET:
+        command->status = CampaignReplayLibraryGet(
+            (uint32_t)command->a,
+            (CampaignReplayLibraryEntry*)(uintptr_t)command->ptr0
+        );
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_LIBRARY_LOAD:
+        command->status = CampaignReplayLibraryLoad((uint32_t)command->a);
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_LIBRARY_DELETE:
+        command->status = CampaignReplayLibraryDelete((uint32_t)command->a);
+        if (command->status) {
+            command->out0 = (int32_t)CampaignReplayLibraryCount();
+        }
         break;
 
     case CAMPAIGN_PRESENTATION_OP_DIAGNOSTICS:
