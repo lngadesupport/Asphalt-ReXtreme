@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReXtreme Music Catalog",
+  "type": "object",
+  "required": ["tracks"],
+  "properties": {
+    "tracks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "source", "scope"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "artist": { "type": "string" },
+          "source": { "type": "string" },
+          "scope": { "enum": ["menu", "garage", "career", "event", "race", "results", "loading", "playlist"] },
+          "loop": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}
