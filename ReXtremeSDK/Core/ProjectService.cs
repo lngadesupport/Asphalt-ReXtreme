@@ -10,7 +10,8 @@ public sealed class ProjectService
         "assets/source", "assets/models", "assets/textures", "assets/music", "assets/audio", "assets/ui",
         "content/vehicles", "content/tracks", "content/events", "content/special-events",
         "content/career", "content/championships", "content/hud", "content/liveries",
-        "content/environment", "scripts", "localization"
+        "content/environment", "content/replay", "content/photo", "content/graphics",
+        "scripts", "localization"
     ];
 
     public static readonly string[] VehicleCategories =
@@ -37,7 +38,10 @@ public sealed class ProjectService
 
         var manifest = new RxManifest { Id = id, Name = name, Type = type };
         SaveJson(Path.Combine(root, "manifest.json"), manifest);
-        File.WriteAllText(Path.Combine(root, "README.md"), $"# {name}{Environment.NewLine}{Environment.NewLine}ReXtreme SDK project.{Environment.NewLine}");
+        File.WriteAllText(Path.Combine(root, "README.md"),
+            $"# {name}{Environment.NewLine}{Environment.NewLine}" +
+            "ReXtreme SDK standalone project. Build output is .rxmod; the game only needs the Mod Runtime." +
+            Environment.NewLine);
         CurrentProjectPath = root;
     }
 
@@ -144,9 +148,74 @@ public sealed class ProjectService
             }
         }
 
+        ValidateReplayContent(root, output);
+        ValidatePhotoContent(root, output);
+        ValidateGraphicsContent(root, output);
+
         if (output.Count == 0)
             output.Add(new("INFO", "project.valid", "Projeto válido para a fundação atual do ReXtreme SDK.", root));
         return output;
+    }
+
+    private static void ValidateReplayContent(string root, List<ValidationMessage> output)
+    {
+        var dir = Path.Combine(root, "content", "replay");
+        if (!Directory.Exists(dir)) return;
+        foreach (var file in Directory.EnumerateFiles(dir, "*.json"))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(file));
+                var r = doc.RootElement;
+                if (!r.TryGetProperty("id", out _))
+                    output.Add(new("ERROR", "replay.id", "Replay preset requer id.", file));
+                if (r.TryGetProperty("speed_steps", out var steps) && steps.ValueKind != JsonValueKind.Array)
+                    output.Add(new("ERROR", "replay.speed_steps", "speed_steps deve ser um array.", file));
+            }
+            catch (Exception ex) { output.Add(new("ERROR", "replay.json", ex.Message, file)); }
+        }
+    }
+
+    private static void ValidatePhotoContent(string root, List<ValidationMessage> output)
+    {
+        var dir = Path.Combine(root, "content", "photo");
+        if (!Directory.Exists(dir)) return;
+        foreach (var file in Directory.EnumerateFiles(dir, "*.json"))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(file));
+                var r = doc.RootElement;
+                if (!r.TryGetProperty("id", out _))
+                    output.Add(new("ERROR", "photo.id", "Photo Mode preset requer id.", file));
+                if (r.TryGetProperty("fov", out var fov) && fov.ValueKind == JsonValueKind.Number &&
+                    (fov.GetDouble() < 1 || fov.GetDouble() > 179))
+                    output.Add(new("ERROR", "photo.fov", "FOV deve ficar entre 1 e 179; o runtime ainda aplicará limites reais da câmera original.", file));
+            }
+            catch (Exception ex) { output.Add(new("ERROR", "photo.json", ex.Message, file)); }
+        }
+    }
+
+    private static void ValidateGraphicsContent(string root, List<ValidationMessage> output)
+    {
+        var dir = Path.Combine(root, "content", "graphics");
+        if (!Directory.Exists(dir)) return;
+        foreach (var file in Directory.EnumerateFiles(dir, "*.json"))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(file));
+                var r = doc.RootElement;
+                if (!r.TryGetProperty("id", out _))
+                    output.Add(new("ERROR", "graphics.id", "Graphics preset requer id.", file));
+                if (r.TryGetProperty("capability_source", out var source) &&
+                    source.ValueKind == JsonValueKind.String &&
+                    !string.Equals(source.GetString(), "original-renderer-audit", StringComparison.Ordinal))
+                    output.Add(new("ERROR", "graphics.capability_source",
+                        "Configurações gráficas devem vir da auditoria real do renderer original.", file));
+            }
+            catch (Exception ex) { output.Add(new("ERROR", "graphics.json", ex.Message, file)); }
+        }
     }
 
     public void SaveManifest(RxManifest manifest)
@@ -195,7 +264,7 @@ public sealed class ProjectService
         catalog.Tracks.Add(new RxMusicTrack
         {
             Id = id, Title = title, Artist = artist,
-            Source = Path.GetRelativePath(CurrentProjectPath!, target).Replace('\\', '/'),
+            Source = Path.GetRelativePath(CurrentProjectPath!, target).Replace('\', '/'),
             Scope = scope
         });
         SaveJson(catalogPath, catalog);
