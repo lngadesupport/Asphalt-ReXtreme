@@ -38,6 +38,8 @@ typedef struct CampaignFrontendRequest {
 
 int __cdecl CampaignFrontendSubmit(CampaignFrontendRequest* request);
 int __cdecl CampaignFrontendPoll(CampaignEvent* event);
+int __cdecl CampaignFrontendBoot(void);
+int __cdecl CampaignFrontendLobbyReady(void);
 
 #ifdef __cplusplus
 }
