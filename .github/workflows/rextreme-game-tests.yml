@@ -28,12 +28,14 @@ on:
       - "tests/test_build_replay_binding_catalog.py"
       - "tests/test_build_original_ui_binding_catalog.py"
       - "tools/audit_original_settings_ui.py"
+      - "tools/rank_original_ui_candidates.py"
       - "tools/audit_replay_frame_hooks.py"
       - "tools/audit_replay_transform_bindings.py"
       - "tools/apply_replay_frame_binding.py"
       - "tools/apply_photo_frame_binding.py"
       - "tools/apply_photo_toggle_binding.py"
       - "tests/test_audit_original_settings_ui.py"
+      - "tests/test_rank_original_ui_candidates.py"
       - "tests/test_audit_replay_frame_hooks.py"
       - "tests/test_audit_replay_transform_bindings.py"
       - "tests/test_apply_replay_frame_binding.py"
@@ -67,6 +69,7 @@ jobs:
           tests/test_build_replay_binding_catalog.py
           tests/test_build_original_ui_binding_catalog.py
           tests/test_audit_original_settings_ui.py
+          tests/test_rank_original_ui_candidates.py
           tests/test_audit_replay_frame_hooks.py
           tests/test_audit_replay_transform_bindings.py
           tests/test_apply_replay_frame_binding.py
