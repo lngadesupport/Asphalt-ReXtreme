@@ -38,6 +38,7 @@ static uint32_t g_replay_active;
 static CampaignReplayMarker g_replay_markers[CAMPAIGN_REPLAY_MARKER_MAX];
 static uint32_t g_replay_marker_count;
 static uint32_t g_replay_dropped_markers;
+static CampaignReplayPlaybackState g_playback;
 
 static CampaignPhotoState g_photo;
 
@@ -370,6 +371,9 @@ static void ReplayReleaseUnlocked(void) {
     g_replay_active = 0;
     g_replay_marker_count = 0;
     g_replay_dropped_markers = 0;
+    ZeroBytes(&g_playback, (uint32_t)sizeof(g_playback));
+    g_playback.size = (uint32_t)sizeof(g_playback);
+    g_playback.speed_permille = 1000;
 }
 
 int __cdecl CampaignReplayStart(uint32_t capacity) {
@@ -686,6 +690,184 @@ int __cdecl CampaignReplayGetMarker(uint32_t index, CampaignReplayMarker* out) {
     return 1;
 }
 
+static void ReplayRefreshPlaybackBoundsUnlocked(void) {
+    uint32_t first_index;
+    uint32_t last_index;
+
+    g_playback.size = (uint32_t)sizeof(g_playback);
+    g_playback.loaded = (g_replay_samples && g_replay_count > 0) ? 1u : 0u;
+
+    if (!g_playback.loaded) {
+        g_playback.playing = 0;
+        g_playback.current_time_ms = 0;
+        g_playback.first_time_ms = 0;
+        g_playback.last_time_ms = 0;
+        g_playback.selected_marker = 0;
+        if (g_playback.speed_permille == 0) g_playback.speed_permille = 1000;
+        return;
+    }
+
+    first_index = ReplayPhysicalIndexUnlocked(0);
+    last_index = ReplayPhysicalIndexUnlocked(g_replay_count - 1u);
+    g_playback.first_time_ms = g_replay_samples[first_index].time_ms;
+    g_playback.last_time_ms = g_replay_samples[last_index].time_ms;
+
+    if (g_playback.current_time_ms < g_playback.first_time_ms ||
+        g_playback.current_time_ms > g_playback.last_time_ms) {
+        g_playback.current_time_ms = g_playback.first_time_ms;
+    }
+    if (g_playback.speed_permille == 0) g_playback.speed_permille = 1000;
+}
+
+int __cdecl CampaignReplayPlay(void) {
+    PresentationLock();
+    ReplayRefreshPlaybackBoundsUnlocked();
+    if (!g_playback.loaded) {
+        PresentationUnlock();
+        return 0;
+    }
+    g_playback.playing = 1;
+    PresentationUnlock();
+    return 1;
+}
+
+int __cdecl CampaignReplayPause(void) {
+    PresentationLock();
+    ReplayRefreshPlaybackBoundsUnlocked();
+    g_playback.playing = 0;
+    PresentationUnlock();
+    return g_playback.loaded ? 1 : 0;
+}
+
+int __cdecl CampaignReplaySeek(uint32_t time_ms) {
+    PresentationLock();
+    ReplayRefreshPlaybackBoundsUnlocked();
+    if (!g_playback.loaded ||
+        time_ms < g_playback.first_time_ms ||
+        time_ms > g_playback.last_time_ms) {
+        PresentationUnlock();
+        return 0;
+    }
+    g_playback.current_time_ms = time_ms;
+    PresentationUnlock();
+    return 1;
+}
+
+int __cdecl CampaignReplaySetSpeed(uint32_t speed_permille) {
+    switch (speed_permille) {
+    case 100:
+    case 250:
+    case 500:
+    case 1000:
+    case 2000:
+    case 4000:
+        break;
+    default:
+        return 0;
+    }
+
+    PresentationLock();
+    g_playback.speed_permille = speed_permille;
+    PresentationUnlock();
+    return 1;
+}
+
+int __cdecl CampaignReplayGetPlaybackState(CampaignReplayPlaybackState* out) {
+    if (!out || out->size < (uint32_t)sizeof(*out)) return 0;
+
+    PresentationLock();
+    ReplayRefreshPlaybackBoundsUnlocked();
+    CopyBytes(out, &g_playback, (uint32_t)sizeof(g_playback));
+    PresentationUnlock();
+    return 1;
+}
+
+int __cdecl CampaignReplayGetSampleAtTime(
+    uint32_t time_ms,
+    int32_t entity_id,
+    CampaignReplaySample* out
+) {
+    uint32_t i;
+    uint32_t physical;
+    uint32_t best_delta = 0xFFFFFFFFu;
+    int found = 0;
+
+    if (!out) return 0;
+
+    PresentationLock();
+    if (!g_replay_samples || g_replay_count == 0) {
+        PresentationUnlock();
+        return 0;
+    }
+
+    for (i = 0; i < g_replay_count; ++i) {
+        uint32_t delta;
+        physical = ReplayPhysicalIndexUnlocked(i);
+
+        if (entity_id != 0 && g_replay_samples[physical].entity_id != entity_id) {
+            continue;
+        }
+
+        if (g_replay_samples[physical].time_ms > time_ms) {
+            delta = g_replay_samples[physical].time_ms - time_ms;
+        } else {
+            delta = time_ms - g_replay_samples[physical].time_ms;
+        }
+
+        if (!found || delta < best_delta) {
+            best_delta = delta;
+            CopyBytes(out, &g_replay_samples[physical], (uint32_t)sizeof(*out));
+            found = 1;
+            if (delta == 0) break;
+        }
+    }
+
+    PresentationUnlock();
+    return found;
+}
+
+int __cdecl CampaignReplayNextMarker(uint32_t from_time_ms, CampaignReplayMarker* out) {
+    uint32_t i;
+    uint32_t best_time = 0xFFFFFFFFu;
+    int found = 0;
+
+    if (!out) return 0;
+
+    PresentationLock();
+    for (i = 0; i < g_replay_marker_count; ++i) {
+        if (g_replay_markers[i].time_ms > from_time_ms &&
+            (!found || g_replay_markers[i].time_ms < best_time)) {
+            best_time = g_replay_markers[i].time_ms;
+            CopyBytes(out, &g_replay_markers[i], (uint32_t)sizeof(*out));
+            g_playback.selected_marker = i;
+            found = 1;
+        }
+    }
+    PresentationUnlock();
+    return found;
+}
+
+int __cdecl CampaignReplayPreviousMarker(uint32_t from_time_ms, CampaignReplayMarker* out) {
+    uint32_t i;
+    uint32_t best_time = 0;
+    int found = 0;
+
+    if (!out) return 0;
+
+    PresentationLock();
+    for (i = 0; i < g_replay_marker_count; ++i) {
+        if (g_replay_markers[i].time_ms < from_time_ms &&
+            (!found || g_replay_markers[i].time_ms > best_time)) {
+            best_time = g_replay_markers[i].time_ms;
+            CopyBytes(out, &g_replay_markers[i], (uint32_t)sizeof(*out));
+            g_playback.selected_marker = i;
+            found = 1;
+        }
+    }
+    PresentationUnlock();
+    return found;
+}
+
 int __cdecl CampaignPhotoEnter(const CampaignPhotoState* initial) {
     PresentationLock();
     ZeroBytes(&g_photo, (uint32_t)sizeof(g_photo));
@@ -846,6 +1028,42 @@ int __cdecl CampaignPresentationInvoke(CampaignPresentationCommand* command) {
         break;
     case CAMPAIGN_PRESENTATION_OP_REPLAY_GET_MARKER:
         command->status = CampaignReplayGetMarker(
+            (uint32_t)command->a,
+            (CampaignReplayMarker*)(uintptr_t)command->ptr0
+        );
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_PLAY:
+        command->status = CampaignReplayPlay();
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_PAUSE:
+        command->status = CampaignReplayPause();
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_SEEK:
+        command->status = CampaignReplaySeek((uint32_t)command->a);
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_SET_SPEED:
+        command->status = CampaignReplaySetSpeed((uint32_t)command->a);
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_PLAYBACK_STATE:
+        command->status = CampaignReplayGetPlaybackState(
+            (CampaignReplayPlaybackState*)(uintptr_t)command->ptr0
+        );
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_SAMPLE_AT_TIME:
+        command->status = CampaignReplayGetSampleAtTime(
+            (uint32_t)command->a,
+            command->b,
+            (CampaignReplaySample*)(uintptr_t)command->ptr0
+        );
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_NEXT_MARKER:
+        command->status = CampaignReplayNextMarker(
+            (uint32_t)command->a,
+            (CampaignReplayMarker*)(uintptr_t)command->ptr0
+        );
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_PREVIOUS_MARKER:
+        command->status = CampaignReplayPreviousMarker(
             (uint32_t)command->a,
             (CampaignReplayMarker*)(uintptr_t)command->ptr0
         );
