@@ -366,6 +366,12 @@ int CampaignOriginalUiFeatureReady(uint32_t feature) {
                UiHas("ui.list", CAMPAIGN_ORIGINAL_UI_LIST) &&
                UiHas("ui.label", CAMPAIGN_ORIGINAL_UI_LABEL) &&
                UiHas("ui.button", CAMPAIGN_ORIGINAL_UI_BUTTON);
+    case CAMPAIGN_ORIGINAL_UI_FEATURE_GARAGE:
+        return UiHas("garage.screen", CAMPAIGN_ORIGINAL_UI_SCREEN) &&
+               UiHas("garage.card", CAMPAIGN_ORIGINAL_UI_PANEL) &&
+               UiHas("ui.list", CAMPAIGN_ORIGINAL_UI_LIST) &&
+               UiHas("ui.label", CAMPAIGN_ORIGINAL_UI_LABEL) &&
+               UiHas("ui.button", CAMPAIGN_ORIGINAL_UI_BUTTON);
     default:
         return 0;
     }
