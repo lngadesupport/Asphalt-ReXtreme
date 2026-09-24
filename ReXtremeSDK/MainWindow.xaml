@@ -249,13 +249,32 @@
                 </TabItem>
 
                 <TabItem Header="Música">
-                    <StackPanel Margin="20" Background="{StaticResource EditorBackground}">
-                        <TextBlock Text="MUSIC LIBRARY" FontSize="22" FontWeight="Bold"/>
-                        <Button Content="Importar faixa" Width="160" HorizontalAlignment="Left" Margin="0,14,0,10" Click="ImportMusic_Click"/>
-                        <ListBox x:Name="MusicList" Height="360" Background="{StaticResource EditorPanel}" Foreground="{StaticResource EditorText}"/>
-                        <TextBlock Foreground="{StaticResource EditorMuted}" Margin="0,8,0,0"
-                                   Text="Entrada: WAV, FLAC, OGG, MP3, AAC e M4A. Conversão para o runtime será ligada ao pipeline final."/>
-                    </StackPanel>
+                    <ScrollViewer Background="{StaticResource EditorBackground}">
+                        <StackPanel Margin="20" MaxWidth="850" HorizontalAlignment="Left">
+                            <TextBlock Text="MUSIC LIBRARY" FontSize="22" FontWeight="Bold"/>
+                            <TextBlock Text="ID da faixa" Margin="0,14,0,0"/>
+                            <TextBox x:Name="MusicIdBox" Text="local.music.new-track" Padding="6" Margin="0,3,0,8"/>
+                            <TextBlock Text="Título"/>
+                            <TextBox x:Name="MusicTitleBox" Text="New Track" Padding="6" Margin="0,3,0,8"/>
+                            <TextBlock Text="Artista"/>
+                            <TextBox x:Name="MusicArtistBox" Padding="6" Margin="0,3,0,8"/>
+                            <TextBlock Text="Contexto / playlist"/>
+                            <ComboBox x:Name="MusicScopeBox" SelectedIndex="4" Margin="0,3,0,10">
+                                <ComboBoxItem Content="menu"/>
+                                <ComboBoxItem Content="garage"/>
+                                <ComboBoxItem Content="career"/>
+                                <ComboBoxItem Content="event"/>
+                                <ComboBoxItem Content="race"/>
+                                <ComboBoxItem Content="results"/>
+                                <ComboBoxItem Content="loading"/>
+                                <ComboBoxItem Content="playlist"/>
+                            </ComboBox>
+                            <Button Content="Importar faixa" Width="160" HorizontalAlignment="Left" Margin="0,0,0,10" Click="ImportMusic_Click"/>
+                            <ListBox x:Name="MusicList" Height="280" Background="{StaticResource EditorPanel}" Foreground="{StaticResource EditorText}"/>
+                            <TextBlock Foreground="{StaticResource EditorMuted}" Margin="0,8,0,0" TextWrapping="Wrap"
+                                       Text="Entrada: WAV, FLAC, OGG, MP3, AAC e M4A. O projeto guarda a fonte e o catálogo; o pipeline de conversão final será definido pelo formato de áudio confirmado do runtime original."/>
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
             </TabControl>
 
