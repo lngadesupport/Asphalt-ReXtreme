@@ -920,6 +920,78 @@ int __cdecl CampaignReplayPreviousMarker(uint32_t from_time_ms, CampaignReplayMa
     return found;
 }
 
+int __cdecl CampaignReplayAdvance(uint32_t real_delta_ms) {
+    uint64_t scaled;
+    uint64_t next;
+
+    PresentationLock();
+    ReplayRefreshPlaybackBoundsUnlocked();
+    if (!g_playback.loaded || !g_playback.playing) {
+        PresentationUnlock();
+        return 0;
+    }
+
+    scaled = ((uint64_t)real_delta_ms * (uint64_t)g_playback.speed_permille) / 1000u;
+    next = (uint64_t)g_playback.current_time_ms + scaled;
+
+    if (next >= g_playback.last_time_ms) {
+        g_playback.current_time_ms = g_playback.last_time_ms;
+        g_playback.playing = 0;
+    } else {
+        g_playback.current_time_ms = (uint32_t)next;
+    }
+
+    PresentationUnlock();
+    return 1;
+}
+
+int __cdecl CampaignReplayStep(int32_t direction, int32_t entity_id) {
+    uint32_t i;
+    uint32_t physical;
+    uint32_t selected_time = 0;
+    int found = 0;
+
+    if (direction == 0) return 0;
+
+    PresentationLock();
+    ReplayRefreshPlaybackBoundsUnlocked();
+    if (!g_playback.loaded) {
+        PresentationUnlock();
+        return 0;
+    }
+
+    for (i = 0; i < g_replay_count; ++i) {
+        uint32_t t;
+        physical = ReplayPhysicalIndexUnlocked(i);
+        if (entity_id != 0 && g_replay_samples[physical].entity_id != entity_id) {
+            continue;
+        }
+
+        t = g_replay_samples[physical].time_ms;
+        if (direction > 0) {
+            if (t > g_playback.current_time_ms &&
+                (!found || t < selected_time)) {
+                selected_time = t;
+                found = 1;
+            }
+        } else {
+            if (t < g_playback.current_time_ms &&
+                (!found || t > selected_time)) {
+                selected_time = t;
+                found = 1;
+            }
+        }
+    }
+
+    if (found) {
+        g_playback.current_time_ms = selected_time;
+        g_playback.playing = 0;
+    }
+
+    PresentationUnlock();
+    return found;
+}
+
 int __cdecl CampaignPhotoEnter(const CampaignPhotoState* initial) {
     PresentationLock();
     ZeroBytes(&g_photo, (uint32_t)sizeof(g_photo));
@@ -1119,6 +1191,12 @@ int __cdecl CampaignPresentationInvoke(CampaignPresentationCommand* command) {
             (uint32_t)command->a,
             (CampaignReplayMarker*)(uintptr_t)command->ptr0
         );
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_ADVANCE:
+        command->status = CampaignReplayAdvance((uint32_t)command->a);
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_STEP:
+        command->status = CampaignReplayStep(command->a, command->b);
         break;
 
     case CAMPAIGN_PRESENTATION_OP_PHOTO_ENTER:
