@@ -54,6 +54,10 @@
     "UnmappedUiFeatureBehavior":  "hidden",
     "OriginalUiBindingRegistry":  "config/original-ui-bindings.verified.json",
     "OriginalUiBindingCatalog":  "CampaignOriginalUiBindings.dat",
-    "Size":  60416,
-    "SHA256":  "b84c84115c3913cc41d9aba06fb714791fa7ae01c68bb051638a54675d16d904"
+    "RaceHudBindingRegistry":  "config/race-hud-bindings.verified.json",
+    "RaceHudBindingCatalog":  "CampaignRaceHudBindings.dat",
+    "RaceHudOriginalElementsOnly":  true,
+    "RaceHudNewWidgetsAllowed":  false,
+    "Size":  62976,
+    "SHA256":  "8a1b6046a1e26bb1243a66fbde47577ae0aa096e8d9b42d305e171c89dac4881"
 }
