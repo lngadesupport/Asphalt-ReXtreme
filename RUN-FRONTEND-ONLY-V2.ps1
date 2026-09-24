@@ -45,7 +45,7 @@ foreach($f in $files){
 }
 
 $core=Join-Path $ProjectRoot "prebuilt\campaign-core\IGPLib_x86.dll"
-$expected="35ee95c2d63143e62a30abc4ddea57ec2a5fa9288a456523d9d3fc273ec102a7"
+$expected="18aa2fc12a3f27ad38cfef2f30a9f558e43d8ac24fcbaad727ddd70822fe7dc6"
 $got=(Get-FileHash -LiteralPath $core -Algorithm SHA256).Hash.ToLowerInvariant()
 if($got-ne$expected){
   throw "Campaign Core SHA256 mismatch. Expected $expected got $got"
