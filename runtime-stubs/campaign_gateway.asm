@@ -19,7 +19,7 @@ EXTERN _CampaignFrontendSubmit:PROC
 EXTERN _CampaignFrontendBoot:PROC
 EXTERN _CampaignFrontendLobbyReady:PROC
 EXTERN _CampaignFrontendGarageBuild:PROC
-EXTERN _CampaignFrontendOwnershipContains:PROC
+EXTERN _CampaignFrontendIsOwned:PROC
 
 CAMPAIGN_CRAFT_MAGIC   EQU 0C0DEC0DEh
 CAMPAIGN_OWNED_MAGIC   EQU 0C0DE0A11h
@@ -212,16 +212,11 @@ campaign_frontend_lobby:
     ret 4
 
 campaign_frontend_ownership:
-    ; Gateway stack:
-    ; [esp+00] return to AMS stub
-    ; [esp+04] selector
-    ; [esp+08] original caller return
-    ; [esp+0C] original value pointer
-    mov eax, DWORD PTR [esp+0Ch]
-    push eax
+    ; Explicit Campaign car-ownership query.
+    ; ECX carries car_id. No generic STL/container hook participates.
     push ecx
-    call _CampaignFrontendOwnershipContains
-    add esp, 8
+    call _CampaignFrontendIsOwned
+    add esp, 4
     ret 4
 
 campaign_frontend_garage_build:
