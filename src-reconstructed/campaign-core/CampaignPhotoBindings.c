@@ -227,6 +227,43 @@ static void* ResolveTarget(const CampaignPhotoBinding* b, uint32_t size) {
     return MemoryRangeHasAccess(target, size, 1) ? target : 0;
 }
 
+static int ReadInteger(const CampaignPhotoBinding* b, int32_t* out) {
+    void* target;
+    float value;
+
+    if (!b || !out) return 0;
+
+    switch (b->value_kind) {
+    case CAMPAIGN_PRESENTATION_VALUE_I32:
+        target = ResolveTarget(b, sizeof(int32_t));
+        if (!target) return 0;
+        *out = *(volatile int32_t*)target;
+        return 1;
+    case CAMPAIGN_PRESENTATION_VALUE_U32:
+        target = ResolveTarget(b, sizeof(uint32_t));
+        if (!target) return 0;
+        *out = (int32_t)*(volatile uint32_t*)target;
+        return 1;
+    case CAMPAIGN_PRESENTATION_VALUE_U8_BOOL:
+        target = ResolveTarget(b, sizeof(unsigned char));
+        if (!target) return 0;
+        *out = *(volatile unsigned char*)target ? 1 : 0;
+        return 1;
+    case CAMPAIGN_PRESENTATION_VALUE_FLOAT_SCALED:
+        target = ResolveTarget(b, sizeof(float));
+        if (!target || b->scale_divisor <= 0) return 0;
+        value = *(volatile float*)target;
+        if (value >= 0.0f) {
+            *out = (int32_t)(value * (float)b->scale_divisor + 0.5f);
+        } else {
+            *out = (int32_t)(value * (float)b->scale_divisor - 0.5f);
+        }
+        return 1;
+    default:
+        return 0;
+    }
+}
+
 static int ApplyInteger(const CampaignPhotoBinding* b, int32_t value) {
     void* target;
     switch (b->value_kind) {
@@ -280,6 +317,58 @@ static int FloatToScaled(float value, int32_t scale, int32_t* out) {
     scaled = value * (float)scale;
     if (scaled > 2147483000.0f || scaled < -2147483000.0f) return 0;
     *out = scaled >= 0.0f ? (int32_t)(scaled + 0.5f) : (int32_t)(scaled - 0.5f);
+    return 1;
+}
+
+static int ReadPositionSemantic(uint32_t semantic, float* out) {
+    const CampaignPhotoBinding* b;
+    int32_t raw;
+    int32_t scale;
+
+    if (!out) return 0;
+    b = CampaignPhotoBindingsFind(semantic);
+    if (!b || !ReadInteger(b, &raw)) return 0;
+
+    scale = b->value_kind == CAMPAIGN_PRESENTATION_VALUE_FLOAT_SCALED ?
+        b->scale_divisor : 1000;
+    if (scale <= 0) return 0;
+
+    *out = (float)raw / (float)scale;
+    return 1;
+}
+
+int CampaignPhotoBindingsRead(CampaignPhotoState* out) {
+    int32_t pitch;
+    int32_t yaw;
+    int32_t roll;
+    int32_t hud_visible;
+    int32_t fov = 0;
+    const CampaignPhotoBinding* fov_binding;
+
+    if (!out || out->size < (uint32_t)sizeof(*out)) return 0;
+    if (!CampaignPhotoBindingsReady(CAMPAIGN_PHOTO_CAMERA_FREE)) return 0;
+
+    if (!ReadPositionSemantic(CAMPAIGN_PHOTO_BIND_POSITION_X, &out->position_x) ||
+        !ReadPositionSemantic(CAMPAIGN_PHOTO_BIND_POSITION_Y, &out->position_y) ||
+        !ReadPositionSemantic(CAMPAIGN_PHOTO_BIND_POSITION_Z, &out->position_z) ||
+        !ReadInteger(CampaignPhotoBindingsFind(CAMPAIGN_PHOTO_BIND_PITCH), &pitch) ||
+        !ReadInteger(CampaignPhotoBindingsFind(CAMPAIGN_PHOTO_BIND_YAW), &yaw) ||
+        !ReadInteger(CampaignPhotoBindingsFind(CAMPAIGN_PHOTO_BIND_ROLL), &roll) ||
+        !ReadInteger(CampaignPhotoBindingsFind(CAMPAIGN_PHOTO_BIND_HUD_VISIBLE), &hud_visible)) {
+        return 0;
+    }
+
+    fov_binding = CampaignPhotoBindingsFind(CAMPAIGN_PHOTO_BIND_FOV);
+    if (fov_binding && !ReadInteger(fov_binding, &fov)) return 0;
+
+    out->size = (uint32_t)sizeof(*out);
+    out->active = 1;
+    out->camera_mode = CAMPAIGN_PHOTO_CAMERA_FREE;
+    out->hide_hud = hud_visible ? 0u : 1u;
+    out->pitch_x100 = pitch;
+    out->yaw_x100 = yaw;
+    out->roll_x100 = roll;
+    out->fov_x100 = fov;
     return 1;
 }
 
