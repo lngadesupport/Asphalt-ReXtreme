@@ -200,6 +200,54 @@ static int32_t CampaignFrontendSelectedCarId(void* gs_garage) {
     return *(int32_t*)((unsigned char*)selected + 0xC0);
 }
 
+#define CAMPAIGN_GS_GARAGE_VTABLE_RVA (0x0186A9CCu - 0x00400000u)
+
+static void* CampaignFrontendResolveGarageOwnerFromWidget(void* widget) {
+    unsigned char* gbbw = (unsigned char*)widget;
+    HMODULE ams;
+    void* owner;
+    void* actual_vtable;
+    void* expected_vtable;
+
+    if (!gbbw) return 0;
+
+    /*
+      Phase80 proved:
+        GBBW+0x04/+0x08 <- GS_Garage+0x354/+0x358 owner pair.
+
+      Treat +0x04 as a candidate object pointer only after validating its
+      vtable against the concrete GS_Garage type for this build.
+    */
+    owner = *(void**)(gbbw + 0x04);
+    if (!owner) return 0;
+
+    ams = GetModuleHandleW(0);
+    if (!ams) return 0;
+
+    actual_vtable = *(void**)owner;
+    expected_vtable = (void*)(
+        (unsigned char*)ams + CAMPAIGN_GS_GARAGE_VTABLE_RVA
+    );
+
+    if (actual_vtable != expected_vtable) return 0;
+    return owner;
+}
+
+int __cdecl CampaignFrontendGarageBuildFromWidget(void* widget) {
+    void* gs_garage;
+
+    gs_garage = CampaignFrontendResolveGarageOwnerFromWidget(widget);
+    if (!gs_garage) return 0;
+
+    /*
+      Local-only direct route:
+      button callback -> GS_Garage owner -> CampaignGarageService.
+
+      No GBBW build signal, no CraftCar, no request, no remote completion.
+    */
+    return CampaignFrontendGarageBuild(gs_garage);
+}
+
 int __cdecl CampaignFrontendGarageBuild(void* gs_garage) {
     CampaignGarageResult out;
     int32_t car_id;
