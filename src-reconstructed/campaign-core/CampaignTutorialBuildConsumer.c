@@ -3,7 +3,52 @@
 #include "CampaignGarageFlow.h"
 #include "CampaignEventBus.h"
 
-extern void __cdecl CampaignInvokeGarageUi(void* widget);
+#define CAMPAIGN_AMS_IMAGE_BASE 0x00400000u
+#define CAMPAIGN_GBBW_READY_UI_RVA (0x00974480u - CAMPAIGN_AMS_IMAGE_BASE)
+#define CAMPAIGN_GBBW_SECONDARY_UPDATE_RVA (0x00975A50u - CAMPAIGN_AMS_IMAGE_BASE)
+
+__declspec(naked) static void __cdecl CampaignCallFrontendThis0(
+    void* target,
+    void* object
+) {
+    __asm {
+        mov eax, dword ptr [esp+4]
+        mov ecx, dword ptr [esp+8]
+        test eax, eax
+        jz call_done
+        test ecx, ecx
+        jz call_done
+        call eax
+call_done:
+        ret
+    }
+}
+
+static void CampaignRefreshGarageBottomBar(void* widget) {
+    HMODULE ams;
+    unsigned char* base;
+
+    if (!widget) return;
+
+    ams = GetModuleHandleW(0);
+    if (!ams) return;
+
+    base = (unsigned char*)ams;
+
+    /*
+      Both targets are frontend-only GarageBottomBarWidget update routines
+      identified by the historical Phase56/66 maps.  They read the already
+      committed local UI state; they do not submit CraftCar/network work.
+    */
+    CampaignCallFrontendThis0(
+        (void*)(base + CAMPAIGN_GBBW_SECONDARY_UPDATE_RVA),
+        widget
+    );
+    CampaignCallFrontendThis0(
+        (void*)(base + CAMPAIGN_GBBW_READY_UI_RVA),
+        widget
+    );
+}
 
 static void ZeroBytes(void* p, uint32_t count) {
     volatile unsigned char* q = (volatile unsigned char*)p;
@@ -75,7 +120,7 @@ int __cdecl CampaignTutorialBuildComplete(
     }
 
     if (widget) {
-        CampaignInvokeGarageUi(widget);
+        CampaignRefreshGarageBottomBar(widget);
     }
 
     if (success) {
