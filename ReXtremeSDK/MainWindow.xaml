@@ -17,6 +17,7 @@
                     <Button Content="Abrir projeto" Click="OpenProject_Click"/>
                     <Button Content="Validar" Click="Validate_Click"/>
                     <Button Content="Build .rxmod" Click="Build_Click"/>
+                    <Button Content="Verificar .rxmod" Click="VerifyPackage_Click"/>
                     <Separator Margin="8,0"/>
                     <Button Content="Importar modelo 3D" Click="ImportModel_Click"/>
                     <Button Content="Importar música" Click="ImportMusic_Click"/>
