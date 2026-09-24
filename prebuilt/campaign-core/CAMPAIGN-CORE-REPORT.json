@@ -18,6 +18,10 @@
     "V2Migration":  true,
     "VehicleCatalog":  "CampaignCatalog.dat",
     "EventCatalog":  "CampaignEvents.dat",
+    "SpecialEventCatalog":  "CampaignSpecialEvents.dat",
+    "SpecialEventsReuseCampaignEvents":  true,
+    "SpecialEventsOnlineBackendRequired":  false,
+    "SpecialEventsUiRequiresOriginalTemplates":  true,
     "ObjectiveCatalog":  "CampaignObjectives.dat",
     "ChallengeCatalog":  "CampaignChallenges.dat",
     "ChallengeState":  "UserData\\\\CampaignEdition\\\\ChallengeState.dat",
@@ -74,6 +78,6 @@
     "RaceHudNewWidgetsAllowed":  false,
     "RaceHudLayout":  "UserData\\\\RaceHudLayout.dat",
     "RaceHudLayoutPortable":  true,
-    "Size":  88064,
-    "SHA256":  "6d25a113fb0dc0f37473ca791274c462c07bbd5e46b7336d2823569ad1295a24"
+    "Size":  90112,
+    "SHA256":  "a4363859828c6a5de462542870ca5d12fe7d3020b3141bab86d4ac2572ab99a8"
 }
