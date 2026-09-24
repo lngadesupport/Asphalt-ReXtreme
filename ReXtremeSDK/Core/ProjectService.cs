@@ -168,6 +168,8 @@ public sealed class ProjectService
             }
         }
 
+        ProjectReferenceValidator.Validate(root, output);
+
         ValidateReplayContent(root, output);
         ValidatePhotoContent(root, output);
         ValidateGraphicsContent(root, output);
