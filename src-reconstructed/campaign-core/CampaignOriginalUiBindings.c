@@ -104,6 +104,36 @@ static int UiExecutableMatches(uint32_t expected_stamp, uint32_t expected_size) 
            *(uint32_t*)(pe + 24 + 56) == expected_size;
 }
 
+static int UiMemoryReadable(const void* address, SIZE_T size) {
+    MEMORY_BASIC_INFORMATION mbi;
+    uintptr_t begin, end, region_end;
+
+    if (!address || size == 0) return 0;
+    if (VirtualQuery(address, &mbi, sizeof(mbi)) != sizeof(mbi)) return 0;
+    if (mbi.State != MEM_COMMIT) return 0;
+    if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS)) return 0;
+
+    begin = (uintptr_t)address;
+    end = begin + size;
+    if (end < begin) return 0;
+    region_end = (uintptr_t)mbi.BaseAddress + mbi.RegionSize;
+    return end <= region_end ? 1 : 0;
+}
+
+static uint32_t UiCurrentImageSize(void) {
+    unsigned char* module;
+    uint32_t pe_off;
+    unsigned char* pe;
+
+    module = (unsigned char*)GetModuleHandleW(0);
+    if (!module || module[0] != 'M' || module[1] != 'Z') return 0;
+    pe_off = *(uint32_t*)(module + 0x3C);
+    pe = module + pe_off;
+    if (pe[0] != 'P' || pe[1] != 'E' || pe[2] != 0 || pe[3] != 0) return 0;
+    if (*(uint16_t*)(pe + 24) != 0x010B) return 0;
+    return *(uint32_t*)(pe + 24 + 56);
+}
+
 static int UiBindingValid(const CampaignOriginalUiBinding* b) {
     if (!b || !UiIdValid(b->id)) return 0;
     if (b->kind < CAMPAIGN_ORIGINAL_UI_SCREEN ||
@@ -111,6 +141,10 @@ static int UiBindingValid(const CampaignOriginalUiBinding* b) {
     if (b->base_kind != CAMPAIGN_ORIGINAL_UI_MODULE_RVA &&
         b->base_kind != CAMPAIGN_ORIGINAL_UI_POINTER_RVA) return 0;
     if (b->target_rva == 0) return 0;
+    {
+        uint32_t image_size = UiCurrentImageSize();
+        if (image_size == 0 || b->target_rva >= image_size) return 0;
+    }
     return 1;
 }
 
@@ -222,26 +256,33 @@ const CampaignOriginalUiBinding* CampaignOriginalUiBindingsFind(const char* id) 
 void* CampaignOriginalUiBindingsResolve(const char* id) {
     const CampaignOriginalUiBinding* b;
     unsigned char* module;
-    void* base;
+    unsigned char* base;
+    unsigned char* resolved;
+    uint32_t image_size;
 
     b = CampaignOriginalUiBindingsFind(id);
     if (!b) return 0;
     module = (unsigned char*)GetModuleHandleW(0);
     if (!module) return 0;
 
+    image_size = UiCurrentImageSize();
+    if (image_size == 0 || b->target_rva >= image_size) return 0;
+
     if (b->base_kind == CAMPAIGN_ORIGINAL_UI_MODULE_RVA) {
         base = module + b->target_rva;
+        if (!UiMemoryReadable(base, 1)) return 0;
     } else {
         void** source = (void**)(module + b->target_rva);
-        MEMORY_BASIC_INFORMATION mbi;
-        if (VirtualQuery(source, &mbi, sizeof(mbi)) != sizeof(mbi) ||
-            mbi.State != MEM_COMMIT ||
-            (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS))) return 0;
-        base = *source;
-        if (!base) return 0;
+        if (!UiMemoryReadable(source, sizeof(void*))) return 0;
+        base = (unsigned char*)*source;
+        if (!base || !UiMemoryReadable(base, 1)) return 0;
     }
 
-    return (unsigned char*)base + b->field_offset;
+    resolved = base + b->field_offset;
+    if ((b->field_offset > 0 && resolved < base) ||
+        (b->field_offset < 0 && resolved > base)) return 0;
+    if (!UiMemoryReadable(resolved, 1)) return 0;
+    return resolved;
 }
 
 static int UiHas(const char* id, uint32_t kind) {
