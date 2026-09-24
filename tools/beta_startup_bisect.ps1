@@ -57,7 +57,7 @@ if ($campaignExisted) {
     Copy-Item -LiteralPath $campaignState -Destination $campaignBackup -Recurse -Force
 }
 
-$results = New-Object System.Collections.Generic.List[object]
+$results = @()
 
 function Stop-Ams {
     Get-Process -Name "AMS" -ErrorAction SilentlyContinue |
@@ -87,6 +87,17 @@ function Apply-Tool([string]$Tool) {
     & $python $path --project-root $ProjectRoot
     if ($LASTEXITCODE -ne 0) {
         throw "$Tool falhou com codigo $LASTEXITCODE"
+    }
+}
+
+function Apply-GarageProbe([string]$Mode) {
+    $path = Join-Path $ProjectRoot "tools\campaign_garage_startup_probe.py"
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        throw "Tool ausente: $path"
+    }
+    & $python $path --project-root $ProjectRoot --mode $Mode
+    if ($LASTEXITCODE -ne 0) {
+        throw "campaign_garage_startup_probe.py ($Mode) falhou com codigo $LASTEXITCODE"
     }
 }
 
@@ -178,7 +189,7 @@ function Run-Stage([string]$Stage) {
 
 function Record-Stage([string]$Name) {
     $r = Run-Stage $Name
-    $results.Add([pscustomobject]$r) | Out-Null
+    $script:results += [pscustomobject]$r
     Write-Host ("  Resultado: " + $r.result)
     if ($r.image_base) { Write-Host ("  ImageBase: " + $r.image_base) }
     if ($r.event) {
@@ -207,9 +218,49 @@ try {
 
     if (-not $failedBoundary) {
         Reset-Phase2 $true
+        Apply-GarageProbe "popup-only"
+        if (-not (Record-Stage "garage-popup-only")) {
+            $failedBoundary = "Garage popup suppression"
+        }
+    }
+
+    if (-not $failedBoundary) {
+        Reset-Phase2 $true
+        Apply-GarageProbe "gateway-only"
+        if (-not (Record-Stage "garage-gateway-only")) {
+            $failedBoundary = "Garage gateway cave"
+        }
+    }
+
+    if (-not $failedBoundary) {
+        Reset-Phase2 $true
+        Apply-GarageProbe "build-only"
+        if (-not (Record-Stage "garage-build-only")) {
+            $failedBoundary = "Garage BuildCar redirect"
+        }
+    }
+
+    if (-not $failedBoundary) {
+        Reset-Phase2 $true
+        Apply-GarageProbe "ownership-only"
+        if (-not (Record-Stage "garage-ownership-only")) {
+            $failedBoundary = "Garage ownership redirect"
+        }
+    }
+
+    if (-not $failedBoundary) {
+        Reset-Phase2 $true
+        Apply-GarageProbe "build-ownership"
+        if (-not (Record-Stage "garage-build-ownership")) {
+            $failedBoundary = "Garage BuildCar + ownership interaction"
+        }
+    }
+
+    if (-not $failedBoundary) {
+        Reset-Phase2 $true
         Apply-Tool "campaign_garage_v2.py"
-        if (-not (Record-Stage "garage")) {
-            $failedBoundary = "Campaign Garage v2"
+        if (-not (Record-Stage "garage-full")) {
+            $failedBoundary = "Campaign Garage v2 full"
         }
     }
 
@@ -263,7 +314,7 @@ $report = [ordered]@{
     failed_boundary=$failedBoundary
     current_build_restored=$true
     campaign_save_restored=$true
-    results=@($results)
+    results=$results
 }
 $json = Join-Path $run "STARTUP-BISECT.json"
 $report | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $json -Encoding UTF8
@@ -293,7 +344,7 @@ Write-Host ""
 Write-Host "============================================================"
 Write-Host " BETA STARTUP BISECT COMPLETE" -ForegroundColor Green
 Write-Host "============================================================"
-Write-Host ("Primeiro limite com falha: " + $(if($failedBoundary){$failedBoundary}else{"nenhum nos 6 estagios"}))
+Write-Host ("Primeiro limite com falha: " + $(if($failedBoundary){$failedBoundary}else{"nenhum nos estagios testados"}))
 Write-Host ("Build final restaurado: sim")
 Write-Host ("ZIP: " + $zip)
 Write-Host ""
