@@ -163,16 +163,40 @@ int __cdecl CampaignFrontendLobbyReady(void) {
 
 #define CAMPAIGN_AMS_CRAFT_UI_COMPLETION_RVA 0x006A4D00u
 
-typedef void (__thiscall *CampaignCraftUiCompletionFn)(
+/*
+  x86 bridge for the preserved frontend callback.
+
+  target callback ABI, proven by the Phase48 disassembly:
+      ECX = observer
+      push auxiliary
+      push unused
+      push status
+      call target
+      target returns with ret 0x0C
+
+  This helper itself is cdecl; its own three arguments are cleaned by the
+  C caller after this naked function returns.
+*/
+__declspec(naked) static void __cdecl CampaignCallCraftUiCompletion(
+    void* target,
     void* observer,
-    int32_t status,
-    void* unused,
-    void* auxiliary
-);
+    int32_t status
+) {
+    __asm {
+        mov eax, dword ptr [esp+4]
+        mov ecx, dword ptr [esp+8]
+        mov edx, dword ptr [esp+0Ch]
+        push 0
+        push 0
+        push edx
+        call eax
+        ret
+    }
+}
 
 static void CampaignFrontendCompleteGarageBuild(void* gs_garage, int32_t status) {
     HMODULE ams;
-    CampaignCraftUiCompletionFn fn;
+    void* target;
     void* observer;
 
     if (!gs_garage) return;
@@ -191,10 +215,8 @@ static void CampaignFrontendCompleteGarageBuild(void* gs_garage, int32_t status)
       It is not a business/backend authority.
     */
     observer = (void*)((unsigned char*)gs_garage + 0x298);
-    fn = (CampaignCraftUiCompletionFn)(
-        (unsigned char*)ams + CAMPAIGN_AMS_CRAFT_UI_COMPLETION_RVA
-    );
-    fn(observer, status, 0, 0);
+    target = (void*)((unsigned char*)ams + CAMPAIGN_AMS_CRAFT_UI_COMPLETION_RVA);
+    CampaignCallCraftUiCompletion(target, observer, status);
 }
 
 static int32_t CampaignFrontendSelectedCarId(void* gs_garage) {
