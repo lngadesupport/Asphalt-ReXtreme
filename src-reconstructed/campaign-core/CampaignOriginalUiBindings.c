@@ -254,26 +254,32 @@ int CampaignOriginalUiFeatureReady(uint32_t feature) {
     case CAMPAIGN_ORIGINAL_UI_FEATURE_GRAPHICS_SETTINGS:
         return UiHas("settings.screen", CAMPAIGN_ORIGINAL_UI_SCREEN) &&
                UiHas("settings.row", CAMPAIGN_ORIGINAL_UI_PANEL) &&
-               UiHas("settings.slider", CAMPAIGN_ORIGINAL_UI_SLIDER) &&
-               UiHas("settings.toggle", CAMPAIGN_ORIGINAL_UI_TOGGLE) &&
-               UiHas("settings.apply", CAMPAIGN_ORIGINAL_UI_BUTTON);
+               UiHas("ui.slider", CAMPAIGN_ORIGINAL_UI_SLIDER) &&
+               UiHas("ui.toggle", CAMPAIGN_ORIGINAL_UI_TOGGLE) &&
+               UiHas("ui.button", CAMPAIGN_ORIGINAL_UI_BUTTON) &&
+               UiHas("ui.label", CAMPAIGN_ORIGINAL_UI_LABEL);
     case CAMPAIGN_ORIGINAL_UI_FEATURE_CAMERA_SETTINGS:
         return UiHas("settings.screen", CAMPAIGN_ORIGINAL_UI_SCREEN) &&
                UiHas("settings.row", CAMPAIGN_ORIGINAL_UI_PANEL) &&
-               UiHas("settings.slider", CAMPAIGN_ORIGINAL_UI_SLIDER);
+               UiHas("ui.slider", CAMPAIGN_ORIGINAL_UI_SLIDER) &&
+               UiHas("ui.label", CAMPAIGN_ORIGINAL_UI_LABEL);
     case CAMPAIGN_ORIGINAL_UI_FEATURE_REPLAY:
-        return UiHas("replay.screen", CAMPAIGN_ORIGINAL_UI_SCREEN) &&
-               UiHas("replay.timeline", CAMPAIGN_ORIGINAL_UI_SLIDER) &&
-               UiHas("replay.play", CAMPAIGN_ORIGINAL_UI_BUTTON) &&
-               UiHas("replay.back", CAMPAIGN_ORIGINAL_UI_BUTTON);
+        return UiHas("ui.screen", CAMPAIGN_ORIGINAL_UI_SCREEN) &&
+               UiHas("ui.panel", CAMPAIGN_ORIGINAL_UI_PANEL) &&
+               UiHas("ui.slider", CAMPAIGN_ORIGINAL_UI_SLIDER) &&
+               UiHas("ui.button", CAMPAIGN_ORIGINAL_UI_BUTTON) &&
+               UiHas("ui.list", CAMPAIGN_ORIGINAL_UI_LIST) &&
+               UiHas("ui.label", CAMPAIGN_ORIGINAL_UI_LABEL);
     case CAMPAIGN_ORIGINAL_UI_FEATURE_PHOTO_MODE:
         return UiHas("pause.screen", CAMPAIGN_ORIGINAL_UI_SCREEN) &&
-               UiHas("pause.photo", CAMPAIGN_ORIGINAL_UI_BUTTON) &&
-               UiHas("photo.panel", CAMPAIGN_ORIGINAL_UI_PANEL) &&
-               UiHas("photo.slider", CAMPAIGN_ORIGINAL_UI_SLIDER) &&
-               UiHas("photo.back", CAMPAIGN_ORIGINAL_UI_BUTTON);
+               UiHas("pause.menu.slot", CAMPAIGN_ORIGINAL_UI_PANEL) &&
+               UiHas("ui.panel", CAMPAIGN_ORIGINAL_UI_PANEL) &&
+               UiHas("ui.button", CAMPAIGN_ORIGINAL_UI_BUTTON) &&
+               UiHas("ui.slider", CAMPAIGN_ORIGINAL_UI_SLIDER) &&
+               UiHas("ui.label", CAMPAIGN_ORIGINAL_UI_LABEL);
     case CAMPAIGN_ORIGINAL_UI_FEATURE_RACE_HUD:
-        return UiHas("race.hud", CAMPAIGN_ORIGINAL_UI_PANEL);
+        return UiHas("race.hud", CAMPAIGN_ORIGINAL_UI_PANEL) &&
+               UiHas("ui.label", CAMPAIGN_ORIGINAL_UI_LABEL);
     default:
         return 0;
     }
