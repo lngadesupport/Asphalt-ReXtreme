@@ -35,8 +35,9 @@ $ProjectRoot=Resolve-ProjectRoot $ProjectRoot
 Write-Host ("[ROOT] "+$ProjectRoot)
 
 $downloads=@(
-  @{Commit="d9af0f8d60b0c75e973d3e5a2682b5ee05ea1a90"; Path="tools/campaign_frontend_shell_v1.py"},
-  @{Commit="b5dc2cf5d2415e8a153905d70b6437aa71bfb329"; Path="tools/test_clean_runtime_v1.ps1"},
+  @{Commit="49b2c087a6ab6abfd0c5bfd3b0b7eadc712dbe0f"; Path="tools/build_clean_ams_base_v1.ps1"},
+  @{Commit="c1540be7b313e5e956c9ced6254547a06fddbc8d"; Path="tools/campaign_frontend_shell_v1.py"},
+  @{Commit="11e53520b9f35527f170cbbc322f9cca88737dab"; Path="tools/test_clean_runtime_v1.ps1"},
   @{Commit="2b87ade3bc712196ad7e419ce7fcffe608a948da"; Path="prebuilt/campaign-runtime/IGPLib_x86.dll"}
 )
 
@@ -68,6 +69,7 @@ Write-Host "Original allowed surface: frontend only"
 Write-Host "Network: NONE"
 Write-Host "Multiplayer: NONE"
 Write-Host "Legacy adapters: NOT USED"
+Write-Host "Clean AMS base: pristine-derived; Phase2 NOT USED"
 Write-Host ""
 
 & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ProjectRoot "tools\test_clean_runtime_v1.ps1") -ProjectRoot $ProjectRoot
