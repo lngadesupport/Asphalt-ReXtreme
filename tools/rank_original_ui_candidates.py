@@ -60,6 +60,14 @@ ROLES = {
         "kind": "panel",
         "terms": ("hud", "race", "position", "lap"),
     },
+    "results.screen": {
+        "kind": "screen",
+        "terms": ("result", "results", "finish", "reward", "continue"),
+    },
+    "results.row": {
+        "kind": "panel",
+        "terms": ("result", "reward", "star", "item", "row", "panel"),
+    },
 }
 
 
