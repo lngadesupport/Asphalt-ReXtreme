@@ -14,11 +14,6 @@ public sealed class ProjectService
         "scripts", "localization"
     ];
 
-    public static readonly string[] VehicleCategories =
-    [
-        "rally", "monster-truck", "buggy", "suv", "truck", "muscle", "pickup", "other-original-category"
-    ];
-
     public static readonly HashSet<string> MusicExtensions =
         new(StringComparer.OrdinalIgnoreCase) { ".wav", ".flac", ".ogg", ".mp3", ".aac", ".m4a" };
 
@@ -120,6 +115,8 @@ public sealed class ProjectService
             }
         }
 
+        var vehicleRegistry = new OriginalVehicleRegistryService().Load();
+        var verifiedProfiles = vehicleRegistry.Profiles.ToDictionary(x => x.Id, StringComparer.OrdinalIgnoreCase);
         var vehicleDir = Path.Combine(root, "content", "vehicles");
         if (Directory.Exists(vehicleDir))
         {
@@ -128,11 +125,31 @@ public sealed class ProjectService
                 try
                 {
                     var v = LoadJson<RxVehicle>(file);
-                    if (!VehicleCategories.Contains(v.Category))
-                        output.Add(new("ERROR", "vehicle.category", $"Categoria não mapeada: {v.Category}", file));
+                    if (!OriginalVehicleRegistryService.OfficialArchetypes.Contains(v.Archetype, StringComparer.OrdinalIgnoreCase))
+                        output.Add(new("ERROR", "vehicle.archetype", $"Arquétipo original inválido: {v.Archetype}", file));
+                    if (!OriginalVehicleRegistryService.PerformanceClasses.Contains(v.PerformanceClass, StringComparer.OrdinalIgnoreCase))
+                        output.Add(new("ERROR", "vehicle.performance_class", $"Classe de performance inválida: {v.PerformanceClass}", file));
+
                     if (string.IsNullOrWhiteSpace(v.BaseOriginalProfile))
+                    {
                         output.Add(new("ERROR", "vehicle.base_profile",
-                            "Veículos customizados devem referenciar um perfil original extraído do Asphalt Xtreme.", file));
+                            "Veículos customizados devem referenciar um perfil original extraído e verificado.", file));
+                    }
+                    else if (!verifiedProfiles.TryGetValue(v.BaseOriginalProfile, out var baseProfile))
+                    {
+                        output.Add(new("ERROR", "vehicle.base_profile_unknown",
+                            $"Perfil original não encontrado no registry verificado: {v.BaseOriginalProfile}", file));
+                    }
+                    else
+                    {
+                        if (!baseProfile.Archetype.Equals(v.Archetype, StringComparison.OrdinalIgnoreCase))
+                            output.Add(new("ERROR", "vehicle.profile_archetype",
+                                $"O perfil {baseProfile.Id} pertence a {baseProfile.Archetype}, não a {v.Archetype}.", file));
+                        if (!baseProfile.PerformanceClass.Equals(v.PerformanceClass, StringComparison.OrdinalIgnoreCase))
+                            output.Add(new("WARNING", "vehicle.profile_class",
+                                $"O perfil base é classe {baseProfile.PerformanceClass}; o conteúdo declara {v.PerformanceClass}.", file));
+                    }
+
                     foreach (var (name, value) in new[]
                     {
                         ("speed", v.Performance.Speed), ("acceleration", v.Performance.Acceleration),
