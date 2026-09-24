@@ -7,12 +7,13 @@
   "release_branch": "public-beta-0.1",
   "startup_mode": "uwp-loose-compatibility",
   "portable_startup_ready": false,
-  "release_state": "ci-passed-awaiting-clean-machine-smoke",
+  "release_state": "hotfix-upgrade-map-awaiting-user-smoke",
   "notes": [
     "Public beta compatibility startup still uses Windows package registration.",
     "Original proprietary game files are never distributed by this repository.",
     "The installer imports a user-provided compatible 1.7.3.8 x86 source locally.",
-    "Git and a system-wide Python installation are not required."
+    "Git and a system-wide Python installation are not required.",
+    "Upgrade UI mapping is fail-closed in Beta 1 until legacy raw ids are reconstructed."
   ],
   "ci": {
     "workflow": "Public Beta CI",
