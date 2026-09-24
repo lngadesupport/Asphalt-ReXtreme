@@ -12,7 +12,7 @@ namespace ReXtremeSDK;
 public partial class MainWindow : Window
 {
     private readonly ProjectService _projects = new();
-    private readonly OriginalVehicleRegistry _vehicleRegistry = new OriginalVehicleRegistryService().Load();
+    private OriginalVehicleRegistry _vehicleRegistry = new OriginalVehicleRegistryService().Load();
     private Point _dragStart;
     private bool _dragging;
     private readonly AxisAngleRotation3D _rotX = new(new Vector3D(1, 0, 0), 0);
@@ -256,6 +256,26 @@ public partial class MainWindow : Window
             MusicArtistBox.Clear();
             RefreshMusicList();
             RefreshProjectTree();
+        }
+        catch (Exception ex) { Fail(ex); }
+    }
+
+    private void ImportVehicleRegistry_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Importar Original Vehicle Registry verificado",
+                Filter = "ReXtreme Vehicle Registry|*.json|JSON|*.json"
+            };
+            if (dialog.ShowDialog() != true) return;
+
+            var service = new OriginalVehicleRegistryService();
+            _vehicleRegistry = service.ImportVerified(dialog.FileName);
+            RefreshVehicleRegistryUi();
+            Log($"Original Vehicle Registry importado: {_vehicleRegistry.Profiles.Count} perfis verificados.");
+            Log($"Salvo em: {OriginalVehicleRegistryService.UserRegistryPath}");
         }
         catch (Exception ex) { Fail(ex); }
     }
