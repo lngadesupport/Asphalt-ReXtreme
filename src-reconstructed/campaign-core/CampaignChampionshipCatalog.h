@@ -60,6 +60,7 @@ int CampaignChampionshipsGetRoundStatus(
     uint32_t round_index,
     CampaignChampionshipRoundStatus* out
 );
+int CampaignChampionshipsReload(void);
 int CampaignChampionshipsResetState(void);
 
 #ifdef __cplusplus
