@@ -55,6 +55,7 @@ on:
       - "src-reconstructed/campaign-core/CampaignActivityContext.c"
       - "src-reconstructed/campaign-core/CampaignActivityContext.h"
       - "src-reconstructed/campaign-core/CampaignActivityContextTest.c"
+      - "src-reconstructed/campaign-core/CampaignActivityIntegrationTest.c"
       - "src-reconstructed/campaign-core/CampaignUpgradeCatalog.c"
       - "src-reconstructed/campaign-core/CampaignUpgradeCatalog.h"
       - "src-reconstructed/campaign-core/CampaignUpgradeUiMap.c"
@@ -255,6 +256,13 @@ jobs:
           if errorlevel 1 exit /b 55
           "prebuilt\campaign-core\CampaignActivityContextTest.exe"
           if errorlevel 1 exit /b 56
+
+          cl.exe /nologo /c /TC /O2 /MT /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /I"src-reconstructed\campaign-core" /Fo"prebuilt\campaign-core\CampaignActivityIntegrationTest.obj" "src-reconstructed\campaign-core\CampaignActivityIntegrationTest.c"
+          if errorlevel 1 exit /b 57
+          link.exe /nologo /machine:x86 /out:"prebuilt\campaign-core\CampaignActivityIntegrationTest.exe" "prebuilt\campaign-core\CampaignActivityIntegrationTest.obj" "prebuilt\campaign-core\CampaignCore.obj" "prebuilt\campaign-core\CampaignCatalog.obj" "prebuilt\campaign-core\CampaignEventCatalog.obj" "prebuilt\campaign-core\CampaignSpecialEventCatalog.obj" "prebuilt\campaign-core\CampaignSpecialEventState.obj" "prebuilt\campaign-core\CampaignObjectiveCatalog.obj" "prebuilt\campaign-core\CampaignChallengeCatalog.obj" "prebuilt\campaign-core\CampaignStatistics.obj" "prebuilt\campaign-core\CampaignAchievementCatalog.obj" "prebuilt\campaign-core\CampaignLastResult.obj" "prebuilt\campaign-core\CampaignChampionshipCatalog.obj" "prebuilt\campaign-core\CampaignActivityContext.obj" "prebuilt\campaign-core\CampaignUpgradeCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeUiMap.obj" "prebuilt\campaign-core\CampaignStoreCatalog.obj" "prebuilt\campaign-core\CampaignStoreAdapter.obj" "prebuilt\campaign-core\CampaignCareerAdapter.obj" "prebuilt\campaign-core\CampaignUpgradeAdapter.obj" "prebuilt\campaign-core\CampaignPresentation.obj" "prebuilt\campaign-core\CampaignPresentationCatalog.obj" "prebuilt\campaign-core\CampaignPresentationBindings.obj" "prebuilt\campaign-core\CampaignPhotoBindings.obj" "prebuilt\campaign-core\CampaignReplayBindings.obj" "prebuilt\campaign-core\CampaignOriginalUiBindings.obj" "prebuilt\campaign-core\CampaignRaceHudBindings.obj" "prebuilt\campaign-core\CampaignRaceHudLayout.obj" kernel32.lib
+          if errorlevel 1 exit /b 58
+          "prebuilt\campaign-core\CampaignActivityIntegrationTest.exe"
+          if errorlevel 1 exit /b 59
           if errorlevel 1 exit /b 50
 
           exit /b 0
@@ -308,6 +316,8 @@ jobs:
           Remove-Item ".\prebuilt\campaign-core\CampaignChampionshipTest.exe" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignActivityContextTest.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignActivityContextTest.exe" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignActivityIntegrationTest.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignActivityIntegrationTest.exe" -ErrorAction SilentlyContinue
           Remove-Item $batPath -ErrorAction SilentlyContinue
 
       - name: Verify
