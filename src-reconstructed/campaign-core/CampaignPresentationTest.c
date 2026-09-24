@@ -805,7 +805,8 @@ int main(void) {
         !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_PHOTO_MODE) ||
         !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_RACE_HUD) ||
         !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_CHALLENGES) ||
-        !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_ACHIEVEMENTS)) return Fail(121);
+        !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_ACHIEVEMENTS) ||
+        !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_CHAMPIONSHIPS)) return Fail(121);
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_RESULTS)) return Fail(144);
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_PROFILE)) return Fail(161);
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_SPECIAL_EVENTS)) return Fail(162);
@@ -975,7 +976,7 @@ int main(void) {
         diagnostics.runtime_ready_capability_count != 2 ||
         diagnostics.verified_binding_count != 2 ||
         diagnostics.original_ui_binding_count != 13 ||
-        diagnostics.original_ui_feature_mask != 0x7Fu ||
+        diagnostics.original_ui_feature_mask != 0x47Fu ||
         diagnostics.race_hud_binding_count != 6 ||
         diagnostics.race_hud_original_ui_ready != 1 ||
         diagnostics.race_hud_layout_count != 1) return Fail(100);
