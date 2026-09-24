@@ -150,6 +150,25 @@ static void InitSettings(CampaignPresentationSettings* settings) {
     settings->checksum = SettingsChecksum(settings);
 }
 
+static int CapabilityAllowsValue(const char* id, int32_t value) {
+    const CampaignPresentationCapability* capability;
+    int32_t delta;
+
+    /* Zero is always the explicit "use original game behavior" sentinel. */
+    if (value == 0) return 1;
+
+    capability = CampaignPresentationCatalogFind(id);
+    if (!capability) return 0;
+    if (!(capability->flags & CAMPAIGN_PRESENTATION_CAPABILITY_VERIFIED)) return 0;
+    if (value < capability->minimum || value > capability->maximum) return 0;
+
+    if (capability->step > 0) {
+        delta = value - capability->minimum;
+        if ((delta % capability->step) != 0) return 0;
+    }
+    return 1;
+}
+
 static int ValidateSettings(const CampaignPresentationSettings* settings) {
     if (!settings) return 0;
     if (settings->size != (uint32_t)sizeof(*settings)) return 0;
@@ -164,6 +183,12 @@ static int ValidateSettings(const CampaignPresentationSettings* settings) {
     if (settings->camera_distance_x1000 < 0) return 0;
     if (settings->camera_height_x1000 < -1000000 || settings->camera_height_x1000 > 1000000) return 0;
     if (settings->camera_smoothing_x1000 < 0) return 0;
+
+    if (!CapabilityAllowsValue("fov", settings->fov_x100)) return 0;
+    if (!CapabilityAllowsValue("camera_distance", settings->camera_distance_x1000)) return 0;
+    if (!CapabilityAllowsValue("camera_height", settings->camera_height_x1000)) return 0;
+    if (!CapabilityAllowsValue("camera_smoothing", settings->camera_smoothing_x1000)) return 0;
+
     if (settings->checksum != SettingsChecksum(settings)) return 0;
     return 1;
 }
