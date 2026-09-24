@@ -34,8 +34,8 @@ import build_campaign_upgrade_catalog as upgrade_binary
 
 CLASS_ID = {"D": 1, "C": 2, "B": 3, "A": 4, "S": 5}
 PART_NAMES = {
-    "ACCELERATION": 0, "ACCEL": 0,
-    "TOPSPEED": 1, "TOP_SPEED": 1, "SPEED": 1,
+    "TOPSPEED": 0, "TOP_SPEED": 0, "SPEED": 0,
+    "ACCELERATION": 1, "ACCEL": 1,
     "HANDLING": 2, "HANDLE": 2,
     "NITRO": 3,
 }
