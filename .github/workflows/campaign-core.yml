@@ -1,0 +1,217 @@
+name: Campaign Core x86
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - campaign-edition-win32
+    paths:
+      - "src-reconstructed/campaign-core/CampaignCore.c"
+      - "src-reconstructed/campaign-core/CampaignCore.h"
+      - "src-reconstructed/campaign-core/CampaignCatalog.c"
+      - "src-reconstructed/campaign-core/CampaignCatalog.h"
+      - "src-reconstructed/campaign-core/CampaignEventCatalog.c"
+      - "src-reconstructed/campaign-core/CampaignEventCatalog.h"
+      - "src-reconstructed/campaign-core/CampaignObjectiveCatalog.c"
+      - "src-reconstructed/campaign-core/CampaignObjectiveCatalog.h"
+      - "src-reconstructed/campaign-core/CampaignUpgradeCatalog.c"
+      - "src-reconstructed/campaign-core/CampaignUpgradeCatalog.h"
+      - "src-reconstructed/campaign-core/CampaignUpgradeUiMap.c"
+      - "src-reconstructed/campaign-core/CampaignUpgradeUiMap.h"
+      - "src-reconstructed/campaign-core/CampaignStoreCatalog.c"
+      - "src-reconstructed/campaign-core/CampaignStoreCatalog.h"
+      - "src-reconstructed/campaign-core/CampaignStoreAdapter.c"
+      - "src-reconstructed/campaign-core/CampaignStoreAdapter.h"
+      - "src-reconstructed/campaign-core/CampaignCareerAdapter.c"
+      - "src-reconstructed/campaign-core/CampaignCareerAdapter.h"
+      - "src-reconstructed/campaign-core/CampaignUpgradeAdapter.c"
+      - "src-reconstructed/campaign-core/CampaignUpgradeAdapter.h"
+      - "runtime-stubs/campaign_gateway.asm"
+      - "runtime-stubs/IGPLib_x86_campaign.def"
+      - "docs/CAMPAIGN-CORE-V2.md"
+      - ".github/workflows/campaign-core.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: campaign-core-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-x86:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build no-entry Campaign Core
+        shell: powershell
+        run: |
+          $vswhere = Join-Path ([Environment]::GetEnvironmentVariable("ProgramFiles(x86)")) "Microsoft Visual Studio\Installer\vswhere.exe"
+          if (-not (Test-Path $vswhere)) { throw "vswhere.exe not found" }
+
+          $install = (& $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath).Trim()
+          if (-not $install) { throw "MSVC x86 toolchain not found" }
+
+          $vcvars = Join-Path $install "VC\Auxiliary\Build\vcvarsall.bat"
+          New-Item -ItemType Directory -Force -Path ".\prebuilt\campaign-core" | Out-Null
+
+          $bat = @"
+          @echo off
+          call "$vcvars" x86
+          if errorlevel 1 exit /b 11
+
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignCore.obj" "src-reconstructed\campaign-core\CampaignCore.c"
+          if errorlevel 1 exit /b 12
+
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignCatalog.obj" "src-reconstructed\campaign-core\CampaignCatalog.c"
+          if errorlevel 1 exit /b 16
+
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignEventCatalog.obj" "src-reconstructed\campaign-core\CampaignEventCatalog.c"
+          if errorlevel 1 exit /b 17
+
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignObjectiveCatalog.obj" "src-reconstructed\campaign-core\CampaignObjectiveCatalog.c"
+          if errorlevel 1 exit /b 20
+
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignUpgradeCatalog.obj" "src-reconstructed\campaign-core\CampaignUpgradeCatalog.c"
+          if errorlevel 1 exit /b 18
+
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignUpgradeUiMap.obj" "src-reconstructed\campaign-core\CampaignUpgradeUiMap.c"
+          if errorlevel 1 exit /b 20
+
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignStoreCatalog.obj" "src-reconstructed\campaign-core\CampaignStoreCatalog.c"
+          if errorlevel 1 exit /b 19
+
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignStoreAdapter.obj" "src-reconstructed\campaign-core\CampaignStoreAdapter.c"
+          if errorlevel 1 exit /b 22
+
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignCareerAdapter.obj" "src-reconstructed\campaign-core\CampaignCareerAdapter.c"
+          if errorlevel 1 exit /b 20
+
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\campaign-core\CampaignUpgradeAdapter.obj" "src-reconstructed\campaign-core\CampaignUpgradeAdapter.c"
+          if errorlevel 1 exit /b 21
+
+          ml.exe /nologo /c /coff /Fo"prebuilt\campaign-core\campaign_gateway.obj" "runtime-stubs\campaign_gateway.asm"
+          if errorlevel 1 exit /b 13
+
+          link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:"runtime-stubs\IGPLib_x86_campaign.def" /out:"prebuilt\campaign-core\IGPLib_x86.dll" "prebuilt\campaign-core\CampaignCore.obj" "prebuilt\campaign-core\CampaignCatalog.obj" "prebuilt\campaign-core\CampaignEventCatalog.obj" "prebuilt\campaign-core\CampaignObjectiveCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeCatalog.obj" "prebuilt\campaign-core\CampaignUpgradeUiMap.obj" "prebuilt\campaign-core\CampaignStoreCatalog.obj" "prebuilt\campaign-core\CampaignStoreAdapter.obj" "prebuilt\campaign-core\CampaignCareerAdapter.obj" "prebuilt\campaign-core\CampaignUpgradeAdapter.obj" "prebuilt\campaign-core\campaign_gateway.obj" kernel32.lib
+          if errorlevel 1 exit /b 14
+
+          dumpbin.exe /headers /imports "prebuilt\campaign-core\IGPLib_x86.dll" > "prebuilt\campaign-core\DUMPBIN.txt"
+          if errorlevel 1 exit /b 15
+          exit /b 0
+          "@
+
+          $batPath = Join-Path $PWD "build-campaign-core.cmd"
+          Set-Content -LiteralPath $batPath -Value $bat -Encoding ASCII
+          & cmd.exe /d /c $batPath
+          if ($LASTEXITCODE -ne 0) { throw "Campaign Core build failed: $LASTEXITCODE" }
+
+          Remove-Item ".\prebuilt\campaign-core\CampaignCore.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignCatalog.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignEventCatalog.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignObjectiveCatalog.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignUpgradeCatalog.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignUpgradeUiMap.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignStoreCatalog.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignStoreAdapter.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignCareerAdapter.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignUpgradeAdapter.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\campaign_gateway.obj" -ErrorAction SilentlyContinue
+          Remove-Item $batPath -ErrorAction SilentlyContinue
+
+      - name: Verify
+        shell: powershell
+        run: |
+          $dll = ".\prebuilt\campaign-core\IGPLib_x86.dll"
+          if (-not (Test-Path $dll)) { throw "Campaign Core DLL missing" }
+
+          [byte[]]$d = [IO.File]::ReadAllBytes($dll)
+          if ($d[0] -ne 0x4D -or $d[1] -ne 0x5A) { throw "not MZ" }
+          $pe = [BitConverter]::ToInt32($d, 0x3C)
+          if ([BitConverter]::ToUInt16($d, $pe + 4) -ne 0x014C) { throw "not x86" }
+          $opt = $pe + 24
+          if ([BitConverter]::ToUInt16($d, $opt) -ne 0x010B) { throw "not PE32" }
+          $entry = [BitConverter]::ToUInt32($d, $opt + 16)
+          if ($entry -ne 0) { throw ("DLL has entry point RVA 0x{0:X8}" -f $entry) }
+
+          $dump = Get-Content ".\prebuilt\campaign-core\DUMPBIN.txt" -Raw
+          if ($dump -match "VCRUNTIME|MSVCP|ucrtbase") { throw "CRT dependency detected" }
+
+          $hash = (Get-FileHash -Algorithm SHA256 $dll).Hash.ToLowerInvariant()
+          $size = (Get-Item $dll).Length
+
+          [ordered]@{
+            Phase = "Campaign Core v3"
+            Architecture = "x86"
+            NoEntry = $true
+            StartupRuntime = $false
+            CRTDependency = $false
+            SecondaryLoadLibrary = $false
+            Host = "IGPLib_x86.dll"
+            CommandSelector = "0xC0DECA11"
+            CraftSelector = "0xC0DEC0DE"
+            OwnershipSelector = "0xC0DE0A11"
+            State = "LocalState\\CampaignEdition\\CampaignSave.dat"
+            Backup = "LocalState\\CampaignEdition\\CampaignSave.bak"
+            V1Migration = $true
+            V2Migration = $true
+            VehicleCatalog = "CampaignCatalog.dat"
+            EventCatalog = "CampaignEvents.dat"
+            ObjectiveCatalog = "CampaignObjectives.dat"
+            UpgradeCatalog = "CampaignUpgrades.dat"
+            UpgradeUiMap = "CampaignUpgradeUiMap.dat"
+            StoreCatalog = "CampaignStore.dat"
+            StoreLegacySelector = "0xC0DE5501"
+            CareerPreSelector = "0xC0DECA72"
+            CareerPostSelector = "0xC0DECA73"
+            Size = $size
+            SHA256 = $hash
+          } | ConvertTo-Json | Set-Content ".\prebuilt\campaign-core\CAMPAIGN-CORE-REPORT.json" -Encoding UTF8
+
+          Get-Content ".\prebuilt\campaign-core\CAMPAIGN-CORE-REPORT.json"
+
+      - name: Publish
+        shell: powershell
+        run: |
+          $stage = Join-Path $env:RUNNER_TEMP "campaign-core-publish"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+
+          Copy-Item ".\prebuilt\campaign-core\IGPLib_x86.dll" $stage -Force
+          Copy-Item ".\prebuilt\campaign-core\CAMPAIGN-CORE-REPORT.json" $stage -Force
+          Copy-Item ".\prebuilt\campaign-core\DUMPBIN.txt" $stage -Force
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Rebase generated artifacts onto the newest branch head. This avoids
+          # losing the build when a source/docs commit lands during this job.
+          git fetch origin "$env:GITHUB_REF_NAME"
+          if ($LASTEXITCODE -ne 0) { throw "git fetch failed" }
+
+          git reset --hard "origin/$env:GITHUB_REF_NAME"
+          if ($LASTEXITCODE -ne 0) { throw "git reset failed" }
+
+          New-Item -ItemType Directory -Force -Path ".\prebuilt\campaign-core" | Out-Null
+          Copy-Item (Join-Path $stage "IGPLib_x86.dll") ".\prebuilt\campaign-core\IGPLib_x86.dll" -Force
+          Copy-Item (Join-Path $stage "CAMPAIGN-CORE-REPORT.json") ".\prebuilt\campaign-core\CAMPAIGN-CORE-REPORT.json" -Force
+          Copy-Item (Join-Path $stage "DUMPBIN.txt") ".\prebuilt\campaign-core\DUMPBIN.txt" -Force
+
+          git add -f prebuilt/campaign-core/IGPLib_x86.dll prebuilt/campaign-core/CAMPAIGN-CORE-REPORT.json prebuilt/campaign-core/DUMPBIN.txt
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) { exit 0 }
+
+          git commit -m "build: publish Campaign Core v3 [skip ci]"
+          if ($LASTEXITCODE -ne 0) { throw "git commit failed" }
+
+          git push origin "HEAD:$env:GITHUB_REF_NAME"
+          if ($LASTEXITCODE -ne 0) { throw "git push failed" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Campaign-Core-v2-x86
+          path: |
+            prebuilt/campaign-core/IGPLib_x86.dll
+            prebuilt/campaign-core/CAMPAIGN-CORE-REPORT.json
+            prebuilt/campaign-core/DUMPBIN.txt
+          if-no-files-found: error

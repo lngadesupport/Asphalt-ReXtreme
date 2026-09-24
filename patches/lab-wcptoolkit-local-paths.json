@@ -1,0 +1,32 @@
+{
+  "build": {
+    "name": "WCPToolkit portable-path lab",
+    "status": "experimental-not-runtime-validated",
+    "apply_to_default_campaign": false,
+    "purpose": "Replace package-identity folder queries with the process current directory for an unpackaged/no-AppContainer lab run.",
+    "required_launcher_behavior": "Set the process current directory to the game root before AMS.exe starts."
+  },
+  "files": [
+    {
+      "path": "WCPToolkit.dll",
+      "sha256": "ca67dd62c599d00868b230e4e536bb1ad4ad3c19f3e62293e42cd297b44b60a5",
+      "patched_sha256": "651bc551f08ed2c5decd4cbfdfc3e41b37cd1b657d6f0af81e1a95c23653238f",
+      "patches": [
+        {
+          "name": "GetAppInstalledFolderPath -> process current directory",
+          "category": "package-identity-lab",
+          "offset": 186992,
+          "before": "55 8B EC 83 E4 F8 6A FF 68 C8 97 0A 10 64 A1 00 00 00 00 50 83",
+          "after": "8B 4C 24 04 6A 01 68 FE 90 0B 10 E8 E0 B3 FF FF 8B 44 24 04 C3"
+        },
+        {
+          "name": "GetAppLocalFolderPath -> process current directory",
+          "category": "package-identity-lab",
+          "offset": 187504,
+          "before": "55 8B EC 83 E4 F8 6A FF 68 C8 97 0A 10 64 A1 00 00 00 00 50 83",
+          "after": "8B 4C 24 04 6A 01 68 FE 90 0B 10 E8 E0 B1 FF FF 8B 44 24 04 C3"
+        }
+      ]
+    }
+  ]
+}

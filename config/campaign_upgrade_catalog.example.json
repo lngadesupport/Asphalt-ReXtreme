@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "car_id": 1001,
+      "kind": "upgrade",
+      "part_slot": 0,
+      "target_level": 1,
+      "cost_type": "credits",
+      "item_id": 0,
+      "cost": 2000,
+      "unlock_node_id": 0,
+      "flags": 0
+    },
+    {
+      "car_id": 1001,
+      "kind": "prokit",
+      "part_slot": 0,
+      "target_level": 1,
+      "cost_type": "inventory",
+      "item_id": 7001,
+      "cost": 2,
+      "unlock_node_id": 0,
+      "flags": 0
+    }
+  ]
+}

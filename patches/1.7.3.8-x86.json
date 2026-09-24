@@ -4,13 +4,17 @@
     "version": "1.7.3.8",
     "architecture": "x86",
     "entry_point": "AMS.exe",
-    "status": "verified-rextreme-1.0-rc-core-patches"
+    "status": "verified-core-plus-vungle-disabled",
+    "campaign_ready": false,
+    "ads_runtime_disabled": true,
+    "microsoft_decoupling_ready": false,
+    "store_purchase_disabled": true
   },
   "files": [
     {
       "path": "AMS.exe",
       "sha256": "3d48800d37cb799e424abe5e33e07bab3235d11dbfbe2fbf50214cecab3e75c8",
-      "patched_sha256": "e036d16f56ccf7276973322b7494e791ef99c957211700542ab9980860e85043",
+      "patched_sha256": "56e9dbde7f7f3a75b3542a691fb45ad5bf46b86e87cb9fa11854ec1862e62ae3",
       "patches": [
         {
           "name": "Force central connectivity state offline",
@@ -53,6 +57,34 @@
           "offset": 11611056,
           "before": "E8 9B 8B F2 FF",
           "after": "E8 F2 23 F2 FF"
+        },
+        {
+          "name": "Vungle manager: force ad availability unavailable",
+          "category": "ads-disabled",
+          "offset": 13694832,
+          "before": "55 8B EC 6A FF 68 F0 EA",
+          "after": "B8 0A 00 00 00 C2 0C 00"
+        },
+        {
+          "name": "Vungle manager: configure stub without SDK activation",
+          "category": "ads-disabled",
+          "offset": 13695376,
+          "before": "55 8B EC 6A FF 68 28 EB 49",
+          "after": "C6 41 09 01 33 C0 C2 10 00"
+        },
+        {
+          "name": "Vungle platform: force availability false",
+          "category": "ads-disabled",
+          "offset": 13734752,
+          "before": "55 8B EC 6A FF",
+          "after": "33 C0 C2 08 00"
+        },
+        {
+          "name": "Windows CRM store purchase: fail locally without launching Store",
+          "category": "store-disabled",
+          "offset": 14937776,
+          "before": "55 8B EC 81 EC D4 04 00",
+          "after": "B8 1F D1 FF FF C2 1C 00"
         }
       ]
     },

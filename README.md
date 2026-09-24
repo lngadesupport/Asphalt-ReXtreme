@@ -2,71 +2,72 @@
 
 Fan-made preservation and modernization project for the Windows build of **Asphalt Xtreme**.
 
-## Primary release: Offline Edition
+## Primary release: Campaign Edition
 
-The first release target is a **plug-and-play offline edition** focused on preservation and reliability.
+The current target is **Asphalt ReXtreme: Campaign Edition**: a portable,
+paid-game-style offline edition that behaves like a normal Windows racing game.
 
-Goals:
-- Launch directly into a usable offline game flow with no dead service dependency.
-- Keep campaign/career, races, garage and local progression available.
-- Provide an optional preservation economy with unlimited local currency and no upgrade grind.
-- Remove local content gates that only exist because ads or discontinued services are unavailable.
-- Store progress locally.
-- Add modern PC options such as configurable FOV, frame-rate limit/unlock, modern resolutions, borderless/windowed modes and controller improvements.
-- Avoid requiring users to run development tools, edit files manually, configure servers or install Python.
+Core requirements:
+- launch from `AsphaltReXtreme.exe` without Microsoft Store or APPX/MSIX registration;
+- no Microsoft/Xbox authentication requirement;
+- internet may remain enabled and the user may stay signed into Microsoft Store;
+- campaign/career, races, garage, shop and local progression work without old services;
+- no ad-gated progression;
+- no real-money IAP dependency;
+- race rewards grant credits and premium currency;
+- economy uses a **class-balanced offline progression model** defined in `config/campaign_economy.json`;
+- repeated-race rewards remain at 100% for the first 10 runs and never fall below 98%;
+- local portable saves with recoverable writes;
+- preserve original game visuals unless a technical compatibility fix is required.
 
-The later online/community edition is a **separate project phase** and will not be required for the Offline Edition.
-
-
-## Master Collector
-
-For development and reverse-engineering data collection, use **`REXTREME_COLETOR_MASTER.bat`**.
-
-This is the project's definitive one-click collector and supersedes the earlier staged analysis scripts. It generates a timestamped ZIP containing build hashes, file inventory, PE metadata, key binaries/configuration candidates, economy/network/graphics strings, URL/domain findings, AppX information and save-state metadata.
-
-Two modes are available:
-
-- **Complete Safe** — default; does not copy save/profile contents.
-- **Deep** — also snapshots package save/profile files when save-format analysis is required.
-
-The collector is read-only with respect to the game directory and can be reused throughout the entire Offline Edition development cycle.
+See `docs/CAMPAIGN_EDITION_ARCHITECTURE.md`.
 
 ## Current target build
 
-- Package: `A278AB0D.AsphaltXtreme`
+- Package source: `A278AB0D.AsphaltXtreme`
 - Version: `1.7.3.8`
-- Architecture: `x86`
-- Platform: Windows / Microsoft Store APPX
+- Architecture: x86
+- Original platform: Windows / Microsoft Store APPX
+- Campaign target: portable desktop/Win32 runtime
+
+## Development tooling
+
+`tools/store_dependency_audit.py` scans an extracted source build for Microsoft
+Store/UWP/package identity, Microsoft/Xbox authentication and legacy Gameloft
+service coupling. It is read-only.
+
+Example:
+
+```powershell
+python tools/store_dependency_audit.py "C:\Games\Asphalt Xtreme" ^
+  --json reports\store-audit.json ^
+  --markdown reports\store-audit.md
+```
+
+The existing build, economy, XTEA and patching tools remain part of the reverse
+engineering workflow.
 
 ## Distribution model
 
-The public repository contains original project code, documentation, patch metadata and tools only.
+The public repository contains project code, documentation, patch metadata and
+tools only. Original executables, APPX packages, DLLs, game assets and other
+proprietary content are not committed here.
 
-Original executables, APPX packages, DLLs, game assets and other proprietary content are not committed here. A release builder/patcher will verify and transform a legitimate local copy into the ReXtreme Offline Edition.
+The intended release builder transforms a legitimate user-provided 1.7.3.8 x86
+source locally into the Campaign Edition.
 
-The end-user goal is a one-click result:
+## Planned portable layout
 
-```
-Asphalt ReXtreme Offline/
+```text
+Asphalt ReXtreme Campaign Edition/
 ├── AsphaltReXtreme.exe
-├── ReXtreme.ini
-└── GameData/
-```
-
-After the user's legitimate game files have been imported once, normal play should require only launching `AsphaltReXtreme.exe`.
-
-## Planned structure
-
-```
-Asphalt-ReXtreme/
+├── GameData/
 ├── config/
-├── docs/
-├── launcher/
-├── patches/
-├── tools/
-└── tests/
+├── save/
+├── logs/
+└── runtime/
 ```
 
 ## Status
 
-Early reverse-engineering / preservation research against build `1.7.3.8 x86`.
+Reverse-engineering and Campaign Edition conversion work in progress.

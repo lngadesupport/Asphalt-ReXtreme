@@ -1,0 +1,64 @@
+name: R17.1 Delayed Runtime
+
+on:
+  push:
+    branches:
+      - campaign-edition-win32
+    paths:
+      - "src-reconstructed/local-runtime/LocalEventRuntimeR171.cpp"
+      - "src-reconstructed/local-runtime/LocalEventRuntime.h"
+      - "runtime-stubs/r171_igp_bootstrap.c"
+      - "runtime-stubs/IGPLib_x86_r171.def"
+      - "runtime-stubs/ReXtremeLocalRuntime.def"
+      - "tools/build_r171_delayed_runtime.ps1"
+      - ".github/workflows/r171-delayed-runtime.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-x86:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build R17.1
+        shell: powershell
+        run: |
+          Set-ExecutionPolicy -Scope Process Bypass -Force
+          .\tools\build_r171_delayed_runtime.ps1 -SourceDir .
+
+      - name: Verify
+        shell: powershell
+        run: |
+          Get-Item .\RUNTIME_STUBS\R171\IGPLib_x86.dll
+          Get-Item .\RUNTIME_STUBS\R171\ReXtremeLocalRuntime.dll
+          Get-FileHash -Algorithm SHA256 .\RUNTIME_STUBS\R171\IGPLib_x86.dll
+          Get-FileHash -Algorithm SHA256 .\RUNTIME_STUBS\R171\ReXtremeLocalRuntime.dll
+          Get-Content .\RUNTIME_STUBS\R171\R171-BUILD-REPORT.json
+
+      - name: Publish prebuilts
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path ".\prebuilt\r171" | Out-Null
+          Copy-Item ".\RUNTIME_STUBS\R171\IGPLib_x86.dll" ".\prebuilt\r171\IGPLib_x86.dll" -Force
+          Copy-Item ".\RUNTIME_STUBS\R171\ReXtremeLocalRuntime.dll" ".\prebuilt\r171\ReXtremeLocalRuntime.dll" -Force
+          Copy-Item ".\RUNTIME_STUBS\R171\R171-BUILD-REPORT.json" ".\prebuilt\r171\R171-BUILD-REPORT.json" -Force
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f prebuilt/r171/IGPLib_x86.dll prebuilt/r171/ReXtremeLocalRuntime.dll prebuilt/r171/R171-BUILD-REPORT.json
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) { exit 0 }
+          git commit -m "build: publish R17.1 delayed runtime [skip ci]"
+          git push origin "HEAD:$env:GITHUB_REF_NAME"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: R17.1-Delayed-Core-x86
+          path: |
+            RUNTIME_STUBS/R171/IGPLib_x86.dll
+            RUNTIME_STUBS/R171/ReXtremeLocalRuntime.dll
+            RUNTIME_STUBS/R171/R171-BUILD-REPORT.json
+          if-no-files-found: error

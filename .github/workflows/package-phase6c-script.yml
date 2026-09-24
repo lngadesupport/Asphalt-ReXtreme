@@ -1,0 +1,24 @@
+name: Package Phase 6C script
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [campaign-edition-win32]
+    paths:
+      - '.github/workflows/package-phase6c-script.yml'
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package corrected Phase 6C script
+        run: |
+          mkdir -p out/tools
+          cp tools/profile_phase6c_login_error.ps1 out/tools/
+          cd out
+          zip -r ../Phase6C-Corrigido.zip tools
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phase6c-corrigido
+          path: Phase6C-Corrigido.zip

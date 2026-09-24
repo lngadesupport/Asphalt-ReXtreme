@@ -1,0 +1,29 @@
+name: Parse phase 13 age handler focus
+
+on:
+  push:
+    branches: [campaign-edition-win32]
+    paths:
+      - 'tools/profile_phase13_age_handler_map.ps1'
+      - 'RUN-PROFILE-PHASE13-AGE-HANDLER-MAP.cmd'
+      - 'GET-PHASE13-AGE-HANDLER-MAP.cmd'
+      - '.github/workflows/parse-phase13-age-handler-map.yml'
+  workflow_dispatch:
+
+jobs:
+  parse:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse focused PowerShell
+        shell: powershell
+        run: |
+          $text = Get-Content -LiteralPath 'tools/profile_phase13_age_handler_map.ps1' -Raw
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseInput($text, [ref]$tokens, [ref]$errors)
+          if($errors.Count -gt 0){
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host 'Phase 13 focused PowerShell syntax OK.'

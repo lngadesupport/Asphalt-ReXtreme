@@ -1,0 +1,56 @@
+name: Build runtime stubs
+
+on:
+  push:
+    branches:
+      - campaign-edition-win32
+    paths:
+      - "runtime-stubs/**"
+      - ".github/workflows/build-runtime-stubs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-x86:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure MSVC x86
+        shell: cmd
+        run: |
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VS=%%i
+          call "%VS%\VC\Auxiliary\Build\vcvarsall.bat" x86
+          set > msvc-env.txt
+
+      - name: Build no-import x86 stubs
+        shell: cmd
+        run: |
+          for /f "tokens=1,* delims==" %%A in (msvc-env.txt) do set "%%A=%%B"
+          mkdir out
+          ml /nologo /c /coff /Foout\igp_stub.obj runtime-stubs\igp_stub.asm
+          link /nologo /Brepro /dll /noentry /nodefaultlib /machine:x86 /dynamicbase /nxcompat /def:runtime-stubs\IGPLib_x86.def /out:out\IGPLib_x86.dll out\igp_stub.obj
+          ml /nologo /c /coff /Foout\iap_stub.obj runtime-stubs\iap_stub.asm
+          link /nologo /Brepro /dll /noentry /nodefaultlib /machine:x86 /dynamicbase /nxcompat /def:runtime-stubs\InAppPurchaseComponentW8.def /out:out\InAppPurchaseComponentW8.dll out\iap_stub.obj
+          certutil -hashfile out\IGPLib_x86.dll SHA256 > out\SHA256.txt
+          certutil -hashfile out\InAppPurchaseComponentW8.dll SHA256 >> out\SHA256.txt
+          dumpbin /headers out\IGPLib_x86.dll > out\IGPLib_x86.headers.txt
+          dumpbin /exports out\IGPLib_x86.dll > out\IGPLib_x86.exports.txt
+          dumpbin /imports out\IGPLib_x86.dll > out\IGPLib_x86.imports.txt
+          dumpbin /headers out\InAppPurchaseComponentW8.dll > out\InAppPurchaseComponentW8.headers.txt
+          dumpbin /exports out\InAppPurchaseComponentW8.dll > out\InAppPurchaseComponentW8.exports.txt
+          dumpbin /imports out\InAppPurchaseComponentW8.dll > out\InAppPurchaseComponentW8.imports.txt
+          echo ===== SHA256 =====
+          type out\SHA256.txt
+          echo ===== IGPLib exports =====
+          type out\IGPLib_x86.exports.txt
+          echo ===== IAP exports =====
+          type out\InAppPurchaseComponentW8.exports.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rextreme-runtime-stubs-x86
+          path: out/**
+          if-no-files-found: error

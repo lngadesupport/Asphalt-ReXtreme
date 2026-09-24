@@ -1,0 +1,66 @@
+name: R17 Safe Boot Stub
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - campaign-edition-win32
+    paths:
+      - ".github/workflows/r17-safe-boot.yml"
+      - "runtime-stubs/igp_stub.asm"
+      - "runtime-stubs/IGPLib_x86.def"
+
+permissions:
+  contents: write
+
+jobs:
+  build-safe-x86:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build exact no-entry IGP stub
+        shell: powershell
+        run: |
+          $vswhere = Join-Path ([Environment]::GetEnvironmentVariable("ProgramFiles(x86)")) "Microsoft Visual Studio\Installer\vswhere.exe"
+          if (-not (Test-Path $vswhere)) { throw "vswhere.exe not found" }
+
+          $install = (& $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath).Trim()
+          if (-not $install) { throw "MSVC x86 toolchain not found" }
+
+          $vcvars = Join-Path $install "VC\Auxiliary\Build\vcvarsall.bat"
+          if (-not (Test-Path $vcvars)) { throw "vcvarsall.bat not found: $vcvars" }
+
+          New-Item -ItemType Directory -Force -Path ".\prebuilt\r17-safe" | Out-Null
+
+          $cmd = 'call "' + $vcvars + '" x86 >nul && ml.exe /nologo /c /coff /Fo"prebuilt\r17-safe\igp_stub.obj" "runtime-stubs\igp_stub.asm" && link.exe /nologo /dll /noentry /machine:x86 /def:"runtime-stubs\IGPLib_x86.def" /out:"prebuilt\r17-safe\IGPLib_x86.dll" "prebuilt\r17-safe\igp_stub.obj"'
+          & cmd.exe /d /s /c $cmd
+          if ($LASTEXITCODE -ne 0) { throw "safe stub build failed: $LASTEXITCODE" }
+
+          Remove-Item ".\prebuilt\r17-safe\igp_stub.obj" -ErrorAction SilentlyContinue
+
+      - name: Verify safe DLL
+        shell: powershell
+        run: |
+          $dll = ".\prebuilt\r17-safe\IGPLib_x86.dll"
+          if (-not (Test-Path $dll)) { throw "safe DLL missing" }
+          Get-FileHash -Algorithm SHA256 $dll
+          $size = (Get-Item $dll).Length
+          if ($size -gt 32768) { throw "safe stub unexpectedly large: $size bytes" }
+
+      - name: Publish safe prebuilt
+        shell: powershell
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f prebuilt/r17-safe/IGPLib_x86.dll
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) { exit 0 }
+          git commit -m "build: publish R17 safe boot stub [skip ci]"
+          git push origin "HEAD:$env:GITHUB_REF_NAME"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: R17-Safe-Boot-x86
+          path: prebuilt/r17-safe/IGPLib_x86.dll
+          if-no-files-found: error
