@@ -9,6 +9,7 @@
 #include "CampaignOnlinePolicy.h"
 #include "CampaignStartupService.h"
 #include "CampaignGarageFlow.h"
+#include "CampaignTutorialBuildConsumer.h"
 
 static void ZeroBytes(void* p, uint32_t count) {
     volatile unsigned char* q = (volatile unsigned char*)p;
@@ -161,180 +162,6 @@ int __cdecl CampaignFrontendLobbyReady(void) {
 }
 
 
-#define CAMPAIGN_AMS_CRAFT_UI_COMPLETION_RVA 0x006A4D00u
-
-/*
-  x86 bridge for the preserved frontend callback.
-
-  target callback ABI, proven by the Phase48 disassembly:
-      ECX = observer
-      push auxiliary
-      push unused
-      push status
-      call target
-      target returns with ret 0x0C
-
-  This helper itself is cdecl; its own three arguments are cleaned by the
-  C caller after this naked function returns.
-*/
-__declspec(naked) static void __cdecl CampaignCallCraftUiCompletion(
-    void* target,
-    void* observer,
-    int32_t status
-) {
-    __asm {
-        mov eax, dword ptr [esp+4]
-        mov ecx, dword ptr [esp+8]
-        mov edx, dword ptr [esp+0Ch]
-        push 0
-        push 0
-        push edx
-        call eax
-        ret
-    }
-}
-
-static void CampaignFrontendCompleteGarageBuild(void* gs_garage, int32_t status) {
-    HMODULE ams;
-    void* target;
-    void* observer;
-
-    if (!gs_garage) return;
-
-    ams = GetModuleHandleW(0);
-    if (!ams) return;
-
-    /*
-      Frontend-only adapter proven by the historical Phase48 map:
-      observer = GS_Garage + 0x298
-      status   = 0 on local success
-      callback = AMS + RVA 0x006A4D00
-
-      This callback is retained only for presentation/tutorial completion:
-      it clears the frontend pending state and releases the build spinner.
-      It is not a business/backend authority.
-    */
-    observer = (void*)((unsigned char*)gs_garage + 0x298);
-    target = (void*)((unsigned char*)ams + CAMPAIGN_AMS_CRAFT_UI_COMPLETION_RVA);
-    CampaignCallCraftUiCompletion(target, observer, status);
-}
-
-
-static WCHAR g_trace_local_app_data[1024];
-static WCHAR g_trace_family[256];
-static WCHAR g_trace_path[1400];
-
-typedef LONG (WINAPI *CampaignGetCurrentPackageFamilyNameFn)(
-    UINT32* packageFamilyNameLength,
-    PWSTR packageFamilyName
-);
-
-typedef struct CampaignGarageTraceRecord {
-    uint32_t magic;
-    uint32_t version;
-    uint32_t step;
-    uint32_t gs_garage;
-    uint32_t holder;
-    uint32_t selected;
-    int32_t car_id;
-    int32_t acquire_ok;
-    int32_t owned;
-    int32_t callback_status;
-    uint32_t revision;
-} CampaignGarageTraceRecord;
-
-#define CAMPAIGN_GARAGE_TRACE_MAGIC 0x47545852u /* RXTG */
-
-static void CampaignGarageTraceWrite(
-    uint32_t step,
-    void* gs_garage,
-    void* holder,
-    void* selected,
-    int32_t car_id,
-    int32_t acquire_ok,
-    int32_t owned,
-    int32_t callback_status,
-    uint32_t revision
-) {
-    HANDLE f;
-    DWORD n;
-    CampaignGarageTraceRecord r;
-    DWORD i;
-    UINT32 family_len = 256;
-    HMODULE kernel32;
-    CampaignGetCurrentPackageFamilyNameFn get_family;
-    const WCHAR packages[] = L"\\Packages\\";
-    const WCHAR suffix[] = L"\\LocalState\\CampaignEdition\\GarageTrace.bin";
-
-    kernel32 = GetModuleHandleW(L"kernel32.dll");
-    if (!kernel32) return;
-
-    get_family = (CampaignGetCurrentPackageFamilyNameFn)
-        GetProcAddress(kernel32, "GetCurrentPackageFamilyName");
-    if (!get_family) return;
-
-    if (!GetEnvironmentVariableW(
-            L"LOCALAPPDATA",
-            g_trace_local_app_data,
-            1024)) return;
-
-    if (get_family(&family_len, g_trace_family) != ERROR_SUCCESS) return;
-
-    for (
-        i = 0;
-        g_trace_local_app_data[i] && i < 1399;
-        ++i
-    ) {
-        g_trace_path[i] = g_trace_local_app_data[i];
-    }
-    if (i >= 1399) return;
-
-    {
-        DWORD j = 0;
-        while (packages[j] && i < 1399) {
-            g_trace_path[i++] = packages[j++];
-        }
-
-        j = 0;
-        while (g_trace_family[j] && i < 1399) {
-            g_trace_path[i++] = g_trace_family[j++];
-        }
-
-        j = 0;
-        while (suffix[j] && i < 1399) {
-            g_trace_path[i++] = suffix[j++];
-        }
-
-        g_trace_path[i] = 0;
-    }
-
-    r.magic = CAMPAIGN_GARAGE_TRACE_MAGIC;
-    r.version = 1;
-    r.step = step;
-    r.gs_garage = (uint32_t)(uintptr_t)gs_garage;
-    r.holder = (uint32_t)(uintptr_t)holder;
-    r.selected = (uint32_t)(uintptr_t)selected;
-    r.car_id = car_id;
-    r.acquire_ok = acquire_ok;
-    r.owned = owned;
-    r.callback_status = callback_status;
-    r.revision = revision;
-
-    f = CreateFileW(
-        g_trace_path,
-        GENERIC_WRITE,
-        FILE_SHARE_READ | FILE_SHARE_WRITE,
-        0,
-        OPEN_ALWAYS,
-        FILE_ATTRIBUTE_NORMAL,
-        0
-    );
-    if (f == INVALID_HANDLE_VALUE) return;
-    SetFilePointer(f, 0, 0, FILE_END);
-    WriteFile(f, &r, (DWORD)sizeof(r), &n, 0);
-    CloseHandle(f);
-}
-
 static int32_t CampaignFrontendSelectedCarIdDetailed(
     void* gs_garage,
     void** holder_out,
@@ -396,8 +223,10 @@ int __cdecl CampaignFrontendGarageBuild(void* gs_garage) {
       latched forever.
     */
     if (car_id <= 0) {
-        CampaignGarageFlowFail(car_id);
-        CampaignFrontendCompleteGarageBuild(gs_garage, 1);
+        CampaignTutorialBuildUiResult ui;
+        ZeroBytes(&ui, (uint32_t)sizeof(ui));
+        ui.size = (uint32_t)sizeof(ui);
+        CampaignTutorialBuildComplete(gs_garage, car_id, 0, 0, &ui);
         CampaignGarageTraceWrite(
             2, gs_garage, holder, selected, car_id, 0, 0, 1, 0
         );
@@ -416,8 +245,16 @@ int __cdecl CampaignFrontendGarageBuild(void* gs_garage) {
     );
 
     if (!acquire_ok || !out.owned) {
-        CampaignGarageFlowFail(car_id);
-        CampaignFrontendCompleteGarageBuild(gs_garage, 1);
+        CampaignTutorialBuildUiResult ui;
+        ZeroBytes(&ui, (uint32_t)sizeof(ui));
+        ui.size = (uint32_t)sizeof(ui);
+        CampaignTutorialBuildComplete(
+            gs_garage,
+            car_id,
+            0,
+            out.revision,
+            &ui
+        );
         CampaignGarageTraceWrite(
             4, gs_garage, holder, selected, car_id,
             acquire_ok, out.owned, 1, out.revision
@@ -427,13 +264,24 @@ int __cdecl CampaignFrontendGarageBuild(void* gs_garage) {
 
     CampaignGarageFlowCommit(car_id, out.revision);
 
-    CampaignFrontendCompleteGarageBuild(gs_garage, 0);
+    {
+        CampaignTutorialBuildUiResult ui;
+        ZeroBytes(&ui, (uint32_t)sizeof(ui));
+        ui.size = (uint32_t)sizeof(ui);
+        CampaignTutorialBuildComplete(
+            gs_garage,
+            car_id,
+            1,
+            out.revision,
+            &ui
+        );
+    }
+
     CampaignGarageTraceWrite(
         5, gs_garage, holder, selected, car_id,
         1, 1, 0, out.revision
     );
 
-    CampaignGarageFlowFrontendCompleted(car_id, out.revision);
     return 1;
 }
 
