@@ -7,12 +7,13 @@ import struct
 from pathlib import Path
 
 EXPECTED = {
-    "CampaignCatalog.dat":      (0x54435852, 1, True),
-    "CampaignEvents.dat":       (0x45435852, 1, True),
-    "CampaignObjectives.dat":   (0x4F435852, 1, True),
-    "CampaignUpgrades.dat":     (0x55435852, 2, True),
-    "CampaignUpgradeUiMap.dat": (0x4D555852, 1, True),
-    "CampaignStore.dat":        (0x53535852, 1, False),
+    # name: (magic, version, require_nonzero, required)
+    "CampaignCatalog.dat":      (0x54435852, 1, True,  True),
+    "CampaignEvents.dat":       (0x45435852, 1, True,  True),
+    "CampaignObjectives.dat":   (0x4F435852, 1, True,  False),
+    "CampaignUpgrades.dat":     (0x55435852, 2, True,  True),
+    "CampaignUpgradeUiMap.dat": (0x4D555852, 1, True,  True),
+    "CampaignStore.dat":        (0x53535852, 1, False, True),
 }
 
 def read_header(path: Path):
@@ -37,11 +38,13 @@ def main() -> int:
     pkg = ns.package.resolve()
     report = {"package": str(pkg), "files": {}, "blocking": []}
 
-    for name, (magic, version, require_nonzero) in EXPECTED.items():
+    for name, (magic, version, require_nonzero, required) in EXPECTED.items():
         p = pkg / name
         row = {"exists": p.is_file()}
         if not p.is_file():
-            report["blocking"].append(f"{name} missing")
+            row["required"] = required
+            if required:
+                report["blocking"].append(f"{name} missing")
             report["files"][name] = row
             continue
 
