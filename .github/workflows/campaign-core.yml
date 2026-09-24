@@ -213,6 +213,9 @@ jobs:
             PhotoFrameSelector = "0xC0DEB003"
             PhotoFrameBindingRegistry = "config/photo-frame-binding.verified.json"
             PhotoFrameBindingVerified = $false
+            PhotoToggleSelector = "0xC0DEB004"
+            PhotoToggleBindingRegistry = "config/photo-toggle-binding.verified.json"
+            PhotoToggleBindingVerified = $false
             PhotoBindingCatalog = "CampaignPhotoBindings.dat"
             PhotoFreeCameraRequiresCompleteBindings = $true
             PresentationSettings = "ReXtremePresentation.dat"
