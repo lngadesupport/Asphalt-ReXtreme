@@ -7,7 +7,7 @@ import struct
 from pathlib import Path
 
 EXPECTED = {
-    "CampaignCatalog.dat":      (0x43435852, 1, True),
+    "CampaignCatalog.dat":      (0x54435852, 1, True),
     "CampaignEvents.dat":       (0x45435852, 1, True),
     "CampaignObjectives.dat":   (0x4F435852, 1, True),
     "CampaignUpgrades.dat":     (0x55435852, 2, True),
