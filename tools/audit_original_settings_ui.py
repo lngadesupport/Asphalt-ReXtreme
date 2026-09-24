@@ -33,6 +33,7 @@ UI_KEYWORDS = (
     "fov", "replay", "photo", "hud", "pause", "resume", "back", "apply",
     "accept", "cancel", "restore", "default", "screen", "panel", "list",
     "tab", "label", "text", "menu", "item", "widget", "container",
+    "result", "results", "reward", "rewards", "star", "finish", "continue",
 )
 
 SCAN_SUFFIXES = {
