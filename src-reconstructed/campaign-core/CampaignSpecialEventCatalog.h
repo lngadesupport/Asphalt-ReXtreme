@@ -43,6 +43,10 @@ int CampaignSpecialEventDateAvailable(
     const CampaignSpecialEventDefinition* def,
     uint32_t day_key
 );
+uint32_t CampaignSpecialEventPeriodKey(
+    const CampaignSpecialEventDefinition* def,
+    uint32_t day_key
+);
 
 #ifdef __cplusplus
 }
