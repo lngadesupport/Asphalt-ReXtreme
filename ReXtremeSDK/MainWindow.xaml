@@ -1,0 +1,177 @@
+<Window x:Class="ReXtremeSDK.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ReXtreme SDK" Width="1500" Height="900" MinWidth="1100" MinHeight="700">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="170"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="{StaticResource EditorPanel}" BorderBrush="{StaticResource EditorBorder}" BorderThickness="0,0,0,1">
+            <DockPanel Margin="6">
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                    <Button Content="Novo projeto" Click="NewProject_Click"/>
+                    <Button Content="Abrir projeto" Click="OpenProject_Click"/>
+                    <Button Content="Validar" Click="Validate_Click"/>
+                    <Button Content="Build .rxmod" Click="Build_Click"/>
+                    <Separator Margin="8,0"/>
+                    <Button Content="Importar modelo 3D" Click="ImportModel_Click"/>
+                    <Button Content="Importar música" Click="ImportMusic_Click"/>
+                </StackPanel>
+                <TextBlock x:Name="ProjectPathText" DockPanel.Dock="Right" VerticalAlignment="Center"
+                           Foreground="{StaticResource EditorMuted}" Text="Nenhum projeto aberto"/>
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="250"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="320"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="{StaticResource EditorPanel}" Padding="8">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="PROJETO / ASSETS" FontWeight="Bold" Margin="4,2,4,8"/>
+                    <TreeView x:Name="ProjectTree" Background="Transparent" Foreground="{StaticResource EditorText}"/>
+                </DockPanel>
+            </Border>
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="{StaticResource EditorBorder}"/>
+
+            <TabControl x:Name="EditorTabs" Grid.Column="2" Background="{StaticResource EditorBackground}">
+                <TabItem Header="Viewport">
+                    <Grid Background="#111317">
+                        <Viewport3D x:Name="ModelViewport" ClipToBounds="True"
+                                    MouseDown="Viewport_MouseDown" MouseMove="Viewport_MouseMove" MouseUp="Viewport_MouseUp">
+                            <Viewport3D.Camera>
+                                <PerspectiveCamera Position="0,1.8,6" LookDirection="0,-0.3,-6" UpDirection="0,1,0" FieldOfView="55"/>
+                            </Viewport3D.Camera>
+                            <ModelVisual3D>
+                                <ModelVisual3D.Content><AmbientLight Color="#707070"/></ModelVisual3D.Content>
+                            </ModelVisual3D>
+                            <ModelVisual3D>
+                                <ModelVisual3D.Content><DirectionalLight Color="White" Direction="-0.5,-1,-0.8"/></ModelVisual3D.Content>
+                            </ModelVisual3D>
+                            <ModelVisual3D x:Name="PreviewVisual"/>
+                        </Viewport3D>
+                        <Border VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="12" Padding="8,5" Background="#AA000000">
+                            <TextBlock x:Name="ViewportHint" Text="Viewport 3D — importe um OBJ para o preview inicial" Foreground="White"/>
+                        </Border>
+                    </Grid>
+                </TabItem>
+
+                <TabItem Header="Veículo">
+                    <ScrollViewer Background="{StaticResource EditorBackground}">
+                        <StackPanel Margin="20" MaxWidth="800" HorizontalAlignment="Left">
+                            <TextBlock Text="VEHICLE EDITOR" FontSize="22" FontWeight="Bold" Margin="0,0,0,16"/>
+                            <TextBlock Text="ID namespaced"/>
+                            <TextBox x:Name="VehicleIdBox" Text="com.author.vehicle.custom" Margin="0,4,0,10" Padding="6"/>
+                            <TextBlock Text="Nome"/>
+                            <TextBox x:Name="VehicleNameBox" Text="Custom Vehicle" Margin="0,4,0,10" Padding="6"/>
+                            <TextBlock Text="Categoria original"/>
+                            <ComboBox x:Name="VehicleCategoryBox" Margin="0,4,0,10" SelectedIndex="0">
+                                <ComboBoxItem Content="rally"/>
+                                <ComboBoxItem Content="monster-truck"/>
+                                <ComboBoxItem Content="buggy"/>
+                                <ComboBoxItem Content="suv"/>
+                                <ComboBoxItem Content="truck"/>
+                                <ComboBoxItem Content="muscle"/>
+                                <ComboBoxItem Content="pickup"/>
+                            </ComboBox>
+                            <TextBlock Text="Perfil original de física"/>
+                            <TextBox x:Name="VehicleBaseProfileBox" Text="original.profile.pending-extraction" Margin="0,4,0,16" Padding="6"/>
+
+                            <TextBlock Text="DESEMPENHO — barras do jogo" FontWeight="Bold" Margin="0,0,0,8"/>
+                            <TextBlock Text="Velocidade"/>
+                            <Slider x:Name="SpeedSlider" Minimum="0" Maximum="100" Value="50"/>
+                            <TextBlock Text="Aceleração" Margin="0,8,0,0"/>
+                            <Slider x:Name="AccelerationSlider" Minimum="0" Maximum="100" Value="50"/>
+                            <TextBlock Text="Handling" Margin="0,8,0,0"/>
+                            <Slider x:Name="HandlingSlider" Minimum="0" Maximum="100" Value="50"/>
+                            <TextBlock Text="Nitro" Margin="0,8,0,0"/>
+                            <Slider x:Name="NitroSlider" Minimum="0" Maximum="100" Value="50"/>
+                            <TextBlock Text="As barras são a interface. A física real é derivada do perfil original." Foreground="{StaticResource EditorMuted}" Margin="0,8,0,14"/>
+                            <Button Content="Criar definição de veículo" Width="220" HorizontalAlignment="Left" Click="CreateVehicle_Click"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <TabItem Header="Evento / Carreira">
+                    <StackPanel Margin="20" Background="{StaticResource EditorBackground}">
+                        <TextBlock Text="EVENT / CAREER CONTENT" FontSize="22" FontWeight="Bold"/>
+                        <WrapPanel Margin="0,16,0,0">
+                            <Button Content="Criar evento" Click="CreateEvent_Click"/>
+                            <Button Content="Criar temporada" Click="CreateSeason_Click"/>
+                        </WrapPanel>
+                        <TextBlock Margin="0,16,0,0" Foreground="{StaticResource EditorMuted}" TextWrapping="Wrap"
+                                   Text="Eventos podem usar pistas originais ou customizadas. Temporadas são data-driven e poderão adicionar corridas e branches."/>
+                    </StackPanel>
+                </TabItem>
+
+                <TabItem Header="Race HUD">
+                    <Grid Background="{StaticResource EditorBackground}" Margin="14">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                        <DockPanel>
+                            <TextBlock Text="RACE UI / HUD EDITOR" FontSize="22" FontWeight="Bold"/>
+                            <Button DockPanel.Dock="Right" Content="Criar layout HUD" Click="CreateHud_Click"/>
+                        </DockPanel>
+                        <Canvas Grid.Row="1" x:Name="HudCanvas" Background="#101419" Margin="0,14,0,0">
+                            <Border Canvas.Left="24" Canvas.Top="24" Padding="10,6" Background="#55303030" BorderBrush="White" BorderThickness="1">
+                                <TextBlock Text="POSIÇÃO 1/8" Foreground="White" FontWeight="Bold"/>
+                            </Border>
+                            <Border Canvas.Right="24" Canvas.Bottom="24" Padding="12,8" Background="#55303030" BorderBrush="White" BorderThickness="1">
+                                <TextBlock Text="178 km/h" Foreground="White" FontSize="22" FontWeight="Bold"/>
+                            </Border>
+                            <Border Canvas.Left="270" Canvas.Bottom="24" Padding="12,8" Background="#55303030" BorderBrush="White" BorderThickness="1">
+                                <TextBlock Text="NITRO ███████░░" Foreground="White" FontWeight="Bold"/>
+                            </Border>
+                        </Canvas>
+                    </Grid>
+                </TabItem>
+
+                <TabItem Header="Música">
+                    <StackPanel Margin="20" Background="{StaticResource EditorBackground}">
+                        <TextBlock Text="MUSIC LIBRARY" FontSize="22" FontWeight="Bold"/>
+                        <Button Content="Importar faixa" Width="160" HorizontalAlignment="Left" Margin="0,14,0,10" Click="ImportMusic_Click"/>
+                        <ListBox x:Name="MusicList" Height="360" Background="{StaticResource EditorPanel}" Foreground="{StaticResource EditorText}"/>
+                        <TextBlock Foreground="{StaticResource EditorMuted}" Margin="0,8,0,0"
+                                   Text="Entrada: WAV, FLAC, OGG, MP3, AAC e M4A. Conversão para o runtime será ligada ao pipeline final."/>
+                    </StackPanel>
+                </TabItem>
+            </TabControl>
+
+            <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" Background="{StaticResource EditorBorder}"/>
+            <Border Grid.Column="4" Background="{StaticResource EditorPanel}" Padding="10">
+                <StackPanel>
+                    <TextBlock Text="INSPECTOR" FontWeight="Bold" Margin="0,0,0,10"/>
+                    <TextBlock Text="Projeto" Foreground="{StaticResource EditorMuted}"/>
+                    <TextBlock x:Name="InspectorProjectName" Text="—" Margin="0,0,0,8"/>
+                    <TextBlock Text="ID" Foreground="{StaticResource EditorMuted}"/>
+                    <TextBlock x:Name="InspectorProjectId" Text="—" Margin="0,0,0,8"/>
+                    <TextBlock Text="Tipo" Foreground="{StaticResource EditorMuted}"/>
+                    <TextBlock x:Name="InspectorProjectType" Text="—" Margin="0,0,0,14"/>
+                    <Separator/>
+                    <TextBlock Text="Arquitetura" FontWeight="Bold" Margin="0,12,0,4"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="{StaticResource EditorMuted}"
+                               Text="ReXtreme SDK é um executável separado. Ele gera .rxmod; o jogo contém apenas o Mod Runtime."/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2" Background="#0D0F12" BorderBrush="{StaticResource EditorBorder}" BorderThickness="0,1,0,0" Padding="8">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Text="OUTPUT / VALIDATION" FontWeight="Bold" Margin="0,0,0,5"/>
+                <TextBox x:Name="OutputBox" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                         Background="#0D0F12" Foreground="#D4D8DE" BorderThickness="0" FontFamily="Consolas"/>
+            </DockPanel>
+        </Border>
+        <Border Grid.Row="3" Background="{StaticResource EditorPanel}" Padding="6,3">
+            <TextBlock x:Name="StatusText" Text="ReXtreme SDK standalone foundation"/>
+        </Border>
+    </Grid>
+</Window>
