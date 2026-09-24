@@ -1874,6 +1874,25 @@ int __cdecl CampaignBeginRaceFromGui(void* game_mode_gui) {
     return result ? (int)session_id : 0;
 }
 
+int __cdecl CampaignReplayFrameFromGui(void* game_mode_gui) {
+    CampaignPresentationDiagnostics diagnostics;
+
+    if (!game_mode_gui) return 0;
+
+    /*
+      The lifecycle hook is verified, but the player transform chain is not.
+      Never guess offsets here. The future verified adapter will resolve the
+      original player/vehicle transform, build CampaignReplaySample and call
+      CampaignReplayRecord().
+    */
+    ZeroBytes(&diagnostics, (uint32_t)sizeof(diagnostics));
+    diagnostics.size = (uint32_t)sizeof(diagnostics);
+    if (!CampaignPresentationGetDiagnostics(&diagnostics)) return 0;
+    if (!diagnostics.replay_recording) return 0;
+
+    return 0;
+}
+
 int __cdecl CampaignFinishRaceFromGui(void* game_mode_gui) {
     CampaignRaceMetrics metrics;
     int finish_status;
