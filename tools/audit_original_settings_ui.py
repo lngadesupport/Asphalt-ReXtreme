@@ -34,6 +34,7 @@ UI_KEYWORDS = (
     "accept", "cancel", "restore", "default", "screen", "panel", "list",
     "tab", "label", "text", "menu", "item", "widget", "container",
     "result", "results", "reward", "rewards", "star", "finish", "continue",
+    "profile", "statistics", "stats", "record", "records", "career stats",
 )
 
 SCAN_SUFFIXES = {
