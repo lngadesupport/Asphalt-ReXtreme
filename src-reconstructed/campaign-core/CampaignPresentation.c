@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "CampaignPresentation.h"
 #include "CampaignPresentationCatalog.h"
+#include "CampaignPresentationBindings.h"
 
 #define RXPS_MAGIC 0x53505852u /* RXPS */
 #define RXRP_MAGIC 0x50525852u /* RXRP */
@@ -249,6 +250,45 @@ static int CapabilityAllowsValue(const char* id, int32_t value) {
     return 1;
 }
 
+static int ApplyLegacyPresentationValue(const char* id, int32_t value) {
+    const CampaignPresentationCapability* capability;
+
+    capability = CampaignPresentationCatalogFind(id);
+
+    if (value == 0) {
+        /*
+          No verified capability means "leave original Asphalt Xtreme behavior
+          untouched". If a capability exists, resetting requires a real binding
+          so the proven original value can be restored.
+        */
+        if (!capability) return 1;
+        return CampaignPresentationBindingsApply(
+            id,
+            capability->original_value
+        );
+    }
+
+    if (!capability) return 0;
+    return CampaignPresentationBindingsApply(id, value);
+}
+
+static int ApplyLegacyPresentationBindings(
+    const CampaignPresentationSettings* settings
+) {
+    if (!settings) return 0;
+    if (!ApplyLegacyPresentationValue("fov", settings->fov_x100)) return 0;
+    if (!ApplyLegacyPresentationValue(
+            "camera_distance",
+            settings->camera_distance_x1000)) return 0;
+    if (!ApplyLegacyPresentationValue(
+            "camera_height",
+            settings->camera_height_x1000)) return 0;
+    if (!ApplyLegacyPresentationValue(
+            "camera_smoothing",
+            settings->camera_smoothing_x1000)) return 0;
+    return 1;
+}
+
 static int ValidateSettings(const CampaignPresentationSettings* settings) {
     if (!settings) return 0;
     if (settings->size != (uint32_t)sizeof(*settings)) return 0;
@@ -387,6 +427,9 @@ int __cdecl CampaignPresentationLoadSettings(void) {
     int result;
     PresentationLock();
     result = LoadSettingsUnlocked();
+    if (result) {
+        result = ApplyLegacyPresentationBindings(&g_settings);
+    }
     PresentationUnlock();
     return result;
 }
@@ -420,7 +463,8 @@ int __cdecl CampaignPresentationSetSettings(const CampaignPresentationSettings* 
     candidate.revision = g_settings.revision;
     candidate.checksum = SettingsChecksum(&candidate);
 
-    if (!ValidateSettings(&candidate)) {
+    if (!ValidateSettings(&candidate) ||
+        !ApplyLegacyPresentationBindings(&candidate)) {
         PresentationUnlock();
         return 0;
     }
@@ -431,11 +475,19 @@ int __cdecl CampaignPresentationSetSettings(const CampaignPresentationSettings* 
 }
 
 int __cdecl CampaignPresentationResetSettings(void) {
+    CampaignPresentationSettings defaults;
+    int result;
+
+    InitSettings(&defaults);
+
     PresentationLock();
-    InitSettings(&g_settings);
-    InterlockedExchange(&g_settings_loaded, 1);
+    result = ApplyLegacyPresentationBindings(&defaults);
+    if (result) {
+        CopyBytes(&g_settings, &defaults, (uint32_t)sizeof(g_settings));
+        InterlockedExchange(&g_settings_loaded, 1);
+    }
     PresentationUnlock();
-    return 1;
+    return result;
 }
 
 static void ReplayReleaseUnlocked(void) {
@@ -1421,6 +1473,7 @@ int __cdecl CampaignPresentationGetDiagnostics(CampaignPresentationDiagnostics* 
     out->size = (uint32_t)sizeof(*out);
     out->settings_revision = g_settings.revision;
     out->verified_capability_count = CampaignPresentationCatalogCount();
+    out->verified_binding_count = CampaignPresentationBindingsCount();
     out->replay_recording = g_replay_active;
     out->replay_sample_count = g_replay_count;
     out->replay_marker_count = g_replay_marker_count;
