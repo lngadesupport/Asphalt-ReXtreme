@@ -174,6 +174,8 @@ static WCHAR g_config_path[1024];
 static WCHAR g_legacy_campaign_dir[1024];
 static WCHAR g_legacy_state_path[1024];
 static WCHAR g_legacy_backup_path[1024];
+static WCHAR g_executable_dir[1024];
+static WCHAR g_user_dir[1024];
 static volatile LONG g_portable_save;
 static CampaignRaceSession g_race_session_buffer;
 
@@ -325,12 +327,10 @@ static int ImportLegacyPackageSaveIfNeeded(void) {
 }
 
 static int BuildPaths(void) {
-    WCHAR exe_dir[1024];
-    WCHAR user_dir[1024];
     int portable_requested = 1;
 
-    ZeroBytes(exe_dir, (uint32_t)sizeof(exe_dir));
-    ZeroBytes(user_dir, (uint32_t)sizeof(user_dir));
+    ZeroBytes(g_executable_dir, (uint32_t)sizeof(g_executable_dir));
+    ZeroBytes(g_user_dir, (uint32_t)sizeof(g_user_dir));
     ZeroBytes(g_campaign_dir, (uint32_t)sizeof(g_campaign_dir));
     ZeroBytes(g_state_path, (uint32_t)sizeof(g_state_path));
     ZeroBytes(g_tmp_path, (uint32_t)sizeof(g_tmp_path));
@@ -340,20 +340,20 @@ static int BuildPaths(void) {
     ZeroBytes(g_race_session_consuming_path, (uint32_t)sizeof(g_race_session_consuming_path));
     ZeroBytes(g_config_path, (uint32_t)sizeof(g_config_path));
 
-    if (!BuildExecutableDirectory(exe_dir, 1024)) return 0;
+    if (!BuildExecutableDirectory(g_executable_dir, 1024)) return 0;
 
-    if (!WideAppend(g_config_path, 1024, exe_dir)) return 0;
+    if (!WideAppend(g_config_path, 1024, g_executable_dir)) return 0;
     if (!WideAppend(g_config_path, 1024, L"ReXtreme.ini")) return 0;
     portable_requested = GetPrivateProfileIntW(L"Save", L"PortableSave", 1, g_config_path) ? 1 : 0;
 
     BuildLegacyPackagePaths();
 
     if (portable_requested) {
-        if (!WideAppend(user_dir, 1024, exe_dir)) return 0;
-        if (!WideAppend(user_dir, 1024, L"UserData")) return 0;
+        if (!WideAppend(g_user_dir, 1024, g_executable_dir)) return 0;
+        if (!WideAppend(g_user_dir, 1024, L"UserData")) return 0;
 
-        if (EnsureDirectory(user_dir)) {
-            if (!WideAppend(g_campaign_dir, 1024, user_dir)) return 0;
+        if (EnsureDirectory(g_user_dir)) {
+            if (!WideAppend(g_campaign_dir, 1024, g_user_dir)) return 0;
             if (!WideAppend(g_campaign_dir, 1024, L"\\CampaignEdition")) return 0;
             if (EnsureDirectory(g_campaign_dir)) {
                 InterlockedExchange(&g_portable_save, 1);
