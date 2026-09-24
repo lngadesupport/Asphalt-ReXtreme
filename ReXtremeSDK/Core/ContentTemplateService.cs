@@ -6,14 +6,16 @@ public static class ContentTemplateService
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
-    public static string CreateVehicle(string projectRoot, string id, string name, string category, string baseProfile,
+    public static string CreateVehicle(string projectRoot, string id, string name, string archetype,
+        string performanceClass, string baseProfile,
         double speed, double acceleration, double handling, double nitro)
     {
         var vehicle = new RxVehicle
         {
             Id = id,
             Name = name,
-            Category = category,
+            Archetype = archetype,
+            PerformanceClass = performanceClass,
             BaseOriginalProfile = baseProfile,
             PhysicsMode = "clone-profile",
             Performance = new RxPerformanceBars
