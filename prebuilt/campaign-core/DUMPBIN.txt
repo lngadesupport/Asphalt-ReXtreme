@@ -1,4 +1,4 @@
-Microsoft (R) COFF/PE Dumper Version 14.51.36257.0
+Microsoft (R) COFF/PE Dumper Version 14.51.36256.0
 Copyright (C) Microsoft Corporation.  All rights reserved.
 
 
@@ -11,7 +11,7 @@ File Type: DLL
 FILE HEADER VALUES
              14C machine (x86)
                4 number of sections
-        6AB557FB time date stamp Thu Sep 24 17:03:55 2026
+        6AB5582F time date stamp Thu Sep 24 17:04:47 2026
                0 file pointer to symbol table
                0 number of symbols
               E0 size of optional header
@@ -54,7 +54,7 @@ OPTIONAL HEADER VALUES
                0 [       0] RVA [size] of Resource Directory
                0 [       0] RVA [size] of Exception Directory
                0 [       0] RVA [size] of Certificates Directory
-          164000 [    1C30] RVA [size] of Base Relocation Directory
+          164000 [    1C38] RVA [size] of Base Relocation Directory
            18D50 [      1C] RVA [size] of Debug Directory
                0 [       0] RVA [size] of Architecture Directory
                0 [       0] RVA [size] of Global Pointer Directory
@@ -69,8 +69,8 @@ OPTIONAL HEADER VALUES
 
 SECTION HEADER #1
    .text name
-   16EE7 virtual size
-    1000 virtual address (10001000 to 10017EE6)
+   16F07 virtual size
+    1000 virtual address (10001000 to 10017F06)
    17000 size of raw data
      400 file pointer to raw data (00000400 to 000173FF)
        0 file pointer to relocation table
@@ -99,7 +99,7 @@ SECTION HEADER #2
 
         Time Type        Size      RVA  Pointer
     -------- ------- -------- -------- --------
-    6AB557FB coffgrp       DC 000190DC    184DC
+    6AB5582F coffgrp       DC 000190DC    184DC
 
   Section contains the following imports:
 
@@ -152,8 +152,8 @@ C0000040 flags
 
 SECTION HEADER #4
   .reloc name
-    1C30 virtual size
-  164000 virtual address (10164000 to 10165C2F)
+    1C38 virtual size
+  164000 virtual address (10164000 to 10165C37)
     1E00 size of raw data
    18A00 file pointer to raw data (00018A00 to 0001A7FF)
        0 file pointer to relocation table
