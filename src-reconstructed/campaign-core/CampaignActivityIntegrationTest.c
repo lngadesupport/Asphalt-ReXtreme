@@ -6,6 +6,7 @@
 #include "CampaignSpecialEventCatalog.h"
 #include "CampaignChampionshipCatalog.h"
 #include "CampaignActivityContext.h"
+#include "CampaignSeasonCatalog.h"
 
 typedef struct EventCatalogFile {
     uint32_t magic,version,count,reserved;
@@ -24,6 +25,12 @@ typedef struct ChampionshipCatalogFile {
     CampaignChampionshipDefinition entries[CAMPAIGN_CHAMPIONSHIP_MAX];
     uint32_t checksum;
 } ChampionshipCatalogFile;
+
+typedef struct SeasonCatalogFile {
+    uint32_t magic,version,count,reserved;
+    CampaignSeasonDefinition entries[CAMPAIGN_SEASON_MAX];
+    uint32_t checksum;
+} SeasonCatalogFile;
 
 static uint32_t Hash(const void* p,uint32_t n){
     const unsigned char* s=(const unsigned char*)p;
@@ -64,6 +71,7 @@ static void Cleanup(void){
         L"CampaignEvents.dat",
         L"CampaignSpecialEvents.dat",
         L"CampaignChampionships.dat",
+        L"CampaignSeasons.dat",
         L"UserData\\CampaignEdition\\CampaignSave.dat",
         L"UserData\\CampaignEdition\\CampaignSave.tmp",
         L"UserData\\CampaignEdition\\CampaignSave.bak",
@@ -112,6 +120,17 @@ static int WriteChampionship(void){
     f.checksum=Hash(&f,(uint32_t)sizeof(f)-(uint32_t)sizeof(uint32_t));
     return WriteBlob(L"CampaignChampionships.dat",&f,(DWORD)sizeof(f));
 }
+static int WriteSeason(void){
+    SeasonCatalogFile f;uint32_t i;unsigned char* q=(unsigned char*)&f;
+    CampaignSeasonDefinition* d;
+    for(i=0;i<(uint32_t)sizeof(f);++i)q[i]=0;
+    f.magic=CAMPAIGN_SEASON_MAGIC;f.version=CAMPAIGN_SEASON_VERSION;f.count=1;
+    d=&f.entries[0];d->season_id=3001;d->event_count=2;
+    d->event_ids[0]=1001;d->event_ids[1]=1002;
+    f.checksum=Hash(&f,(uint32_t)sizeof(f)-(uint32_t)sizeof(uint32_t));
+    return WriteBlob(L"CampaignSeasons.dat",&f,(DWORD)sizeof(f));
+}
+
 static int Exec(uint32_t op,int32_t a,int32_t b,int32_t c0,int32_t d,CampaignCommand* out){
     CampaignCommand cmd;
     ZeroMemory(&cmd,sizeof(cmd));cmd.size=sizeof(cmd);cmd.op=op;
@@ -137,6 +156,7 @@ int main(void){
     if(!WriteEvents())return 1;
     if(!WriteSpecial())return 2;
     if(!WriteChampionship())return 3;
+    if(!WriteSeason())return 44;
 
     /* Stage 2 is sequentially locked before stage 1. */
     if(Exec(CAMPAIGN_OP_BEGIN_SPECIAL_EVENT_STAGE,5001,1,0,0,&cmd))return 4;
@@ -150,6 +170,8 @@ int main(void){
     if(cmd.out1!=0)return 9;
     if(!Exec(CAMPAIGN_OP_CHAMPIONSHIP_STATUS,7001,0,0,0,&cmd))return 10;
     if(cmd.out0!=0||cmd.out1!=0)return 11;
+    if(!Exec(CAMPAIGN_OP_SEASON_STATUS,3001,0,0,0,&cmd))return 45;
+    if(cmd.out0!=1||cmd.out1!=2||!(cmd.out2&2))return 46;
 
     /* Explicit Special Event stage progresses only Special Event state. */
     if(!Exec(CAMPAIGN_OP_BEGIN_SPECIAL_EVENT_STAGE,5001,0,0,0,&cmd))return 12;
@@ -190,12 +212,22 @@ int main(void){
     if(!Finish((uint32_t)cmd.out0,1))return 37;
     if(!Exec(CAMPAIGN_OP_CHAMPIONSHIP_ROUND,7001,1,0,0,&cmd))return 38;
     if(cmd.out2&0x10000)return 39;
+    if(!Exec(CAMPAIGN_OP_SEASON_STATUS,3001,0,0,0,&cmd))return 47;
+    if(cmd.out0!=1)return 48;
 
-    /* Explicit round 2 completes the Championship. */
+    /* Explicit round 2 completes the Championship, still without Career progress. */
     if(!Exec(CAMPAIGN_OP_BEGIN_CHAMPIONSHIP_ROUND,7001,1,0,0,&cmd))return 40;
     if(!Finish((uint32_t)cmd.out0,3))return 41;
     if(!Exec(CAMPAIGN_OP_CHAMPIONSHIP_STATUS,7001,0,0,0,&cmd))return 42;
     if(cmd.out0!=16||cmd.out1!=2||!(cmd.out2&0x10000))return 43;
+    if(!Exec(CAMPAIGN_OP_SEASON_STATUS,3001,0,0,0,&cmd))return 49;
+    if(cmd.out0!=1)return 50;
+
+    /* Only an actual Career run of event 1002 completes the Season. */
+    if(!Exec(CAMPAIGN_OP_BEGIN_EVENT_RACE,1002,0,0,0,&cmd))return 51;
+    if(!Finish((uint32_t)cmd.out0,1))return 52;
+    if(!Exec(CAMPAIGN_OP_SEASON_STATUS,3001,0,0,0,&cmd))return 53;
+    if(cmd.out0!=2||cmd.out1!=2||!(cmd.out2&1))return 54;
 
     Cleanup();
     return 0;
