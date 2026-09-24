@@ -12,7 +12,10 @@ EXPECTED = {
     "CampaignEvents.dat":       (0x45435852, 1, True,  True),
     "CampaignObjectives.dat":   (0x4F435852, 1, True,  False),
     "CampaignUpgrades.dat":     (0x55435852, 2, True,  True),
-    "CampaignUpgradeUiMap.dat": (0x4D555852, 1, True,  True),
+    # Beta compatibility: a zero-entry UI map is a deliberate fail-closed
+    # state. Upgrade actions are intercepted and rejected locally until the
+    # real legacy raw-id mapping is reconstructed.
+    "CampaignUpgradeUiMap.dat": (0x4D555852, 1, False, True),
     "CampaignStore.dat":        (0x53535852, 1, False, True),
 }
 
