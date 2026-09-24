@@ -92,6 +92,7 @@ class CampaignRebuilderTests(unittest.TestCase):
                 {"catalog": "CampaignPresentationBindings.dat", "report": "CampaignPresentationBindings.report.json", "count": 0, "safe_empty_catalog": True},
                 {"catalog": "CampaignPhotoBindings.dat", "report": "CampaignPhotoBindings.report.json", "count": 0, "free_camera_ready": False, "safe_empty_catalog": True},
                 {"catalog": "CampaignReplayBindings.dat", "report": "CampaignReplayBindings.report.json", "count": 0, "recording_ready": False, "safe_empty_catalog": True},
+                {"catalog": "CampaignOriginalUiBindings.dat", "report": "CampaignOriginalUiBindings.report.json", "count": 0, "safe_empty_catalog": True, "original_ui_only": True, "custom_ui_assets_allowed": False, "fallback_if_unmapped": "feature-hidden"},
                 ["UserData/CampaignEdition/", "UserData/Replays/", "UserData/Screenshots/"],
             )
             data = json.loads(status_path.read_text(encoding="utf-8"))
@@ -103,6 +104,10 @@ class CampaignRebuilderTests(unittest.TestCase):
             self.assertFalse(data["photo_free_camera_ready"])
             self.assertEqual(data["replay_binding_catalog"]["count"], 0)
             self.assertFalse(data["replay_recording_ready"])
+            self.assertTrue(data["original_ui_only"])
+            self.assertFalse(data["custom_in_game_ui_assets_allowed"])
+            self.assertEqual(data["unmapped_ui_feature_behavior"], "hidden")
+            self.assertEqual(data["original_ui_binding_catalog"]["count"], 0)
 
 
 if __name__ == "__main__":
