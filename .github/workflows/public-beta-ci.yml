@@ -27,16 +27,22 @@ jobs:
       - name: Parse public beta PowerShell
         shell: pwsh
         run: |
-          $tokens = $null
-          $errors = $null
-          [void][System.Management.Automation.Language.Parser]::ParseFile(
-            (Resolve-Path "tools/public_beta.ps1"),
-            [ref]$tokens,
-            [ref]$errors
-          )
-          if ($errors.Count -gt 0) {
-            $errors | Format-List
-            exit 1
+          foreach ($script in @(
+            "tools/public_beta.ps1",
+            "tools/capture_beta_runtime.ps1"
+          )) {
+            $tokens = $null
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $script),
+              [ref]$tokens,
+              [ref]$errors
+            )
+            if ($errors.Count -gt 0) {
+              Write-Host "Parse errors in $script"
+              $errors | Format-List
+              exit 1
+            }
           }
 
       - name: Compile Campaign Python tools
