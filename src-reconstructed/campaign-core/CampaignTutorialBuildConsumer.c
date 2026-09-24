@@ -19,17 +19,27 @@ int __cdecl CampaignTutorialBuildComplete(
     CampaignTutorialBuildUiResult* out
 ) {
     unsigned char* gs = (unsigned char*)gs_garage;
+    unsigned char* gbbw;
     void* widget;
     void* pending_object;
     void* pending_control;
+    void* build_signal_object = 0;
+    void* build_signal_control = 0;
 
     if (!gs_garage) return 0;
 
     /*
-      These are frontend presentation fields identified by the historical
-      build/pending maps. Campaign Edition owns the business state; these
-      pointers are only local UI latches that must be released after a local
-      transaction finishes.
+      Frontend-only state identified by the Phase71-79 garage maps.
+
+      GS_Garage:
+        +0x35C -> GarageBottomBarWidget
+        +0x3AC/+0x3B0 -> local pending build presentation state
+
+      GarageBottomBarWidget:
+        +0x44/+0x48 -> build-button signal/shared state
+
+      Campaign Edition does not complete a fake request. It directly releases
+      the presentation latches after the local transaction has committed.
     */
     pending_object = *(void**)(gs + 0x3AC);
     pending_control = *(void**)(gs + 0x3B0);
@@ -37,6 +47,21 @@ int __cdecl CampaignTutorialBuildComplete(
 
     *(void**)(gs + 0x3AC) = 0;
     *(void**)(gs + 0x3B0) = 0;
+
+    gbbw = (unsigned char*)widget;
+    if (gbbw) {
+        build_signal_object = *(void**)(gbbw + 0x44);
+        build_signal_control = *(void**)(gbbw + 0x48);
+
+        /*
+          Do not call the legacy signal/callback chain.  Detach the local
+          frontend latch from the completed MONTAR action instead.
+          Any referenced legacy connection may leak until this widget is
+          destroyed, but it can no longer keep the operation pending.
+        */
+        *(void**)(gbbw + 0x44) = 0;
+        *(void**)(gbbw + 0x48) = 0;
+    }
 
     if (out && out->size >= (uint32_t)sizeof(*out)) {
         ZeroBytes(out, (uint32_t)sizeof(*out));
