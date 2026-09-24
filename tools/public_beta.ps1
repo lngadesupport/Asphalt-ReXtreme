@@ -238,20 +238,20 @@ function Build-Beta {
     $ghostBackup = Repair-GhostRegistration
     Assert-NoConflictingRegistration
 
-    $phase2 = Join-Path $Root "tools\build_ams_phase2.ps1"
+    $cleanBase = Join-Path $Root "tools\build_clean_ams_base_v1.ps1"
     $phase5 = Join-Path $Root "tools\build_package_phase5.ps1"
     $finalizer = Join-Path $Root "FINALIZE-CAMPAIGN-EDITION.cmd"
-    foreach ($required in @($phase2,$phase5,$finalizer)) {
+    foreach ($required in @($cleanBase,$phase5,$finalizer)) {
         if (-not (Test-Path -LiteralPath $required)) {
             throw "Arquivo de build ausente: $required"
         }
     }
 
-    Step "Construindo AMS Phase 2 verificado..."
-    & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $phase2 -SourceDir $Root
-    if ($LASTEXITCODE -ne 0) { throw "AMS Phase 2 falhou: $LASTEXITCODE" }
+    Step "Construindo Clean AMS Base V1 a partir do pristine..."
+    & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $cleanBase -ProjectRoot $Root
+    if ($LASTEXITCODE -ne 0) { throw "Clean AMS Base V1 falhou: $LASTEXITCODE" }
 
-    Step "Construindo/registrando Package Phase 5..."
+    Step "Construindo/registrando Package Phase 5 limpo..."
     & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $phase5 -SourceDir $Root
     if ($LASTEXITCODE -ne 0) { throw "Package Phase 5 falhou: $LASTEXITCODE" }
 
@@ -379,7 +379,7 @@ function Update-Beta {
         "docs/PUBLIC_BETA_0.1.0.md",
         "docs/CAMPAIGN-PROFILE-ADAPTER.md",
         "tools/public_beta.ps1",
-        "tools/build_ams_phase2.ps1",
+        "tools/build_clean_ams_base_v1.ps1",
         "tools/build_package_phase5.ps1",
         "tools/capture_beta_runtime.ps1",
         "tools/beta_startup_bisect.ps1",
