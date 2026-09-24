@@ -8,6 +8,7 @@
 #include "CampaignUiService.h"
 #include "CampaignOnlinePolicy.h"
 #include "CampaignStartupService.h"
+#include "CampaignGarageFlow.h"
 
 static void ZeroBytes(void* p, uint32_t count) {
     volatile unsigned char* q = (volatile unsigned char*)p;
@@ -160,6 +161,42 @@ int __cdecl CampaignFrontendLobbyReady(void) {
 }
 
 
+#define CAMPAIGN_AMS_CRAFT_UI_COMPLETION_RVA 0x006A4D00u
+
+typedef void (__thiscall *CampaignCraftUiCompletionFn)(
+    void* observer,
+    int32_t status,
+    void* unused,
+    void* auxiliary
+);
+
+static void CampaignFrontendCompleteGarageBuild(void* gs_garage, int32_t status) {
+    HMODULE ams;
+    CampaignCraftUiCompletionFn fn;
+    void* observer;
+
+    if (!gs_garage) return;
+
+    ams = GetModuleHandleW(0);
+    if (!ams) return;
+
+    /*
+      Frontend-only adapter proven by the historical Phase48 map:
+      observer = GS_Garage + 0x298
+      status   = 0 on local success
+      callback = AMS + RVA 0x006A4D00
+
+      This callback is retained only for presentation/tutorial completion:
+      it clears the frontend pending state and releases the build spinner.
+      It is not a business/backend authority.
+    */
+    observer = (void*)((unsigned char*)gs_garage + 0x298);
+    fn = (CampaignCraftUiCompletionFn)(
+        (unsigned char*)ams + CAMPAIGN_AMS_CRAFT_UI_COMPLETION_RVA
+    );
+    fn(observer, status, 0, 0);
+}
+
 static int32_t CampaignFrontendSelectedCarId(void* gs_garage) {
     unsigned char* gs = (unsigned char*)gs_garage;
     void* holder;
@@ -180,11 +217,32 @@ int __cdecl CampaignFrontendGarageBuild(void* gs_garage) {
     car_id = CampaignFrontendSelectedCarId(gs_garage);
     if (car_id <= 0) return 0;
 
+    CampaignGarageFlowBegin(car_id);
+
     ZeroBytes(&out, (uint32_t)sizeof(out));
     out.size = (uint32_t)sizeof(out);
 
-    if (!CampaignServiceGarageAcquire(car_id, &out)) return 0;
-    return out.owned ? 1 : 0;
+    if (!CampaignServiceGarageAcquire(car_id, &out) || !out.owned) {
+        CampaignGarageFlowFail(car_id);
+
+        /*
+          Always release the preserved frontend pending/spinner state.
+          Nonzero status is a local failure; no network/retry path is entered.
+        */
+        CampaignFrontendCompleteGarageBuild(gs_garage, 1);
+        return 0;
+    }
+
+    CampaignGarageFlowCommit(car_id, out.revision);
+
+    /*
+      Local transaction is durable before the visual completion is emitted.
+      SUCCESS=0 matches the original frontend callback contract.
+    */
+    CampaignFrontendCompleteGarageBuild(gs_garage, 0);
+    CampaignGarageFlowFrontendCompleted(car_id, out.revision);
+
+    return 1;
 }
 
 
