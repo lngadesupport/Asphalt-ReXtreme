@@ -21,6 +21,11 @@ def write_source(path: Path, bindings: list[dict], pe=None):
     }), encoding="utf-8")
 
 
+def test_binary_layout_matches_runtime_struct():
+    assert mod.HEADER.size == 28
+    assert mod.ENTRY.size == 48
+
+
 def test_empty_catalog_is_safe(tmp_path: Path):
     src = tmp_path / "replay.json"
     out = tmp_path / "CampaignReplayBindings.dat"
