@@ -92,6 +92,18 @@ ROLES = {
         "kind": "panel",
         "terms": ("profile", "stat", "row", "item"),
     },
+    "garage.screen": {
+        "kind": "screen",
+        "terms": ("garage", "vehicle", "car", "screen", "menu"),
+    },
+    "garage.card": {
+        "kind": "panel",
+        "terms": ("garage", "vehicle", "car", "card", "tile", "item"),
+    },
+    "garage.upgrade.row": {
+        "kind": "panel",
+        "terms": ("garage", "upgrade", "prokit", "part", "row", "item"),
+    },
     "results.screen": {
         "kind": "screen",
         "terms": ("result", "results", "finish", "reward", "continue"),
