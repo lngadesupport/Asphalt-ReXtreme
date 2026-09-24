@@ -106,12 +106,25 @@ public static class ContentTemplateService
     }
 
     public static string CreateTrack(string projectRoot, string id, string name) =>
+        CreateTrack(projectRoot, id, name, "assets/models/track.glb", null, null);
+
+    public static string CreateTrack(string projectRoot, string id, string name, string geometry, string? collision, string? environment) =>
         Write(projectRoot, "content/tracks", id, new
         {
-            schema_version = 1, id, name, geometry = "assets/models/track.glb", collision = (string?)null,
-            start_grid = Array.Empty<object>(), finish = (object?)null, checkpoints = Array.Empty<object>(),
-            respawns = Array.Empty<object>(), ai_routes = Array.Empty<object>(), shortcuts = Array.Empty<object>(),
-            replay_cameras = Array.Empty<object>(), audio_zones = Array.Empty<object>(), environment = (string?)null
+            schema_version = 1,
+            id,
+            name,
+            geometry,
+            collision = string.IsNullOrWhiteSpace(collision) ? null : collision.Trim(),
+            start_grid = Array.Empty<object>(),
+            finish = (object?)null,
+            checkpoints = Array.Empty<object>(),
+            respawns = Array.Empty<object>(),
+            ai_routes = Array.Empty<object>(),
+            shortcuts = Array.Empty<object>(),
+            replay_cameras = Array.Empty<object>(),
+            audio_zones = Array.Empty<object>(),
+            environment = string.IsNullOrWhiteSpace(environment) ? null : environment.Trim()
         });
 
     public static string CreateLivery(string projectRoot, string id, string name, string vehicle) =>
