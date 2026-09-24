@@ -15,6 +15,7 @@ on:
       - "tools/build_race_hud_binding_catalog.py"
       - "tools/build_campaign_challenge_catalog.py"
       - "tools/build_campaign_achievement_catalog.py"
+      - "tools/build_campaign_special_event_catalog.py"
       - "config/presentation-capabilities.verified.json"
       - "config/presentation-bindings.verified.json"
       - "config/photo-bindings.verified.json"
@@ -23,6 +24,7 @@ on:
       - "config/race-hud-bindings.verified.json"
       - "config/campaign_challenges.json"
       - "config/campaign_achievements.json"
+      - "config/campaign_special_events.json"
       - "config/replay-frame-binding.verified.json"
       - "config/photo-frame-binding.verified.json"
       - "config/photo-toggle-binding.verified.json"
@@ -36,6 +38,7 @@ on:
       - "tests/test_build_race_hud_binding_catalog.py"
       - "tests/test_build_campaign_challenge_catalog.py"
       - "tests/test_build_campaign_achievement_catalog.py"
+      - "tests/test_build_campaign_special_event_catalog.py"
       - "tools/audit_original_settings_ui.py"
       - "tools/rank_original_ui_candidates.py"
       - "tools/audit_original_ui_rtti.py"
@@ -84,6 +87,7 @@ jobs:
           tests/test_build_race_hud_binding_catalog.py
           tests/test_build_campaign_challenge_catalog.py
           tests/test_build_campaign_achievement_catalog.py
+          tests/test_build_campaign_special_event_catalog.py
           tests/test_audit_original_settings_ui.py
           tests/test_rank_original_ui_candidates.py
           tests/test_audit_original_ui_rtti.py
@@ -208,3 +212,18 @@ jobs:
           $r = Get-Content CampaignAchievements.report.json -Raw | ConvertFrom-Json
           if ($r.count -ne 0) { throw "Default Achievement catalog should remain data-empty until content is approved" }
           if ((Get-Item CampaignAchievements.dat).Length -ne 4116) { throw "Unexpected Achievement catalog size" }
+
+      - name: Build safe empty Special Event catalog
+        run: >
+          python tools/build_campaign_special_event_catalog.py
+          config/campaign_special_events.json
+          CampaignSpecialEvents.dat
+          --report CampaignSpecialEvents.report.json
+      - name: Verify default Special Events are data-empty and offline
+        shell: pwsh
+        run: |
+          $r = Get-Content CampaignSpecialEvents.report.json -Raw | ConvertFrom-Json
+          if ($r.count -ne 0) { throw "Default Special Event catalog must stay empty until event data is approved" }
+          if (-not $r.uses_existing_campaign_events_only) { throw "Special Events must reuse Campaign events" }
+          if ($r.online_backend_required) { throw "Special Events must remain offline-capable" }
+          if ((Get-Item CampaignSpecialEvents.dat).Length -ne 6164) { throw "Unexpected Special Event catalog size" }
