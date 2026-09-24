@@ -302,6 +302,13 @@ int CampaignChampionshipsGetRoundStatus(
     out->points=placement>0?d->points_by_position[placement-1]:0;
     out->completed=placement>0?1u:0u;ChUnlock();return 1;
 }
+int CampaignChampionshipsReload(void){
+    ChLock();
+    ChZero(&g_state,sizeof(g_state));ChZero(&g_load,sizeof(g_load));
+    InterlockedExchange(&g_state_loaded,0);
+    ChUnlock();
+    return CampaignChampionshipsEnsureLoaded();
+}
 int CampaignChampionshipsResetState(void){
     int ok;
     ChLock();ChZero(&g_state,sizeof(g_state));ChZero(&g_load,sizeof(g_load));
