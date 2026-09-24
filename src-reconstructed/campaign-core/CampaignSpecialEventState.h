@@ -6,15 +6,18 @@
 extern "C" {
 #endif
 
-#define CAMPAIGN_SPECIAL_EVENT_PERIOD_STATE_VERSION 1u
+#define CAMPAIGN_SPECIAL_EVENT_PERIOD_STATE_VERSION 2u
 
-int CampaignSpecialEventPeriodStateEvaluate(
+int CampaignSpecialEventPeriodStateGet(
     const CampaignSpecialEventDefinition* def,
     uint32_t day_key,
-    const uint32_t* completion_counts,
-    uint32_t completion_count,
     uint32_t* completed_mask,
     uint32_t* completed_count
+);
+int CampaignSpecialEventPeriodStateMarkStage(
+    const CampaignSpecialEventDefinition* def,
+    uint32_t period_key,
+    uint32_t stage_index
 );
 int CampaignSpecialEventPeriodStateReload(void);
 int CampaignSpecialEventPeriodStateReset(void);
