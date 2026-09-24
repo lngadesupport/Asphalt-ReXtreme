@@ -98,6 +98,8 @@ static int CorruptReplayTail(const WCHAR* path) {
 int main(void) {
     CampaignPresentationSettings settings;
     CampaignPresentationSettings loaded;
+    CampaignReplayMetadata metadata;
+    CampaignReplayMetadata metadata_readback;
     CampaignReplaySample sample;
     CampaignReplaySample readback;
     CampaignReplayMarker marker;
@@ -110,6 +112,8 @@ int main(void) {
 
     ZeroMemory(&settings, sizeof(settings));
     ZeroMemory(&loaded, sizeof(loaded));
+    ZeroMemory(&metadata, sizeof(metadata));
+    ZeroMemory(&metadata_readback, sizeof(metadata_readback));
     ZeroMemory(&sample, sizeof(sample));
     ZeroMemory(&readback, sizeof(readback));
     ZeroMemory(&marker, sizeof(marker));
@@ -144,6 +148,15 @@ int main(void) {
 
     if (!CampaignReplayStart(8)) return Fail(20);
 
+    metadata.size = sizeof(metadata);
+    metadata.version = CAMPAIGN_REPLAY_FORMAT_VERSION;
+    metadata.event_id = 101;
+    metadata.track_id = 12;
+    metadata.player_car_id = 7;
+    metadata.race_mode = 1;
+    metadata.session_id = 0x12345678u;
+    if (!CampaignReplaySetMetadata(&metadata)) return Fail(21);
+
     sample.time_ms = 100;
     sample.entity_id = 1;
     sample.position_x = 1.0f;
@@ -173,6 +186,13 @@ int main(void) {
 
     if (!CampaignReplayClear()) return Fail(29);
     if (!CampaignReplayLoad(replay_path)) return Fail(30);
+
+    metadata_readback.size = sizeof(metadata_readback);
+    if (!CampaignReplayGetMetadata(&metadata_readback)) return Fail(31);
+    if (metadata_readback.event_id != 101 ||
+        metadata_readback.track_id != 12 ||
+        metadata_readback.player_car_id != 7 ||
+        metadata_readback.session_id != 0x12345678u) return Fail(32);
 
     ZeroMemory(&info, sizeof(info));
     info.size = sizeof(info);
