@@ -25,6 +25,7 @@ typedef struct CampaignReplayFileHeader {
     uint32_t last_time_ms;
     uint32_t sample_hash;
     uint32_t marker_hash;
+    CampaignReplayMetadata metadata;
 } CampaignReplayFileHeader;
 
 static volatile LONG g_presentation_lock;
@@ -41,6 +42,7 @@ static CampaignReplayMarker g_replay_markers[CAMPAIGN_REPLAY_MARKER_MAX];
 static uint32_t g_replay_marker_count;
 static uint32_t g_replay_dropped_markers;
 static CampaignReplayPlaybackState g_playback;
+static CampaignReplayMetadata g_replay_metadata;
 
 static CampaignPhotoState g_photo;
 
@@ -379,6 +381,31 @@ static void ReplayReleaseUnlocked(void) {
     ZeroBytes(&g_playback, (uint32_t)sizeof(g_playback));
     g_playback.size = (uint32_t)sizeof(g_playback);
     g_playback.speed_permille = 1000;
+    ZeroBytes(&g_replay_metadata, (uint32_t)sizeof(g_replay_metadata));
+    g_replay_metadata.size = (uint32_t)sizeof(g_replay_metadata);
+    g_replay_metadata.version = CAMPAIGN_REPLAY_FORMAT_VERSION;
+}
+
+int __cdecl CampaignReplaySetMetadata(const CampaignReplayMetadata* metadata) {
+    if (!metadata || metadata->size < (uint32_t)sizeof(*metadata)) return 0;
+    if (metadata->version != CAMPAIGN_REPLAY_FORMAT_VERSION) return 0;
+    if (metadata->event_id < 0 || metadata->track_id < 0 || metadata->player_car_id < 0) return 0;
+
+    PresentationLock();
+    CopyBytes(&g_replay_metadata, metadata, (uint32_t)sizeof(g_replay_metadata));
+    g_replay_metadata.size = (uint32_t)sizeof(g_replay_metadata);
+    g_replay_metadata.version = CAMPAIGN_REPLAY_FORMAT_VERSION;
+    PresentationUnlock();
+    return 1;
+}
+
+int __cdecl CampaignReplayGetMetadata(CampaignReplayMetadata* out) {
+    if (!out || out->size < (uint32_t)sizeof(*out)) return 0;
+
+    PresentationLock();
+    CopyBytes(out, &g_replay_metadata, (uint32_t)sizeof(g_replay_metadata));
+    PresentationUnlock();
+    return 1;
 }
 
 int __cdecl CampaignReplayStart(uint32_t capacity) {
@@ -401,6 +428,8 @@ int __cdecl CampaignReplayStart(uint32_t capacity) {
 
     g_replay_capacity = capacity;
     g_replay_active = 1;
+    g_replay_metadata.size = (uint32_t)sizeof(g_replay_metadata);
+    g_replay_metadata.version = CAMPAIGN_REPLAY_FORMAT_VERSION;
     PresentationUnlock();
     return 1;
 }
@@ -542,6 +571,7 @@ int __cdecl CampaignReplaySave(const WCHAR* path) {
         g_replay_markers,
         g_replay_marker_count * (uint32_t)sizeof(CampaignReplayMarker)
     );
+    CopyBytes(&header.metadata, &g_replay_metadata, (uint32_t)sizeof(header.metadata));
 
     DeleteFileW(tmp_path);
     h = CreateFileW(tmp_path, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
@@ -641,7 +671,9 @@ int __cdecl CampaignReplayLoad(const WCHAR* path) {
         header.marker_size != (uint32_t)sizeof(CampaignReplayMarker) ||
         header.sample_count == 0 ||
         header.sample_count > RX_REPLAY_MAX_CAPACITY ||
-        header.marker_count > CAMPAIGN_REPLAY_MARKER_MAX) {
+        header.marker_count > CAMPAIGN_REPLAY_MARKER_MAX ||
+        header.metadata.size != (uint32_t)sizeof(CampaignReplayMetadata) ||
+        header.metadata.version != CAMPAIGN_REPLAY_FORMAT_VERSION) {
         CloseHandle(h);
         return 0;
     }
@@ -669,6 +701,7 @@ int __cdecl CampaignReplayLoad(const WCHAR* path) {
     g_replay_count = header.sample_count;
     g_replay_write = 0;
     g_replay_active = 0;
+    CopyBytes(&g_replay_metadata, &header.metadata, (uint32_t)sizeof(g_replay_metadata));
 
     for (i = 0; i < header.marker_count; ++i) {
         got = 0;
@@ -1110,6 +1143,16 @@ int __cdecl CampaignPresentationInvoke(CampaignPresentationCommand* command) {
         }
         break;
 
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_SET_METADATA:
+        command->status = CampaignReplaySetMetadata(
+            (const CampaignReplayMetadata*)(uintptr_t)command->ptr0
+        );
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_GET_METADATA:
+        command->status = CampaignReplayGetMetadata(
+            (CampaignReplayMetadata*)(uintptr_t)command->ptr0
+        );
+        break;
     case CAMPAIGN_PRESENTATION_OP_REPLAY_START:
         command->status = CampaignReplayStart((uint32_t)command->a);
         break;
