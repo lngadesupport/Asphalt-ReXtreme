@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReXtreme Event",
+  "type": "object",
+  "required": ["id", "name", "track", "mode", "laps"],
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "track": { "type": "string" },
+    "mode": { "type": "string" },
+    "laps": { "type": "integer", "minimum": 1 },
+    "allowed_categories": { "type": "array", "items": { "type": "string" } },
+    "objectives": { "type": "array" },
+    "rewards": { "type": "array" },
+    "music": { "type": "array", "items": { "type": "string" } },
+    "hud_layout": { "type": ["string", "null"] }
+  }
+}
