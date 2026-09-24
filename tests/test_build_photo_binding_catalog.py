@@ -11,13 +11,16 @@ assert spec.loader is not None
 spec.loader.exec_module(mod)
 
 
-def write_source(path: Path, bindings: list[dict]) -> None:
-    path.write_text(json.dumps({
+def write_source(path: Path, bindings: list[dict], target_pe: dict | None = None) -> None:
+    payload = {
         "format": "rextreme-photo-bindings",
-        "version": 1,
+        "version": mod.VERSION,
         "build": "1.7.3.8-x86",
         "bindings": bindings,
-    }), encoding="utf-8")
+    }
+    if target_pe is not None:
+        payload["target_pe"] = target_pe
+    path.write_text(json.dumps(payload), encoding="utf-8")
 
 
 def bind(semantic: str, value_kind: str = "i32") -> dict:
@@ -56,7 +59,11 @@ def test_free_camera_requires_complete_semantics(tmp_path: Path):
         bind("roll"),
         bind("hud_visible", "u8_bool"),
     ]
-    write_source(src, bindings)
+    write_source(
+        src,
+        bindings,
+        target_pe={"time_date_stamp": "0x12345678", "size_of_image": "0x02000000"},
+    )
     result = mod.build(src, out)
     assert result["count"] == 7
     assert result["free_camera_ready"] is True
