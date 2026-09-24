@@ -129,3 +129,48 @@ int CampaignSpecialEventDateAvailable(const CampaignSpecialEventDefinition* d,ui
        !(d->flags&CAMPAIGN_SPECIAL_EVENT_MANUAL_ACTIVE))return 0;
     return 1;
 }
+
+static int SpecialEventLeap(uint32_t year){
+    if((year%400u)==0u)return 1;
+    if((year%100u)==0u)return 0;
+    return(year%4u)==0u;
+}
+static uint32_t SpecialEventDayOfYear(uint32_t day_key){
+    static const uint16_t before_month[12]={
+        0,31,59,90,120,151,181,212,243,273,304,334
+    };
+    uint32_t year=day_key/10000u;
+    uint32_t month=(day_key/100u)%100u;
+    uint32_t day=day_key%100u;
+    uint32_t result;
+    if(year<2000u||month<1u||month>12u||day<1u||day>31u)return 0;
+    result=(uint32_t)before_month[month-1u]+day;
+    if(month>2u&&SpecialEventLeap(year))++result;
+    return result;
+}
+
+uint32_t CampaignSpecialEventPeriodKey(
+    const CampaignSpecialEventDefinition* d,
+    uint32_t day_key
+){
+    uint32_t year,month,doy;
+    if(!d||!DayKeyShape(day_key)||day_key==0)return 0;
+    year=day_key/10000u;
+    month=(day_key/100u)%100u;
+    switch(d->schedule){
+    case CAMPAIGN_SPECIAL_EVENT_DAILY:
+        return day_key;
+    case CAMPAIGN_SPECIAL_EVENT_WEEKLY:
+        doy=SpecialEventDayOfYear(day_key);
+        if(doy==0)return 0;
+        return year*100u+((doy-1u)/7u+1u);
+    case CAMPAIGN_SPECIAL_EVENT_MONTHLY:
+        return year*100u+month;
+    case CAMPAIGN_SPECIAL_EVENT_PERMANENT:
+    case CAMPAIGN_SPECIAL_EVENT_UNLOCK:
+    case CAMPAIGN_SPECIAL_EVENT_MANUAL:
+        return 0;
+    default:
+        return 0;
+    }
+}
