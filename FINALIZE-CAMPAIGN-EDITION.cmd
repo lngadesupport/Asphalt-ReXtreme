@@ -7,7 +7,7 @@ set "ROOT=%CD%"
 set "PKG=%ROOT%\_PACKAGE_PHASE5"
 set "TOOLS=%ROOT%\tools"
 set "PRE=%ROOT%\prebuilt\campaign-core"
-set "BASE=https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/campaign-edition-win32"
+set "BASE=https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/public-beta-0.1"
 
 if not exist "%PKG%\AMS.exe" (
   echo [ERRO] _PACKAGE_PHASE5\AMS.exe nao encontrado.
@@ -181,7 +181,7 @@ if not "%VALERR%"=="0" (
   echo BLOQUEIO: a reconstrucao literal ainda nao esta completa.
   echo Consulte CAMPAIGN-FINAL-STATUS.json para o subsistema exato.
 )
-pause
+if not "%REXTREME_NO_PAUSE%"=="1" pause
 exit /b %VALERR%
 
 :get
@@ -191,19 +191,19 @@ exit /b %ERRORLEVEL%
 :download_fail
 echo.
 echo [ERRO] Falha ao baixar os componentes atuais.
-pause
+if not "%REXTREME_NO_PAUSE%"=="1" pause
 exit /b 20
 
 :data_fail
 echo.
 echo [ERRO] Falha/bloqueio ao reconstruir os dados Campaign.
 echo Verifique _CAMPAIGN_PRODUCTION_DATA.
-pause
+if not "%REXTREME_NO_PAUSE%"=="1" pause
 exit /b 21
 
 :patch_fail
 echo.
 echo [ERRO] Um patch guardado recusou o AMS atual.
 echo Nenhum byte desconhecido foi forçado.
-pause
+if not "%REXTREME_NO_PAUSE%"=="1" pause
 exit /b 22

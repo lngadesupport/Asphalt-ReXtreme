@@ -1,0 +1,17 @@
+{
+  "product": "Asphalt ReXtreme: Campaign Edition",
+  "version": "0.1.0-beta.1",
+  "channel": "public-beta",
+  "source_build": "1.7.3.8-x86",
+  "base_commit": "ecd82c36505a2ba5010caaf98d04493e9f63230b",
+  "release_branch": "public-beta-0.1",
+  "startup_mode": "uwp-loose-compatibility",
+  "portable_startup_ready": false,
+  "release_state": "candidate-awaiting-clean-machine-smoke",
+  "notes": [
+    "Public beta compatibility startup still uses Windows package registration.",
+    "Original proprietary game files are never distributed by this repository.",
+    "The installer imports a user-provided compatible 1.7.3.8 x86 source locally.",
+    "Git and a system-wide Python installation are not required."
+  ]
+}

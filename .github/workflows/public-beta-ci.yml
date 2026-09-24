@@ -1,0 +1,49 @@
+name: Public Beta CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - public-beta-0.1
+  push:
+    branches:
+      - public-beta-0.1
+
+jobs:
+  beta-validation:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate beta manifest
+        shell: pwsh
+        run: |
+          $v = Get-Content beta/VERSION.json -Raw | ConvertFrom-Json
+          if ($v.version -ne "0.1.0-beta.1") { throw "Unexpected beta version" }
+          if ($v.source_build -ne "1.7.3.8-x86") { throw "Unexpected source build" }
+          if ($v.portable_startup_ready -ne $false) { throw "Portable startup must remain false until runtime validation" }
+          if ($v.startup_mode -ne "uwp-loose-compatibility") { throw "Unexpected startup mode" }
+
+      - name: Parse public beta PowerShell
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path "tools/public_beta.ps1"),
+            [ref]$tokens,
+            [ref]$errors
+          )
+          if ($errors.Count -gt 0) {
+            $errors | Format-List
+            exit 1
+          }
+
+      - name: Compile Campaign Python tools
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run Campaign unit tests
+        shell: pwsh
+        run: python -m unittest discover -s tests -v
