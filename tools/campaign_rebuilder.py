@@ -37,6 +37,7 @@ DEFAULT_PRESENTATION_BINDINGS = Path("config/presentation-bindings.verified.json
 DEFAULT_PHOTO_BINDINGS = Path("config/photo-bindings.verified.json")
 DEFAULT_REPLAY_BINDINGS = Path("config/replay-bindings.verified.json")
 DEFAULT_ORIGINAL_UI_BINDINGS = Path("config/original-ui-bindings.verified.json")
+DEFAULT_RACE_HUD_BINDINGS = Path("config/race-hud-bindings.verified.json")
 
 
 class BuildError(RuntimeError):
@@ -343,6 +344,46 @@ def build_original_ui_bindings(output: Path, source: Path, builder: Path) -> dic
     }
 
 
+def build_race_hud_bindings(output: Path, source: Path, builder: Path) -> dict:
+    if not source.is_file():
+        raise BuildError(f"Race HUD binding source not found: {source}")
+    if not builder.is_file():
+        raise BuildError(f"Race HUD binding builder not found: {builder}")
+
+    target = output / "CampaignRaceHudBindings.dat"
+    report = output / "CampaignRaceHudBindings.report.json"
+    cmd = [
+        sys.executable,
+        str(builder),
+        str(source),
+        str(target),
+        "--report",
+        str(report),
+    ]
+    result = subprocess.run(cmd, text=True)
+    if result.returncode != 0:
+        raise BuildError(f"Race HUD binding catalog build failed with exit code {result.returncode}")
+
+    try:
+        summary = json.loads(report.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BuildError(f"Invalid Race HUD binding report: {exc}") from exc
+
+    if not summary.get("original_elements_only", False):
+        raise BuildError("Race HUD original-elements-only policy unexpectedly disabled")
+    if summary.get("create_new_hud_widgets", True):
+        raise BuildError("Race HUD new-widget creation unexpectedly enabled")
+
+    return {
+        "catalog": target.name,
+        "report": report.name,
+        "count": int(summary.get("count", 0)),
+        "safe_empty_catalog": bool(summary.get("safe_empty_catalog", False)),
+        "original_elements_only": True,
+        "create_new_hud_widgets": False,
+    }
+
+
 def overlay_directory(output: Path, overlay: Path) -> list[str]:
     if not overlay.is_dir():
         raise BuildError(f"Overlay directory not found: {overlay}")
@@ -369,6 +410,7 @@ def write_status(
     photo_bindings: dict,
     replay_bindings: dict,
     original_ui_bindings: dict,
+    race_hud_bindings: dict,
     portable_user_data: list[str],
 ) -> Path:
     status = {
@@ -388,6 +430,9 @@ def write_status(
         "original_ui_only": True,
         "custom_in_game_ui_assets_allowed": False,
         "unmapped_ui_feature_behavior": "hidden",
+        "race_hud_binding_catalog": race_hud_bindings,
+        "race_hud_original_elements_only": True,
+        "race_hud_new_widgets_allowed": False,
         "portable_user_data": portable_user_data,
         "package_metadata_moved_out_of_runtime_root": moved_metadata,
         "portable_startup_ready": False,
@@ -435,6 +480,11 @@ def main() -> int:
         type=Path,
         default=DEFAULT_ORIGINAL_UI_BINDINGS,
     )
+    parser.add_argument(
+        "--race-hud-bindings",
+        type=Path,
+        default=DEFAULT_RACE_HUD_BINDINGS,
+    )
     parser.add_argument("--offline-overlay", type=Path)
     parser.add_argument("--verify-only", action="store_true")
     args = parser.parse_args()
@@ -448,6 +498,7 @@ def main() -> int:
     photo_bindings_path = args.photo_bindings.resolve()
     replay_bindings_path = args.replay_bindings.resolve()
     original_ui_bindings_path = args.original_ui_bindings.resolve()
+    race_hud_bindings_path = args.race_hud_bindings.resolve()
     tools_dir = Path(__file__).resolve().parent
     patcher = (tools_dir / "patcher.py").resolve()
     presentation_builder = (tools_dir / "build_presentation_capability_catalog.py").resolve()
@@ -455,6 +506,7 @@ def main() -> int:
     photo_binding_builder = (tools_dir / "build_photo_binding_catalog.py").resolve()
     replay_binding_builder = (tools_dir / "build_replay_binding_catalog.py").resolve()
     original_ui_binding_builder = (tools_dir / "build_original_ui_binding_catalog.py").resolve()
+    race_hud_binding_builder = (tools_dir / "build_race_hud_binding_catalog.py").resolve()
 
     if not source.is_dir():
         print(f"ERROR: source directory not found: {source}", file=sys.stderr)
@@ -539,6 +591,17 @@ def main() -> int:
             f"(unmapped features hidden)"
         )
 
+        race_hud_bindings = build_race_hud_bindings(
+            output,
+            race_hud_bindings_path,
+            race_hud_binding_builder,
+        )
+        print(
+            "[HUD] verified original-element bindings: "
+            f"{race_hud_bindings['count']} "
+            f"(new widgets allowed={race_hud_bindings['create_new_hud_widgets']})"
+        )
+
         overlay_files: list[str] = []
         if args.offline_overlay:
             overlay_files = overlay_directory(output, args.offline_overlay.resolve())
@@ -554,6 +617,7 @@ def main() -> int:
             photo_bindings,
             replay_bindings,
             original_ui_bindings,
+            race_hud_bindings,
             portable_user_data,
         )
         print(f"[STATUS] {status_path}")
