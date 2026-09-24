@@ -2,7 +2,7 @@
 #include <windows.h>
 #include <stdint.h>
 #include "CampaignRuntimeState.h"
-#include "../campaign-core/CampaignCatalog.h"
+#include "CampaignRuntimeCatalog.h"
 
 #define RUNTIME_MAGIC 0x31525843u /* CXR1 */
 #define RUNTIME_VERSION 1u
@@ -151,15 +151,15 @@ static int LoadUnlocked(void) {
           Runtime owns selection truth.  On a fresh profile choose the first
           locally catalogued vehicle; no original garage structure is read.
         */
-        if(CampaignCatalogEnsureLoaded() && CampaignCatalogCount()>0) {
+        if(CampaignRuntimeCatalogLoad() && CampaignRuntimeCatalogCount()>0) {
             int32_t probe=1;
-            const CampaignVehicleRecipe* r=0;
+            const CampaignRuntimeRecipe* r=0;
             /*
               IDs are sparse. Search a bounded positive range for the first
               recipe. This is startup-only and independent of original state.
             */
             for(probe=1;probe<100000;++probe) {
-                r=CampaignCatalogFind(probe);
+                r=CampaignRuntimeCatalogFind(probe);
                 if(r){g_state.selected_car_id=r->car_id;break;}
             }
         }
@@ -220,7 +220,7 @@ int __cdecl CampaignRuntimeIsOwned(int32_t car_id) {
     Unlock(); return out;
 }
 int __cdecl CampaignRuntimeBuildSelected(void) {
-    const CampaignVehicleRecipe* recipe;
+    const CampaignRuntimeRecipe* recipe;
     int id,ok=0;
     Lock();
     if(!LoadUnlocked()){Unlock();return 0;}
@@ -228,7 +228,7 @@ int __cdecl CampaignRuntimeBuildSelected(void) {
     if(id<=0){Unlock();return 0;}
     if(IsOwnedUnlocked(id)){Unlock();return 1;}
 
-    recipe=CampaignCatalogFind(id);
+    recipe=CampaignRuntimeCatalogFind(id);
     if(!recipe){Unlock();return 0;}
 
     /*
@@ -239,13 +239,13 @@ int __cdecl CampaignRuntimeBuildSelected(void) {
     */
     if(g_state.owned_count==0) {
         ok=AddOwnedUnlocked(id);
-    } else if(recipe->acquisition_type==CAMPAIGN_ACQUIRE_FREE) {
+    } else if(recipe->acquisition_type==CAMPAIGN_RUNTIME_ACQUIRE_FREE) {
         ok=AddOwnedUnlocked(id);
-    } else if(recipe->acquisition_type==CAMPAIGN_ACQUIRE_CREDITS &&
+    } else if(recipe->acquisition_type==CAMPAIGN_RUNTIME_ACQUIRE_CREDITS &&
               g_state.credits>=recipe->cost) {
         g_state.credits-=recipe->cost;
         ok=AddOwnedUnlocked(id);
-    } else if(recipe->acquisition_type==CAMPAIGN_ACQUIRE_PREMIUM &&
+    } else if(recipe->acquisition_type==CAMPAIGN_RUNTIME_ACQUIRE_PREMIUM &&
               g_state.premium>=recipe->cost) {
         g_state.premium-=recipe->cost;
         ok=AddOwnedUnlocked(id);
