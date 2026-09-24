@@ -18,6 +18,7 @@
 #include "CampaignAchievementCatalog.h"
 #include "CampaignLastResult.h"
 #include "CampaignSpecialEventCatalog.h"
+#include "CampaignSpecialEventState.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
 #define CAMPAIGN_VERSION 3u
@@ -1184,18 +1185,43 @@ static int SpecialEventAvailableUnlocked(const CampaignSpecialEventDefinition* d
     return CampaignSpecialEventDateAvailable(def, day);
 }
 
+static int SpecialEventProgressUnlocked(
+    const CampaignSpecialEventDefinition* def,
+    uint32_t* completed_mask,
+    uint32_t* completed_count
+) {
+    uint32_t counts[CAMPAIGN_SPECIAL_EVENT_STAGE_MAX];
+    uint32_t i;
+    uint32_t day;
+
+    if (completed_mask) *completed_mask = 0;
+    if (completed_count) *completed_count = 0;
+    if (!def || def->stage_count == 0 ||
+        def->stage_count > CAMPAIGN_SPECIAL_EVENT_STAGE_MAX) return 0;
+
+    for (i = 0; i < CAMPAIGN_SPECIAL_EVENT_STAGE_MAX; ++i) counts[i] = 0;
+    for (i = 0; i < def->stage_count; ++i) {
+        int index = FindEventStateIndex(def->stage_event_ids[i]);
+        if (index >= 0) counts[i] = g_state.event_states[index].completion_count;
+    }
+
+    day = CurrentLocalDayKey();
+    if (day == 0) return 0;
+    return CampaignSpecialEventPeriodStateEvaluate(
+        def,
+        day,
+        counts,
+        def->stage_count,
+        completed_mask,
+        completed_count
+    );
+}
+
 static uint32_t SpecialEventCompletedStagesUnlocked(
     const CampaignSpecialEventDefinition* def
 ) {
-    uint32_t i;
     uint32_t completed = 0;
-    if (!def) return 0;
-    for (i = 0; i < def->stage_count; ++i) {
-        int index = FindEventStateIndex(def->stage_event_ids[i]);
-        if (index >= 0 && g_state.event_states[index].completion_count > 0) {
-            ++completed;
-        }
-    }
+    if (!SpecialEventProgressUnlocked(def, 0, &completed)) return 0;
     return completed;
 }
 
@@ -2846,9 +2872,14 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             int completed = 0;
             int unlocked = 0;
             if (!def || c->b < 0 || (uint32_t)c->b >= def->stage_count) return 0;
-            c->out0 = def->stage_event_ids[c->b];
-            index = FindEventStateIndex(c->out0);
-            if (index >= 0 && g_state.event_states[index].completion_count > 0) completed = 1;
+            {
+                uint32_t completed_mask = 0;
+                uint32_t completed_count = 0;
+                c->out0 = def->stage_event_ids[c->b];
+                index = FindEventStateIndex(c->out0);
+                if (!SpecialEventProgressUnlocked(def, &completed_mask, &completed_count)) return 0;
+                completed = (completed_mask & (1u << (uint32_t)c->b)) ? 1 : 0;
+            }
             event_def = CampaignEventCatalogFind(c->out0);
             if (!event_def) return 0;
             if (SpecialEventAvailableUnlocked(def) &&
@@ -2870,6 +2901,24 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             c->out0 = (int32_t)def->schedule;
             c->out1 = (int32_t)def->start_day_key;
             c->out2 = (int32_t)def->end_day_key;
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_SPECIAL_EVENT_PERIOD:
+        {
+            const CampaignSpecialEventDefinition* def =
+                CampaignSpecialEventCatalogFind(c->a);
+            uint32_t day;
+            uint32_t mask = 0;
+            uint32_t completed = 0;
+            if (!def) return 0;
+            day = CurrentLocalDayKey();
+            if (day == 0 || !SpecialEventProgressUnlocked(def, &mask, &completed)) return 0;
+            c->out0 = (int32_t)CampaignSpecialEventPeriodKey(def, day);
+            c->out1 = (int32_t)completed;
+            c->out2 = SpecialEventAvailableUnlocked(def) ? 1 : 0;
             c->status = 1;
             c->revision = g_state.revision;
             return 1;
