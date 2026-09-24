@@ -30,26 +30,78 @@ public static class ContentTemplateService
     }
 
     public static string CreateEvent(string projectRoot, string id, string name, string track, string mode, int laps) =>
+        SaveEvent(projectRoot, id, name, track, mode, laps, null, null);
+
+    public static string SaveEvent(string projectRoot, string id, string name, string track, string mode, int laps,
+        string? musicId, string? hudLayout) =>
         Write(projectRoot, "content/events", id, new
         {
-            schema_version = 1, id, name, track, mode, laps = Math.Max(1, laps),
-            allowed_categories = Array.Empty<string>(), objectives = Array.Empty<object>(),
-            rewards = Array.Empty<object>(), music = Array.Empty<string>(), hud_layout = (string?)null
+            schema_version = 1,
+            id,
+            name,
+            track,
+            mode,
+            laps = Math.Max(1, laps),
+            allowed_categories = Array.Empty<string>(),
+            objectives = Array.Empty<object>(),
+            rewards = Array.Empty<object>(),
+            music = string.IsNullOrWhiteSpace(musicId) ? Array.Empty<string>() : new[] { musicId.Trim() },
+            hud_layout = string.IsNullOrWhiteSpace(hudLayout) ? null : hudLayout.Trim()
         });
 
     public static string CreateSpecialEvent(string projectRoot, string id, string name) =>
-        Write(projectRoot, "content/special-events", id, new
+        SaveSpecialEvent(projectRoot, id, name, "permanent", Array.Empty<string>());
+
+    public static string SaveSpecialEvent(string projectRoot, string id, string name, string availability,
+        IEnumerable<string> eventIds)
+    {
+        var stages = eventIds.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToArray();
+        var stageData = stages.Select((eventId, index) => new
         {
-            schema_version = 1, id, name, banner = (string?)null, availability = "permanent",
-            unlock_requirement = (object?)null, stages = Array.Empty<object>(), completion_rewards = Array.Empty<object>()
+            id = $"stage-{index + 1:000}",
+            @event = eventId,
+            required_previous = index == 0 ? Array.Empty<string>() : new[] { $"stage-{index:000}" }
+        }).ToArray();
+
+        return Write(projectRoot, "content/special-events", id, new
+        {
+            schema_version = 1,
+            id,
+            name,
+            banner = (string?)null,
+            availability,
+            unlock_requirement = (object?)null,
+            stages = stageData,
+            completion_rewards = Array.Empty<object>()
         });
+    }
 
     public static string CreateCareerSeason(string projectRoot, string id, string name) =>
-        Write(projectRoot, "content/career", id, new
+        SaveCareerSeason(projectRoot, id, name, "new-season", null, Array.Empty<string>());
+
+    public static string SaveCareerSeason(string projectRoot, string id, string name, string insertMode,
+        string? targetOriginalSeason, IEnumerable<string> eventIds)
+    {
+        var events = eventIds.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToArray();
+        var nodes = events.Select((eventId, index) => new
         {
-            schema_version = 1, id, name, insert_mode = "new-season", target_original_season = (string?)null,
-            nodes = Array.Empty<object>(), completion_rewards = Array.Empty<object>()
+            id = $"race-{index + 1:000}",
+            @event = eventId,
+            requires = index == 0 ? Array.Empty<string>() : new[] { $"race-{index:000}" },
+            star_gate = (int?)null
+        }).ToArray();
+
+        return Write(projectRoot, "content/career", id, new
+        {
+            schema_version = 1,
+            id,
+            name,
+            insert_mode = insertMode,
+            target_original_season = string.IsNullOrWhiteSpace(targetOriginalSeason) ? null : targetOriginalSeason.Trim(),
+            nodes,
+            completion_rewards = Array.Empty<object>()
         });
+    }
 
     public static string CreateTrack(string projectRoot, string id, string name) =>
         Write(projectRoot, "content/tracks", id, new
