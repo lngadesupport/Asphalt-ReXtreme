@@ -11,8 +11,7 @@ echo Quando ele fechar, o diagnostico sera gerado automaticamente.
 echo O save nao sera alterado pelo probe.
 echo.
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass ^
-  -File "%~dp0tools\capture_beta_runtime.ps1" ^
-  -ProjectRoot "%~dp0"
+  -File "%~dp0tools\capture_beta_runtime.ps1"
 set "RC=%ERRORLEVEL%"
 echo.
 if not "%RC%"=="0" echo Probe terminou com codigo %RC%.
