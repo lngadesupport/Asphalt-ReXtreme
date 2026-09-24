@@ -1071,6 +1071,29 @@ int __cdecl CampaignPhotoSet(const CampaignPhotoState* state) {
     return 1;
 }
 
+int __cdecl CampaignPresentationGetDiagnostics(CampaignPresentationDiagnostics* out) {
+    if (!out || out->size < (uint32_t)sizeof(*out)) return 0;
+
+    PresentationLock();
+    EnsureSettingsUnlocked();
+    ReplayRefreshPlaybackBoundsUnlocked();
+
+    out->size = (uint32_t)sizeof(*out);
+    out->settings_revision = g_settings.revision;
+    out->verified_capability_count = CampaignPresentationCatalogCount();
+    out->replay_recording = g_replay_active;
+    out->replay_sample_count = g_replay_count;
+    out->replay_marker_count = g_replay_marker_count;
+    out->replay_loaded = g_playback.loaded;
+    out->replay_playing = g_playback.playing;
+    out->replay_time_ms = g_playback.current_time_ms;
+    out->photo_active = g_photo.active;
+    out->photo_camera_mode = g_photo.camera_mode;
+
+    PresentationUnlock();
+    return 1;
+}
+
 int __cdecl CampaignPresentationInvoke(CampaignPresentationCommand* command) {
     if (!command || command->size < (uint32_t)sizeof(*command)) return 0;
 
@@ -1258,6 +1281,12 @@ int __cdecl CampaignPresentationInvoke(CampaignPresentationCommand* command) {
     case CAMPAIGN_PRESENTATION_OP_PHOTO_SET:
         command->status = CampaignPhotoSet(
             (const CampaignPhotoState*)(uintptr_t)command->ptr0
+        );
+        break;
+
+    case CAMPAIGN_PRESENTATION_OP_DIAGNOSTICS:
+        command->status = CampaignPresentationGetDiagnostics(
+            (CampaignPresentationDiagnostics*)(uintptr_t)command->ptr0
         );
         break;
     default:
