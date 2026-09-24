@@ -511,7 +511,11 @@ public partial class MainWindow : Window
             {
                 HudComponent(HudPositionElement, "position", "original-position", "race.position"),
                 HudComponent(HudSpeedElement, "speed", "original-speedometer", "player.speed"),
-                HudComponent(HudNitroElement, "nitro", "original-nitro", "player.nitro")
+                HudComponent(HudNitroElement, "nitro", "original-nitro", "player.nitro"),
+                HudComponent(HudLapElement, "lap", "original-lap", "race.lap"),
+                HudComponent(HudTimerElement, "timer", "original-timer", "race.time"),
+                HudComponent(HudMiniMapElement, "minimap", "original-minimap", "race.route"),
+                HudComponent(HudObjectiveElement, "objective", "original-objective", "race.objective")
             };
             var file = ContentTemplateService.SaveHudLayout(ProjectRoot, "local.hud.custom", components);
             Log($"Layout HUD salvo: {file}");
