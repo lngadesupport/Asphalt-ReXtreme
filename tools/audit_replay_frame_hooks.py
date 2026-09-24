@@ -337,6 +337,10 @@ def main() -> int:
         "binary": str(ams),
         "sha256": sha256(ams),
         "image_base": f"0x{pe.image_base:08X}",
+        "target_pe": {
+            "time_date_stamp": f"0x{pe.time_date_stamp:08X}",
+            "size_of_image": f"0x{pe.size_of_image:08X}",
+        },
         "known_verified_anchors": anchors,
         "rule": (
             "All method rows are candidate-only. A per-frame, camera, pause or HUD binding "
