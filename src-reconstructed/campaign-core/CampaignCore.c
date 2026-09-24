@@ -1799,6 +1799,11 @@ static int ExecuteUnlocked(CampaignCommand* c) {
         c->status = 1;
         return 1;
 
+    case CAMPAIGN_OP_GET_OWNED_COUNT:
+        c->out0 = (int32_t)g_state.owned_count;
+        c->status = 1;
+        return 1;
+
     case CAMPAIGN_OP_ACQUIRE_CAR:
         CopyBytes(&g_tx_backup, &g_state, (uint32_t)sizeof(g_state));
         if (!AddOwnedNoSave(c->a)) return 0;
