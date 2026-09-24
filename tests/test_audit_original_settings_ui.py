@@ -24,3 +24,5 @@ def test_blob_scan_marks_candidates():
     rows = mod.scan_blob(b"foo\x00VIDEO_SETTINGS_SLIDER\x00bar", "AMS.exe")
     assert rows
     assert all(row["status"] == "candidate-only" for row in rows)
+    assert all("xref_count" in row for row in rows)
+    assert all(row["xref_count"] == 0 for row in rows)
