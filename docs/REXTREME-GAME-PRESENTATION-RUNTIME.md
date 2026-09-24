@@ -16,6 +16,46 @@ Presentation features are exposed through the Campaign Core gateway selector:
 No camera/renderer address is guessed. A runtime adapter may apply a setting
 only after its original 1.7.3.8 path is verified.
 
+## Original UI policy
+
+ReXtreme in-game UI is **original-only**.
+
+Every new in-game feature must reuse verified Asphalt Xtreme UI components and presentation resources:
+
+- screens and panels;
+- buttons;
+- sliders;
+- toggles;
+- labels and typography;
+- tabs and lists;
+- popups/dialogs;
+- UI animations;
+- UI sounds;
+- interaction patterns.
+
+ReXtreme does not ship replacement in-game UI artwork or a parallel visual language.
+
+The binding source is:
+
+`config/original-ui-bindings.verified.json`
+
+The runtime staging catalog is:
+
+`CampaignOriginalUiBindings.dat`
+
+Policy is fail-closed:
+
+- `original_ui_only = true`;
+- `custom_ui_assets_allowed = false`;
+- unmapped feature UI = `feature-hidden`;
+- non-empty bindings require exact PE fingerprint;
+- every binding requires explicit evidence;
+- unverified candidate resources from the UI audit cannot be promoted automatically.
+
+This applies equally to Graphics Settings, Camera/FOV, Replay, Photo Mode,
+Career additions, Special Events, Garage extensions and any other ReXtreme
+feature presented inside the game.
+
 ## Graphics and camera settings
 
 `CampaignPresentationOptions.dat` is a verified allowlist.
