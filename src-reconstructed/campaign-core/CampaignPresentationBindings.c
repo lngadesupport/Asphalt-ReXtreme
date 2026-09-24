@@ -5,7 +5,7 @@
 #include "CampaignPresentationCatalog.h"
 
 #define RXPB_MAGIC 0x42505852u /* RXPB */
-#define RXPB_VERSION 1u
+#define RXPB_VERSION 2u
 
 /*
   MSVC emits a reference to __fltused when a translation unit contains x86
@@ -20,6 +20,8 @@ typedef struct CampaignPresentationBindingFileHeader {
     uint32_t count;
     uint32_t entry_size;
     uint32_t entries_hash;
+    uint32_t pe_time_date_stamp;
+    uint32_t pe_size_of_image;
 } CampaignPresentationBindingFileHeader;
 
 static CampaignPresentationBinding g_bindings[CAMPAIGN_PRESENTATION_BINDING_MAX];
@@ -83,6 +85,33 @@ static int BuildBindingPath(void) {
     }
     g_binding_path[pos] = 0;
     return 1;
+}
+
+static int CurrentExecutableMatches(
+    uint32_t expected_time_date_stamp,
+    uint32_t expected_size_of_image
+) {
+    unsigned char* module;
+    uint32_t pe_off;
+    unsigned char* pe;
+    uint16_t opt_magic;
+    uint32_t time_date_stamp;
+    uint32_t size_of_image;
+
+    module = (unsigned char*)GetModuleHandleW(0);
+    if (!module || module[0] != 'M' || module[1] != 'Z') return 0;
+
+    pe_off = *(uint32_t*)(module + 0x3C);
+    pe = module + pe_off;
+    if (pe[0] != 'P' || pe[1] != 'E' || pe[2] != 0 || pe[3] != 0) return 0;
+
+    time_date_stamp = *(uint32_t*)(pe + 8);
+    opt_magic = *(uint16_t*)(pe + 24);
+    if (opt_magic != 0x010B) return 0;
+    size_of_image = *(uint32_t*)(pe + 24 + 56);
+
+    return time_date_stamp == expected_time_date_stamp &&
+           size_of_image == expected_size_of_image;
 }
 
 static int BindingIdValid(const CampaignPresentationBinding* binding) {
@@ -165,6 +194,14 @@ int CampaignPresentationBindingsLoad(void) {
         header.version != RXPB_VERSION ||
         header.entry_size != (uint32_t)sizeof(CampaignPresentationBinding) ||
         header.count > CAMPAIGN_PRESENTATION_BINDING_MAX) {
+        CloseHandle(h);
+        return 0;
+    }
+
+    if (header.count > 0 &&
+        !CurrentExecutableMatches(
+            header.pe_time_date_stamp,
+            header.pe_size_of_image)) {
         CloseHandle(h);
         return 0;
     }
