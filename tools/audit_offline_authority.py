@@ -5,6 +5,8 @@ from pathlib import Path
 
 ONLINE_OFF = 0x00BACDD0
 ONLINE_FALSE = bytes.fromhex("31 C0 C3 90 90 90 90")
+LEGACY_LOCALHOST_ROUTE_OFF = 0x00BAEA4B
+LEGACY_LOCALHOST_ROUTE = bytes.fromhex("1C 68 40 C3 57 01")
 
 FORBIDDEN_SOURCE_PATTERNS = {
     "legacy-craft-completion-rva": re.compile(r"CAMPAIGN_AMS_CRAFT_UI_COMPLETION_RVA|0x006A4D00u"),
@@ -20,6 +22,8 @@ REQUIRED_SOURCE_PATTERNS = {
                              re.compile(r"CampaignTutorialBuildComplete")),
     "local-event-bus": ("src-reconstructed/campaign-core/CampaignEventBus.c",
                         re.compile(r"CampaignEventPublish")),
+    "igp-http-is-local-gateway": ("runtime-stubs/IGPLib_x86_campaign.def",
+                                  re.compile(r"HttpPostLink.*=campaign_gateway")),
 }
 
 def sha256(path: Path) -> str:
@@ -63,6 +67,22 @@ def main() -> int:
                        "bytes":current.hex(" ")})
         if not ok:
             problems.append("AMS Global IsOnline is not hard FALSE")
+
+        localhost_bytes = data[
+            LEGACY_LOCALHOST_ROUTE_OFF:
+            LEGACY_LOCALHOST_ROUTE_OFF + len(LEGACY_LOCALHOST_ROUTE)
+        ]
+        localhost_active = localhost_bytes == LEGACY_LOCALHOST_ROUTE
+        checks.append({
+            "check":"no-legacy-localhost-backend",
+            "ok":not localhost_active,
+            "offset":f"0x{LEGACY_LOCALHOST_ROUTE_OFF:08X}",
+            "bytes":localhost_bytes.hex(" ")
+        })
+        if localhost_active:
+            problems.append(
+                "legacy localhost backend emulation is active; Campaign Edition forbids fake servers"
+            )
     else:
         checks.append({"check":"global-isonline-false","ok":None,"reason":"AMS not present"})
 
