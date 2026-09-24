@@ -122,6 +122,10 @@ class CampaignRebuilderTests(unittest.TestCase):
             self.assertEqual(data["achievement_metrics_source"], "CampaignStatistics-v1")
             self.assertEqual(data["achievement_rewards"], "none")
             self.assertTrue(data["achievement_ui_requires_original_templates"])
+            self.assertEqual(data["last_race_result_state"], "UserData/CampaignEdition/LastRaceResult.dat")
+            self.assertEqual(data["last_race_result_source"], "Committed CampaignRaceMetrics-v1")
+            self.assertTrue(data["last_race_result_portable"])
+            self.assertTrue(data["results_ui_requires_original_templates"])
 
 
 if __name__ == "__main__":
