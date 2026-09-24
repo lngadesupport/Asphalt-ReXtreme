@@ -106,7 +106,10 @@
                         <TextBlock Text="EVENT / CAREER CONTENT" FontSize="22" FontWeight="Bold"/>
                         <WrapPanel Margin="0,16,0,0">
                             <Button Content="Criar evento" Click="CreateEvent_Click"/>
+                            <Button Content="Criar Evento Especial" Click="CreateSpecialEvent_Click"/>
                             <Button Content="Criar temporada" Click="CreateSeason_Click"/>
+                            <Button Content="Criar pista" Click="CreateTrack_Click"/>
+                            <Button Content="Criar pintura/livery" Click="CreateLivery_Click"/>
                         </WrapPanel>
                         <TextBlock Margin="0,16,0,0" Foreground="{StaticResource EditorMuted}" TextWrapping="Wrap"
                                    Text="Eventos podem usar pistas originais ou customizadas. Temporadas são data-driven e poderão adicionar corridas e branches."/>
@@ -118,16 +121,19 @@
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                         <DockPanel>
                             <TextBlock Text="RACE UI / HUD EDITOR" FontSize="22" FontWeight="Bold"/>
-                            <Button DockPanel.Dock="Right" Content="Criar layout HUD" Click="CreateHud_Click"/>
+                            <Button DockPanel.Dock="Right" Content="Salvar layout HUD" Click="CreateHud_Click"/>
                         </DockPanel>
                         <Canvas Grid.Row="1" x:Name="HudCanvas" Background="#101419" Margin="0,14,0,0">
-                            <Border Canvas.Left="24" Canvas.Top="24" Padding="10,6" Background="#55303030" BorderBrush="White" BorderThickness="1">
+                            <Border x:Name="HudPositionElement" Canvas.Left="24" Canvas.Top="24" Padding="10,6" Background="#55303030" BorderBrush="White" BorderThickness="1"
+                                    Cursor="SizeAll" MouseLeftButtonDown="HudElement_MouseLeftButtonDown" MouseMove="HudElement_MouseMove" MouseLeftButtonUp="HudElement_MouseLeftButtonUp">
                                 <TextBlock Text="POSIÇÃO 1/8" Foreground="White" FontWeight="Bold"/>
                             </Border>
-                            <Border Canvas.Right="24" Canvas.Bottom="24" Padding="12,8" Background="#55303030" BorderBrush="White" BorderThickness="1">
+                            <Border x:Name="HudSpeedElement" Canvas.Left="720" Canvas.Top="410" Padding="12,8" Background="#55303030" BorderBrush="White" BorderThickness="1"
+                                    Cursor="SizeAll" MouseLeftButtonDown="HudElement_MouseLeftButtonDown" MouseMove="HudElement_MouseMove" MouseLeftButtonUp="HudElement_MouseLeftButtonUp">
                                 <TextBlock Text="178 km/h" Foreground="White" FontSize="22" FontWeight="Bold"/>
                             </Border>
-                            <Border Canvas.Left="270" Canvas.Bottom="24" Padding="12,8" Background="#55303030" BorderBrush="White" BorderThickness="1">
+                            <Border x:Name="HudNitroElement" Canvas.Left="330" Canvas.Top="430" Padding="12,8" Background="#55303030" BorderBrush="White" BorderThickness="1"
+                                    Cursor="SizeAll" MouseLeftButtonDown="HudElement_MouseLeftButtonDown" MouseMove="HudElement_MouseMove" MouseLeftButtonUp="HudElement_MouseLeftButtonUp">
                                 <TextBlock Text="NITRO ███████░░" Foreground="White" FontWeight="Bold"/>
                             </Border>
                         </Canvas>
