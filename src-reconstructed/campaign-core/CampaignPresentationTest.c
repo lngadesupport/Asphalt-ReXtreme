@@ -3,8 +3,16 @@
 #include <stdint.h>
 #include "CampaignPresentation.h"
 #include "CampaignPresentationBindings.h"
+#include "CampaignPhotoBindings.h"
 
 static volatile int32_t g_test_bound_fov;
+static volatile float g_test_photo_x;
+static volatile float g_test_photo_y;
+static volatile float g_test_photo_z;
+static volatile int32_t g_test_photo_pitch;
+static volatile int32_t g_test_photo_yaw;
+static volatile int32_t g_test_photo_roll;
+static volatile unsigned char g_test_photo_hud;
 
 typedef struct TestCatalogHeader {
     uint32_t magic;
@@ -30,6 +38,14 @@ static uint32_t TestFnv1a(const unsigned char* data, uint32_t count) {
     }
     return h;
 }
+
+typedef struct TestPhotoBindingHeader {
+    uint32_t magic;
+    uint32_t version;
+    uint32_t count;
+    uint32_t entry_size;
+    uint32_t entries_hash;
+} TestPhotoBindingHeader;
 
 static int Fail(int code) {
     return code;
@@ -74,6 +90,83 @@ static int WriteTestCapabilityCatalog(void) {
         return 0;
     }
 
+    CloseHandle(h);
+    return 1;
+}
+
+static int WriteTestPhotoBindingCatalog(void) {
+    const WCHAR* path = L"prebuilt\\campaign-core\\CampaignPhotoBindings.dat";
+    TestPhotoBindingHeader header;
+    CampaignPhotoBinding bindings[7];
+    HANDLE h;
+    DWORD written = 0;
+    HMODULE module;
+    uintptr_t base;
+    uintptr_t targets[7];
+    uint32_t semantics[7] = {
+        CAMPAIGN_PHOTO_BIND_POSITION_X,
+        CAMPAIGN_PHOTO_BIND_POSITION_Y,
+        CAMPAIGN_PHOTO_BIND_POSITION_Z,
+        CAMPAIGN_PHOTO_BIND_PITCH,
+        CAMPAIGN_PHOTO_BIND_YAW,
+        CAMPAIGN_PHOTO_BIND_ROLL,
+        CAMPAIGN_PHOTO_BIND_HUD_VISIBLE
+    };
+    uint32_t i;
+
+    ZeroMemory(&header, sizeof(header));
+    ZeroMemory(bindings, sizeof(bindings));
+    module = GetModuleHandleW(0);
+    if (!module) return 0;
+    base = (uintptr_t)module;
+
+    targets[0] = (uintptr_t)&g_test_photo_x;
+    targets[1] = (uintptr_t)&g_test_photo_y;
+    targets[2] = (uintptr_t)&g_test_photo_z;
+    targets[3] = (uintptr_t)&g_test_photo_pitch;
+    targets[4] = (uintptr_t)&g_test_photo_yaw;
+    targets[5] = (uintptr_t)&g_test_photo_roll;
+    targets[6] = (uintptr_t)&g_test_photo_hud;
+
+    for (i = 0; i < 7; ++i) {
+        if (targets[i] <= base || targets[i] - base > 0xFFFFFFFFu) return 0;
+        bindings[i].semantic = semantics[i];
+        bindings[i].base_kind = CAMPAIGN_PRESENTATION_BASE_MODULE_RVA;
+        bindings[i].target_rva = (uint32_t)(targets[i] - base);
+        bindings[i].field_offset = 0;
+        bindings[i].scale_divisor = 1;
+        bindings[i].flags = 1;
+        if (i < 3) {
+            bindings[i].value_kind = CAMPAIGN_PRESENTATION_VALUE_FLOAT_SCALED;
+            bindings[i].scale_divisor = 1000;
+        } else if (i == 6) {
+            bindings[i].value_kind = CAMPAIGN_PRESENTATION_VALUE_U8_BOOL;
+        } else {
+            bindings[i].value_kind = CAMPAIGN_PRESENTATION_VALUE_I32;
+        }
+    }
+
+    header.magic = 0x48505852u;
+    header.version = 1;
+    header.count = 7;
+    header.entry_size = sizeof(CampaignPhotoBinding);
+    header.entries_hash = TestFnv1a(
+        (const unsigned char*)bindings,
+        (uint32_t)sizeof(bindings)
+    );
+
+    h = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+    if (h == INVALID_HANDLE_VALUE) return 0;
+
+    if (!WriteFile(h, &header, sizeof(header), &written, 0) || written != sizeof(header)) {
+        CloseHandle(h);
+        return 0;
+    }
+    written = 0;
+    if (!WriteFile(h, bindings, sizeof(bindings), &written, 0) || written != sizeof(bindings)) {
+        CloseHandle(h);
+        return 0;
+    }
     CloseHandle(h);
     return 1;
 }
@@ -383,6 +476,36 @@ int main(void) {
         photo_readback.move_speed_x1000 != 1500) return Fail(44);
     if (!CampaignPhotoExit()) return Fail(43);
 
+    if (CampaignPhotoBindingsCount() != 0) return Fail(47);
+    if (CampaignPhotoBindingsReady(CAMPAIGN_PHOTO_CAMERA_FREE)) return Fail(48);
+    if (!WriteTestPhotoBindingCatalog()) return Fail(49);
+    if (!CampaignPhotoBindingsLoad()) return Fail(50);
+    if (CampaignPhotoBindingsCount() != 7) return Fail(51);
+    if (!CampaignPhotoBindingsReady(CAMPAIGN_PHOTO_CAMERA_FREE)) return Fail(52);
+
+    ZeroMemory(&photo, sizeof(photo));
+    photo.size = sizeof(photo);
+    photo.active = 1;
+    photo.camera_mode = CAMPAIGN_PHOTO_CAMERA_FREE;
+    photo.hide_hud = 1;
+    photo.position_x = 12.5f;
+    photo.position_y = 3.0f;
+    photo.position_z = -8.0f;
+    photo.pitch_x100 = -500;
+    photo.yaw_x100 = 9000;
+    photo.roll_x100 = 250;
+    photo.fov_x100 = 0;
+
+    g_test_photo_hud = 1;
+    if (!CampaignPhotoBindingsApply(&photo)) return Fail(53);
+    if (g_test_photo_x != 12.5f ||
+        g_test_photo_y != 3.0f ||
+        g_test_photo_z != -8.0f ||
+        g_test_photo_pitch != -500 ||
+        g_test_photo_yaw != 9000 ||
+        g_test_photo_roll != 250 ||
+        g_test_photo_hud != 0) return Fail(54);
+
     diagnostics.size = sizeof(diagnostics);
     if (!CampaignPresentationGetDiagnostics(&diagnostics)) return Fail(45);
     if (diagnostics.photo_active != 0) return Fail(46);
@@ -432,6 +555,7 @@ int main(void) {
     DeleteFileW(auto_path);
     DeleteFileW(L"prebuilt\\campaign-core\\CampaignPresentationOptions.dat");
     DeleteFileW(L"prebuilt\\campaign-core\\CampaignPresentationBindings.dat");
+    DeleteFileW(L"prebuilt\\campaign-core\\CampaignPhotoBindings.dat");
     DeleteFileW(L"prebuilt\\campaign-core\\ReXtreme.ini");
 
     return 0;
