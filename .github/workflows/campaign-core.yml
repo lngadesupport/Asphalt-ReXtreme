@@ -236,6 +236,10 @@ jobs:
             PresentationBindingCatalog = "CampaignPresentationBindings.dat"
             PresentationValuesRequireVerifiedBinding = $true
             UnverifiedPresentationOptionsVisible = $false
+            OriginalUiOnly = $true
+            CustomInGameUiAssetsAllowed = $false
+            UnmappedUiFeatureBehavior = "hidden"
+            OriginalUiBindingRegistry = "config/original-ui-bindings.verified.json"
             Size = $size
             SHA256 = $hash
           } | ConvertTo-Json | Set-Content ".\prebuilt\campaign-core\CAMPAIGN-CORE-REPORT.json" -Encoding UTF8
