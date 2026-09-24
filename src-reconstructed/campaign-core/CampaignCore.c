@@ -17,6 +17,7 @@
 #include "CampaignStatistics.h"
 #include "CampaignAchievementCatalog.h"
 #include "CampaignLastResult.h"
+#include "CampaignSpecialEventCatalog.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
 #define CAMPAIGN_VERSION 3u
@@ -1162,6 +1163,40 @@ static CampaignEventStateEntry* GetOrCreateEventState(int32_t event_id) {
     g_state.event_states[i].best_stars = 0;
     g_state.event_states[i].best_time_ms = 0;
     return &g_state.event_states[i];
+}
+
+static uint32_t CurrentLocalDayKey(void) {
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+    if (st.wYear < 2000 || st.wMonth < 1 || st.wMonth > 12 ||
+        st.wDay < 1 || st.wDay > 31) return 0;
+    return (uint32_t)st.wYear * 10000u +
+           (uint32_t)st.wMonth * 100u +
+           (uint32_t)st.wDay;
+}
+
+static int SpecialEventAvailableUnlocked(const CampaignSpecialEventDefinition* def) {
+    uint32_t day;
+    if (!def) return 0;
+    if (!ProgressGateUnlocked(def->required_node_id)) return 0;
+    day = CurrentLocalDayKey();
+    if (day == 0) return 0;
+    return CampaignSpecialEventDateAvailable(def, day);
+}
+
+static uint32_t SpecialEventCompletedStagesUnlocked(
+    const CampaignSpecialEventDefinition* def
+) {
+    uint32_t i;
+    uint32_t completed = 0;
+    if (!def) return 0;
+    for (i = 0; i < def->stage_count; ++i) {
+        int index = FindEventStateIndex(def->stage_event_ids[i]);
+        if (index >= 0 && g_state.event_states[index].completion_count > 0) {
+            ++completed;
+        }
+    }
+    return completed;
 }
 
 static int32_t RepeatMultiplierPermille(uint32_t completion_count) {
@@ -2767,6 +2802,74 @@ static int ExecuteUnlocked(CampaignCommand* c) {
                 return 0;
             }
 
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_SPECIAL_EVENT_COUNT:
+        c->out0 = (int32_t)CampaignSpecialEventCatalogCount();
+        c->status = 1;
+        c->revision = g_state.revision;
+        return 1;
+
+    case CAMPAIGN_OP_SPECIAL_EVENT_ID_AT:
+        {
+            const CampaignSpecialEventDefinition* def =
+                CampaignSpecialEventCatalogGet((uint32_t)c->a);
+            if (!def) return 0;
+            c->out0 = def->special_event_id;
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_SPECIAL_EVENT_STATUS:
+        {
+            const CampaignSpecialEventDefinition* def =
+                CampaignSpecialEventCatalogFind(c->a);
+            if (!def) return 0;
+            c->out0 = SpecialEventAvailableUnlocked(def) ? 1 : 0;
+            c->out1 = (int32_t)SpecialEventCompletedStagesUnlocked(def);
+            c->out2 = (int32_t)def->stage_count;
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_SPECIAL_EVENT_STAGE:
+        {
+            const CampaignSpecialEventDefinition* def =
+                CampaignSpecialEventCatalogFind(c->a);
+            const CampaignEventDefinition* event_def;
+            int index;
+            int completed = 0;
+            int unlocked = 0;
+            if (!def || c->b < 0 || (uint32_t)c->b >= def->stage_count) return 0;
+            c->out0 = def->stage_event_ids[c->b];
+            index = FindEventStateIndex(c->out0);
+            if (index >= 0 && g_state.event_states[index].completion_count > 0) completed = 1;
+            event_def = CampaignEventCatalogFind(c->out0);
+            if (!event_def) return 0;
+            if (SpecialEventAvailableUnlocked(def) &&
+                ProgressGateUnlocked(event_def->required_node_id)) {
+                unlocked = 1;
+            }
+            c->out1 = completed;
+            c->out2 = unlocked;
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_SPECIAL_EVENT_SCHEDULE:
+        {
+            const CampaignSpecialEventDefinition* def =
+                CampaignSpecialEventCatalogFind(c->a);
+            if (!def) return 0;
+            c->out0 = (int32_t)def->schedule;
+            c->out1 = (int32_t)def->start_day_key;
+            c->out2 = (int32_t)def->end_day_key;
             c->status = 1;
             c->revision = g_state.revision;
             return 1;
