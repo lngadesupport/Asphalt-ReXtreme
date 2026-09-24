@@ -41,7 +41,7 @@ int __cdecl CampaignFrontendPoll(CampaignEvent* event);
 int __cdecl CampaignFrontendBoot(void);
 int __cdecl CampaignFrontendLobbyReady(void);
 int __cdecl CampaignFrontendGarageBuild(void* gs_garage);
-int __cdecl CampaignFrontendOwnershipContains(void* legacy_container, const int32_t* value);
+int __cdecl CampaignFrontendIsOwned(int32_t car_id);
 
 #ifdef __cplusplus
 }
