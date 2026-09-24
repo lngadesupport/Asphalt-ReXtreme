@@ -32,6 +32,8 @@
     "PhotoFrameSelector":  "0xC0DEB003",
     "PhotoFrameBindingRegistry":  "config/photo-frame-binding.verified.json",
     "PhotoFrameBindingVerified":  false,
+    "PhotoBindingCatalog":  "CampaignPhotoBindings.dat",
+    "PhotoFreeCameraRequiresCompleteBindings":  true,
     "PresentationSettings":  "ReXtremePresentation.dat",
     "ReplayFormat":  ".rexreplay",
     "ReplayRuntimeFoundation":  true,
@@ -41,6 +43,6 @@
     "PresentationBindingCatalog":  "CampaignPresentationBindings.dat",
     "PresentationValuesRequireVerifiedBinding":  true,
     "UnverifiedPresentationOptionsVisible":  false,
-    "Size":  48640,
-    "SHA256":  "2e59a584e53fe1ff875d98c9ace3ef09bddcceaefbdbc91b3de09cf1db1a5995"
+    "Size":  51200,
+    "SHA256":  "0dc3654e7416a339f7ffcc6987deefd629ad8bfaed7165c7677655132df4dbcf"
 }
