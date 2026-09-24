@@ -261,6 +261,31 @@ public partial class MainWindow : Window
         catch (Exception ex) { Fail(ex); }
     }
 
+    private void ScanOriginalVehicleDb_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Selecione o arquivo original com definições de veículos",
+                Filter = "Todos os arquivos|*.*"
+            };
+            if (dialog.ShowDialog() != true) return;
+
+            var scanner = new OriginalVehicleScanService();
+            var report = scanner.ScanFile(dialog.FileName);
+            var saved = scanner.SaveReport(ProjectRoot, report);
+
+            Log($"DB original escaneado: {report.Vehicles.Count} veículos encontrados.");
+            foreach (var group in report.Vehicles.GroupBy(v => v.PerformanceClass).OrderBy(g => g.Key))
+                Log($"  Class {group.Key}: {group.Count()} veículo(s)");
+            Log($"Relatório bruto salvo: {saved}");
+            Log("Arquétipo/física não são inferidos: o relatório preserva atributos originais para mapeamento verificado.");
+            RefreshProjectTree();
+        }
+        catch (Exception ex) { Fail(ex); }
+    }
+
     private void ImportVehicleRegistry_Click(object sender, RoutedEventArgs e)
     {
         try
