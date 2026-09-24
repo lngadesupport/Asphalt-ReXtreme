@@ -1,0 +1,12 @@
+{
+  "format": "rextreme-race-hud-bindings",
+  "version": 1,
+  "build": "1.7.3.8-x86",
+  "policy": {
+    "original_elements_only": true,
+    "create_new_hud_widgets": false
+  },
+  "rule": "Bindings may target only verified properties of existing original Asphalt Xtreme race HUD elements. Empty bindings keep HUD modification disabled.",
+  "pe": null,
+  "bindings": []
+}
