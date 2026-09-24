@@ -45,6 +45,32 @@ def main() -> int:
             if name in text:
                 problems.append({"file":str(gw.relative_to(root)),"rule":"old-symbol:"+name})
 
+    active_files = (
+        "RUN-CLEAN-RUNTIME-V1.ps1",
+        "tools/test_clean_runtime_v1.ps1",
+        "tools/apply_clean_runtime_v1.ps1",
+        "tools/build_package_phase5.ps1",
+        "tools/public_beta.ps1",
+        "FINALIZE-CAMPAIGN-EDITION.cmd",
+    )
+    active_forbidden = (
+        "_AMS_PHASE2",
+        "campaign_frontend_garage_v",
+        "campaign_career_adapter_v",
+        "CampaignFrontendBridge",
+        "CampaignGarageFlow",
+        "CampaignTutorialBuildConsumer",
+    )
+    for rel in active_files:
+        p = root / rel
+        if not p.is_file():
+            problems.append({"file":rel,"rule":"missing-active-clean-path"})
+            continue
+        text = p.read_text(encoding="utf-8", errors="replace")
+        for token in active_forbidden:
+            if token in text:
+                problems.append({"file":rel,"rule":"active-old-path:"+token})
+
     report={
         "schema":1,
         "runtime":"Campaign Runtime V1",
