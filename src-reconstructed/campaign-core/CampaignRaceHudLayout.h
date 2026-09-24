@@ -15,6 +15,7 @@ uint32_t CampaignRaceHudLayoutCount(void);
 int CampaignRaceHudLayoutGet(uint32_t index, CampaignRaceHudElementState* out);
 int CampaignRaceHudLayoutSet(const CampaignRaceHudElementState* state);
 int CampaignRaceHudLayoutApply(void);
+int CampaignRaceHudLayoutApplyFromGui(void* game_mode_gui);
 
 #ifdef __cplusplus
 }
