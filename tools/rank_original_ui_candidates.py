@@ -68,6 +68,14 @@ ROLES = {
         "kind": "panel",
         "terms": ("result", "reward", "star", "item", "row", "panel"),
     },
+    "profile.screen": {
+        "kind": "screen",
+        "terms": ("profile", "statistics", "stats", "record", "records"),
+    },
+    "profile.row": {
+        "kind": "panel",
+        "terms": ("profile", "statistics", "stat", "record", "row", "panel"),
+    },
 }
 
 
