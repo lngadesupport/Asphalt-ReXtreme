@@ -1209,28 +1209,16 @@ static int SpecialEventProgressUnlocked(
     uint32_t* completed_mask,
     uint32_t* completed_count
 ) {
-    uint32_t counts[CAMPAIGN_SPECIAL_EVENT_STAGE_MAX];
-    uint32_t i;
     uint32_t day;
-
     if (completed_mask) *completed_mask = 0;
     if (completed_count) *completed_count = 0;
     if (!def || def->stage_count == 0 ||
         def->stage_count > CAMPAIGN_SPECIAL_EVENT_STAGE_MAX) return 0;
-
-    for (i = 0; i < CAMPAIGN_SPECIAL_EVENT_STAGE_MAX; ++i) counts[i] = 0;
-    for (i = 0; i < def->stage_count; ++i) {
-        int index = FindEventStateIndex(def->stage_event_ids[i]);
-        if (index >= 0) counts[i] = g_state.event_states[index].completion_count;
-    }
-
     day = CurrentLocalDayKey();
     if (day == 0) return 0;
-    return CampaignSpecialEventPeriodStateEvaluate(
+    return CampaignSpecialEventPeriodStateGet(
         def,
         day,
-        counts,
-        def->stage_count,
         completed_mask,
         completed_count
     );
