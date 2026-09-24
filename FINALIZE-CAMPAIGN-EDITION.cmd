@@ -57,6 +57,7 @@ call :get tools/campaign_garage_v2.py tools\campaign_garage_v2.py || goto :downl
 call :get tools/campaign_career_adapter_v2.py tools\campaign_career_adapter_v2.py || goto :download_fail
 call :get tools/campaign_upgrade_adapter_v1.py tools\campaign_upgrade_adapter_v1.py || goto :download_fail
 call :get tools/campaign_store_adapter_v1.py tools\campaign_store_adapter_v1.py || goto :download_fail
+call :get tools/validate_campaign_data_prepatch.py tools\validate_campaign_data_prepatch.py || goto :download_fail
 call :get tools/validate_campaign_final.py tools\validate_campaign_final.py || goto :download_fail
 
 echo [CORE] Baixando Campaign Core atual...
@@ -114,6 +115,18 @@ if "%STOREERR%"=="4" (
   if errorlevel 1 goto :data_fail
 ) else (
   if not "%STOREERR%"=="0" goto :data_fail
+)
+
+echo.
+echo [PREFLIGHT] Validando todos os catalogos antes de alterar o AMS...
+python.exe "%TOOLS%\validate_campaign_data_prepatch.py" ^
+  --package "%PKG%" ^
+  --report "%ROOT%\_CAMPAIGN_PRODUCTION_DATA\CampaignData.prepatch.json"
+if errorlevel 1 (
+  echo [BLOQUEIO] Catalogos Campaign incompletos/corrompidos.
+  echo Consulte:
+  echo   _CAMPAIGN_PRODUCTION_DATA\CampaignData.prepatch.json
+  goto :data_fail
 )
 
 echo.
