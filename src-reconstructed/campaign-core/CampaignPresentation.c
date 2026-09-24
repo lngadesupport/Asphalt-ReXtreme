@@ -6,6 +6,7 @@
 #include "CampaignPresentationBindings.h"
 #include "CampaignPhotoBindings.h"
 #include "CampaignReplayBindings.h"
+#include "CampaignOriginalUiBindings.h"
 
 #define RXPS_MAGIC 0x53505852u /* RXPS */
 #define RXRP_MAGIC 0x50525852u /* RXRP */
@@ -1671,6 +1672,13 @@ int __cdecl CampaignPresentationGetDiagnostics(CampaignPresentationDiagnostics* 
         CampaignPhotoBindingsReady(CAMPAIGN_PHOTO_CAMERA_FREE) ? 1u : 0u;
     out->replay_binding_count = CampaignReplayBindingsCount();
     out->replay_recording_ready = CampaignReplayBindingsReady() ? 1u : 0u;
+    out->original_ui_binding_count = CampaignOriginalUiBindingsCount();
+    out->original_ui_feature_mask = 0u;
+    if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_GRAPHICS_SETTINGS)) out->original_ui_feature_mask |= 1u << 0;
+    if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_CAMERA_SETTINGS)) out->original_ui_feature_mask |= 1u << 1;
+    if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_REPLAY)) out->original_ui_feature_mask |= 1u << 2;
+    if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_PHOTO_MODE)) out->original_ui_feature_mask |= 1u << 3;
+    if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_RACE_HUD)) out->original_ui_feature_mask |= 1u << 4;
 
     PresentationUnlock();
     return 1;
@@ -1919,6 +1927,19 @@ int __cdecl CampaignPresentationInvoke(CampaignPresentationCommand* command) {
         command->status = CampaignPresentationGetDiagnostics(
             (CampaignPresentationDiagnostics*)(uintptr_t)command->ptr0
         );
+        break;
+
+    case CAMPAIGN_PRESENTATION_OP_ORIGINAL_UI_RELOAD:
+        command->status = CampaignOriginalUiBindingsLoad();
+        command->out0 = (int32_t)CampaignOriginalUiBindingsCount();
+        break;
+    case CAMPAIGN_PRESENTATION_OP_ORIGINAL_UI_COUNT:
+        command->out0 = (int32_t)CampaignOriginalUiBindingsCount();
+        command->status = 1;
+        break;
+    case CAMPAIGN_PRESENTATION_OP_ORIGINAL_UI_FEATURE_READY:
+        command->out0 = CampaignOriginalUiFeatureReady((uint32_t)command->a) ? 1 : 0;
+        command->status = 1;
         break;
     default:
         return 0;
