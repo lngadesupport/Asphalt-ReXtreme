@@ -1,4 +1,4 @@
-Microsoft (R) COFF/PE Dumper Version 14.51.36257.0
+Microsoft (R) COFF/PE Dumper Version 14.51.36256.0
 Copyright (C) Microsoft Corporation.  All rights reserved.
 
 
@@ -11,7 +11,7 @@ File Type: DLL
 FILE HEADER VALUES
              14C machine (x86)
                4 number of sections
-        6AB54184 time date stamp Thu Sep 24 15:28:04 2026
+        6AB5426C time date stamp Thu Sep 24 15:31:56 2026
                0 file pointer to symbol table
                0 number of symbols
               E0 size of optional header
@@ -54,7 +54,7 @@ OPTIONAL HEADER VALUES
                0 [       0] RVA [size] of Resource Directory
                0 [       0] RVA [size] of Exception Directory
                0 [       0] RVA [size] of Certificates Directory
-          136000 [     F28] RVA [size] of Base Relocation Directory
+          136000 [     F34] RVA [size] of Base Relocation Directory
             E804 [      1C] RVA [size] of Debug Directory
                0 [       0] RVA [size] of Architecture Directory
                0 [       0] RVA [size] of Global Pointer Directory
@@ -69,8 +69,8 @@ OPTIONAL HEADER VALUES
 
 SECTION HEADER #1
    .text name
-    C683 virtual size
-    1000 virtual address (10001000 to 1000D682)
+    C773 virtual size
+    1000 virtual address (10001000 to 1000D772)
     C800 size of raw data
      400 file pointer to raw data (00000400 to 0000CBFF)
        0 file pointer to relocation table
@@ -99,7 +99,7 @@ SECTION HEADER #2
 
         Time Type        Size      RVA  Pointer
     -------- ------- -------- -------- --------
-    6AB54184 coffgrp       DC 0000EB8C     D78C
+    6AB5426C coffgrp       DC 0000EB8C     D78C
 
   Section contains the following imports:
 
@@ -136,8 +136,8 @@ SECTION HEADER #2
 
 SECTION HEADER #3
    .data name
-  126E60 virtual size
-    F000 virtual address (1000F000 to 10135E5F)
+  126E68 virtual size
+    F000 virtual address (1000F000 to 10135E67)
        0 size of raw data
        0 file pointer to raw data
        0 file pointer to relocation table
@@ -150,8 +150,8 @@ C0000040 flags
 
 SECTION HEADER #4
   .reloc name
-     F28 virtual size
-  136000 virtual address (10136000 to 10136F27)
+     F34 virtual size
+  136000 virtual address (10136000 to 10136F33)
     1000 size of raw data
     DC00 file pointer to raw data (0000DC00 to 0000EBFF)
        0 file pointer to relocation table
