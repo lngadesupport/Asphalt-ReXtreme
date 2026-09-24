@@ -20,8 +20,11 @@
     "UpgradeUiMap":  "CampaignUpgradeUiMap.dat",
     "StoreCatalog":  "CampaignStore.dat",
     "StoreLegacySelector":  "0xC0DE5501",
+    "UiSelector":  "0xC0DE7701",
+    "OnlinePolicySelector":  "0xC0DE7702",
+    "EventPollSelector":  "0xC0DE7703",
     "CareerPreSelector":  "0xC0DECA72",
     "CareerPostSelector":  "0xC0DECA73",
-    "Size":  26624,
-    "SHA256":  "2fc2d4cf023f05becb33570b2d4b4b8900fe2cfc280db0b19569754380d4d6cd"
+    "Size":  27648,
+    "SHA256":  "00a91d6b98969524bad6e0c82e0fb854908fdd307676050922254985564a8cf7"
 }
