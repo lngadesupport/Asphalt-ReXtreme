@@ -38,6 +38,27 @@ class CampaignStoreCatalogTests(unittest.TestCase):
         stored_checksum = m.CHECKSUM.unpack_from(data, len(data) - 4)[0]
         self.assertEqual(stored_checksum, m.fnv1a(data[:-4]))
 
+    def test_offer_key_hash(self):
+        key = "booster_nitro_pack"
+        offer_id = m.offer_key_hash(key)
+        data = m.encode([{
+            "offer_key": key,
+            "item_id": 123,
+            "quantity": 2,
+            "currency": "credits",
+            "price": 5000,
+        }])
+        first = m.ENTRY.unpack_from(data, m.HEADER.size)
+        self.assertEqual(first[0], offer_id)
+        self.assertGreater(offer_id, 0)
+
+    def test_offer_key_collision_or_duplicate_rejected(self):
+        with self.assertRaises(ValueError):
+            m.encode([
+                {"offer_key": "same", "item_id": 1, "quantity": 1, "currency": "free", "price": 0},
+                {"offer_key": "same", "item_id": 2, "quantity": 1, "currency": "free", "price": 0},
+            ])
+
     def test_free_offer_requires_zero_price(self):
         with self.assertRaises(ValueError):
             m.encode([{
