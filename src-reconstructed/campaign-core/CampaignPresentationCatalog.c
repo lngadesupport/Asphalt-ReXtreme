@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <stdint.h>
 #include "CampaignPresentationCatalog.h"
+#include "CampaignPresentationBindings.h"
 
 #define RXPC_MAGIC 0x43505852u /* RXPC */
 #define RXPC_VERSION 1u
@@ -315,6 +316,7 @@ int CampaignPresentationCatalogSetValue(uint32_t index, int32_t value) {
     capability = CampaignPresentationCatalogGet(index);
     if (!capability) return 0;
     if (!CampaignPresentationCapabilityValueValid(capability, value)) return 0;
+    if (!CampaignPresentationBindingsApply(capability->id, value)) return 0;
     if (!BuildOptionsIniPath()) return 0;
     if (!AsciiToWide(capability->id, key, CAMPAIGN_PRESENTATION_CAPABILITY_ID_MAX)) return 0;
     if (!IntToWide(value, text, 32)) return 0;
@@ -333,6 +335,11 @@ int CampaignPresentationCatalogResetValue(uint32_t index) {
 
     capability = CampaignPresentationCatalogGet(index);
     if (!capability) return 0;
+    if (!CampaignPresentationBindingsApply(
+            capability->id,
+            capability->original_value)) {
+        return 0;
+    }
     if (!BuildOptionsIniPath()) return 0;
     if (!AsciiToWide(capability->id, key, CAMPAIGN_PRESENTATION_CAPABILITY_ID_MAX)) return 0;
 
