@@ -302,7 +302,7 @@ public sealed class ProjectService
         Directory.CreateDirectory(textureDir);
         var target = Path.Combine(textureDir, Path.GetFileName(file));
         File.Copy(file, target, true);
-        return Path.GetRelativePath(CurrentProjectPath!, target).Replace('\\', '/');
+        return Path.GetRelativePath(CurrentProjectPath!, target).Replace(Path.DirectorySeparatorChar, '/');
     }
 
     public static T LoadJson<T>(string file) =>
