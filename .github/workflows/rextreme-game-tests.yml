@@ -10,9 +10,11 @@ on:
       - "tools/build_presentation_capability_catalog.py"
       - "tools/build_presentation_binding_catalog.py"
       - "tools/build_photo_binding_catalog.py"
+      - "tools/build_replay_binding_catalog.py"
       - "config/presentation-capabilities.verified.json"
       - "config/presentation-bindings.verified.json"
       - "config/photo-bindings.verified.json"
+      - "config/replay-bindings.verified.json"
       - "config/replay-frame-binding.verified.json"
       - "config/photo-frame-binding.verified.json"
       - "config/photo-toggle-binding.verified.json"
@@ -21,6 +23,7 @@ on:
       - "tests/test_build_presentation_capability_catalog.py"
       - "tests/test_build_presentation_binding_catalog.py"
       - "tests/test_build_photo_binding_catalog.py"
+      - "tests/test_build_replay_binding_catalog.py"
       - "tools/audit_original_settings_ui.py"
       - "tools/audit_replay_frame_hooks.py"
       - "tools/apply_replay_frame_binding.py"
@@ -56,6 +59,7 @@ jobs:
           tests/test_build_presentation_capability_catalog.py
           tests/test_build_presentation_binding_catalog.py
           tests/test_build_photo_binding_catalog.py
+          tests/test_build_replay_binding_catalog.py
           tests/test_audit_original_settings_ui.py
           tests/test_audit_replay_frame_hooks.py
           tests/test_apply_replay_frame_binding.py
@@ -104,3 +108,18 @@ jobs:
           if ($r.free_camera_ready) { throw "Free Camera cannot be ready with an empty catalog" }
           if (-not $r.safe_empty_catalog) { throw "Expected safe empty Photo binding catalog" }
           if ((Get-Item CampaignPhotoBindings.dat).Length -ne 28) { throw "Unexpected Photo catalog size" }
+
+      - name: Build safe empty Replay transform binding catalog
+        run: >
+          python tools/build_replay_binding_catalog.py
+          config/replay-bindings.verified.json
+          CampaignReplayBindings.dat
+          --report CampaignReplayBindings.report.json
+      - name: Verify Replay recording remains fail-closed
+        shell: pwsh
+        run: |
+          $r = Get-Content CampaignReplayBindings.report.json -Raw | ConvertFrom-Json
+          if ($r.count -ne 0) { throw "Unverified Replay bindings leaked into runtime catalog" }
+          if ($r.recording_ready) { throw "Replay recording cannot be ready with an empty catalog" }
+          if (-not $r.safe_empty_catalog) { throw "Expected safe empty Replay binding catalog" }
+          if ((Get-Item CampaignReplayBindings.dat).Length -ne 28) { throw "Unexpected Replay catalog size" }
