@@ -5,6 +5,7 @@
 #include "CampaignPresentationCatalog.h"
 #include "CampaignPresentationBindings.h"
 #include "CampaignPhotoBindings.h"
+#include "CampaignReplayBindings.h"
 
 #define RXPS_MAGIC 0x53505852u /* RXPS */
 #define RXRP_MAGIC 0x50525852u /* RXRP */
@@ -1531,6 +1532,8 @@ int __cdecl CampaignPresentationGetDiagnostics(CampaignPresentationDiagnostics* 
     out->photo_binding_count = CampaignPhotoBindingsCount();
     out->photo_free_camera_ready =
         CampaignPhotoBindingsReady(CAMPAIGN_PHOTO_CAMERA_FREE) ? 1u : 0u;
+    out->replay_binding_count = CampaignReplayBindingsCount();
+    out->replay_recording_ready = CampaignReplayBindingsReady() ? 1u : 0u;
 
     PresentationUnlock();
     return 1;
