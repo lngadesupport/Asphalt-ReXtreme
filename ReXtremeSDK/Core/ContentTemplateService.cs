@@ -24,62 +24,54 @@ public static class ContentTemplateService
                 Nitro = Clamp(nitro / 100.0)
             }
         };
-
         var path = Path.Combine(projectRoot, "content", "vehicles", SafeFileName(id) + ".json");
         ProjectService.SaveJson(path, vehicle);
         return path;
     }
 
-    public static string CreateEvent(string projectRoot, string id, string name, string track, string mode, int laps)
-    {
-        var data = new
+    public static string CreateEvent(string projectRoot, string id, string name, string track, string mode, int laps) =>
+        Write(projectRoot, "content/events", id, new
         {
-            schema_version = 1,
-            id,
-            name,
-            track,
-            mode,
-            laps = Math.Max(1, laps),
-            allowed_categories = Array.Empty<string>(),
-            objectives = Array.Empty<object>(),
-            rewards = Array.Empty<object>(),
-            music = Array.Empty<string>(),
-            hud_layout = (string?)null
-        };
-        return Write(projectRoot, "content/events", id, data);
-    }
+            schema_version = 1, id, name, track, mode, laps = Math.Max(1, laps),
+            allowed_categories = Array.Empty<string>(), objectives = Array.Empty<object>(),
+            rewards = Array.Empty<object>(), music = Array.Empty<string>(), hud_layout = (string?)null
+        });
 
-    public static string CreateCareerSeason(string projectRoot, string id, string name)
-    {
-        var data = new
+    public static string CreateSpecialEvent(string projectRoot, string id, string name) =>
+        Write(projectRoot, "content/special-events", id, new
         {
-            schema_version = 1,
-            id,
-            name,
-            insert_mode = "new-season",
-            target_original_season = (string?)null,
-            nodes = Array.Empty<object>(),
-            completion_rewards = Array.Empty<object>()
-        };
-        return Write(projectRoot, "content/career", id, data);
-    }
+            schema_version = 1, id, name, banner = (string?)null, availability = "permanent",
+            unlock_requirement = (object?)null, stages = Array.Empty<object>(), completion_rewards = Array.Empty<object>()
+        });
 
-    public static string CreateHudLayout(string projectRoot, string id, string baseHud = "original")
-    {
-        var data = new
+    public static string CreateCareerSeason(string projectRoot, string id, string name) =>
+        Write(projectRoot, "content/career", id, new
         {
-            schema_version = 1,
-            id,
-            @base = baseHud,
-            components = new object[]
-            {
-                new { id = "speed", type = "original-speedometer", anchor = "bottom-right", x = 0.0, y = 0.0, scale = 1.0, opacity = 1.0, binding = "player.speed" },
-                new { id = "nitro", type = "original-nitro", anchor = "bottom-center", x = 0.0, y = 0.0, scale = 1.0, opacity = 1.0, binding = "player.nitro" },
-                new { id = "position", type = "original-position", anchor = "top-left", x = 0.0, y = 0.0, scale = 1.0, opacity = 1.0, binding = "race.position" }
-            },
-            aspect_variants = new { }
-        };
-        return Write(projectRoot, "content/hud", id, data);
+            schema_version = 1, id, name, insert_mode = "new-season", target_original_season = (string?)null,
+            nodes = Array.Empty<object>(), completion_rewards = Array.Empty<object>()
+        });
+
+    public static string CreateTrack(string projectRoot, string id, string name) =>
+        Write(projectRoot, "content/tracks", id, new
+        {
+            schema_version = 1, id, name, geometry = "assets/models/track.glb", collision = (string?)null,
+            start_grid = Array.Empty<object>(), finish = (object?)null, checkpoints = Array.Empty<object>(),
+            respawns = Array.Empty<object>(), ai_routes = Array.Empty<object>(), shortcuts = Array.Empty<object>(),
+            replay_cameras = Array.Empty<object>(), audio_zones = Array.Empty<object>(), environment = (string?)null
+        });
+
+    public static string CreateLivery(string projectRoot, string id, string name, string vehicle) =>
+        Write(projectRoot, "content/liveries", id, new
+        {
+            schema_version = 1, id, name, vehicle,
+            layers = new object[] { new { type = "paint", source = (string?)null, opacity = 1.0, transform = (object?)null } }
+        });
+
+    public static string SaveHudLayout(string projectRoot, string id, IEnumerable<RxHudComponent> components)
+    {
+        var path = Path.Combine(projectRoot, "content", "hud", SafeFileName(id) + ".json");
+        ProjectService.SaveJson(path, new RxHudLayout { Id = id, Base = "original", Components = components.ToList() });
+        return path;
     }
 
     private static string Write(string root, string folder, string id, object value)
