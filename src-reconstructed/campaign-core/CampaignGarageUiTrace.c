@@ -12,6 +12,7 @@ typedef LONG (WINAPI *CampaignGetCurrentPackageFamilyNameFn)(
 #define CAMPAIGN_GS_BASE 0x340u
 #define CAMPAIGN_GS_WORDS 32u
 #define CAMPAIGN_GBBW_WORDS 40u
+#define CAMPAIGN_BUILD_BUTTON_WORDS 32u
 
 typedef struct CampaignGarageUiTraceRecord {
     uint32_t magic;
@@ -20,9 +21,11 @@ typedef struct CampaignGarageUiTraceRecord {
     uint32_t gs_garage;
     uint32_t widget;
     uint32_t gs_companion;
-    uint32_t reserved;
+    uint32_t build_button;
+    uint32_t build_button_control;
     uint32_t gs_words[CAMPAIGN_GS_WORDS];
     uint32_t widget_words[CAMPAIGN_GBBW_WORDS];
+    uint32_t build_button_words[CAMPAIGN_BUILD_BUTTON_WORDS];
 } CampaignGarageUiTraceRecord;
 
 static WCHAR g_local_app_data[1024];
@@ -97,7 +100,7 @@ void __cdecl CampaignGarageUiTraceWrite(
     }
 
     r.magic = CAMPAIGN_GARAGE_UI_TRACE_MAGIC;
-    r.version = 1;
+    r.version = 2;
     r.step = step;
     r.gs_garage = (uint32_t)(uintptr_t)gs_garage;
     r.widget = (uint32_t)(uintptr_t)garage_bottom_bar_widget;
@@ -112,11 +115,30 @@ void __cdecl CampaignGarageUiTraceWrite(
     }
 
     if (widget) {
+        void* build_button;
+
         CopyWords(
             r.widget_words,
             (volatile const uint32_t*)widget,
             CAMPAIGN_GBBW_WORDS
         );
+
+        /*
+          Phase65 model:
+            GBBW+0x90 = build_button shared_ptr.object
+            GBBW+0x94 = build_button shared_ptr.control
+        */
+        build_button = *(void**)(widget + 0x90);
+        r.build_button = (uint32_t)(uintptr_t)build_button;
+        r.build_button_control = *(uint32_t*)(widget + 0x94);
+
+        if (build_button) {
+            CopyWords(
+                r.build_button_words,
+                (volatile const uint32_t*)build_button,
+                CAMPAIGN_BUILD_BUTTON_WORDS
+            );
+        }
     }
 
     if (!BuildTracePath()) return;
