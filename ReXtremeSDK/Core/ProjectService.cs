@@ -7,7 +7,7 @@ public sealed class ProjectService
 {
     public static readonly string[] ProjectFolders =
     [
-        "assets/models", "assets/textures", "assets/music", "assets/audio", "assets/ui",
+        "assets/source", "assets/models", "assets/textures", "assets/music", "assets/audio", "assets/ui",
         "content/vehicles", "content/tracks", "content/events", "content/special-events",
         "content/career", "content/championships", "content/hud", "content/liveries",
         "content/environment", "scripts", "localization"
