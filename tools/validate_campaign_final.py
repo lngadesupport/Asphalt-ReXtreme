@@ -52,6 +52,23 @@ def patch_status(root: Path, ams_data: bytes):
     tools = root / "tools"
     result = {}
 
+    p = load_module(tools / "campaign_profile_adapter_v1.py", "cp")
+    if p:
+        profile_ready = (
+            bytes_at(ams_data, p.ONLINE_OFF, len(p.ONLINE_FALSE)) == p.ONLINE_FALSE
+            and bytes_at(ams_data, p.POPUP_OFF, len(p.POPUP_SAFE)) == p.POPUP_SAFE
+            and bytes_at(ams_data, p.SYNC_SUBMIT_OFF, len(p.SYNC_SUBMIT_LOCAL)) == p.SYNC_SUBMIT_LOCAL
+            and all(
+                bytes_at(ams_data, off, len(patched)) == patched
+                for _label, off, _original, patched in p.PATCHES
+            )
+        )
+        result["profile"] = {
+            "ready": profile_ready,
+            "logical_connectivity": "offline/false",
+            "remote_sync_transport": "retired" if profile_ready else "unknown",
+        }
+
     g = load_module(tools / "campaign_garage_v2.py", "cg")
     if g:
         gateway, owned_va = g.build_gateway()
@@ -198,13 +215,14 @@ def main() -> int:
     if runtime_dll.exists():
         report["blocking"].append("legacy ReXtremeLocalRuntime.dll still present")
 
-    for subsystem in ("garage", "career"):
+    for subsystem in ("profile", "garage", "career"):
         if subsystem in report["patches"] and not report["patches"][subsystem]["ready"]:
             report["blocking"].append(f"{subsystem} adapter not applied")
 
     # Upgrade/store can be intentionally offline-disabled if their strict data
     # mapping was not reconstructed; report separately rather than claiming ready.
     report["subsystems"] = {
+        "profile": "READY" if report["patches"].get("profile", {}).get("ready") else "NOT_APPLIED",
         "garage": "READY" if report["patches"].get("garage", {}).get("ready") else "NOT_APPLIED",
         "career": "READY" if report["patches"].get("career", {}).get("ready") else "NOT_APPLIED",
         "upgrade": (
