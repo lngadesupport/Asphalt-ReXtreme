@@ -36,6 +36,7 @@ DEFAULT_PRESENTATION_CAPABILITIES = Path("config/presentation-capabilities.verif
 DEFAULT_PRESENTATION_BINDINGS = Path("config/presentation-bindings.verified.json")
 DEFAULT_PHOTO_BINDINGS = Path("config/photo-bindings.verified.json")
 DEFAULT_REPLAY_BINDINGS = Path("config/replay-bindings.verified.json")
+DEFAULT_ORIGINAL_UI_BINDINGS = Path("config/original-ui-bindings.verified.json")
 
 
 class BuildError(RuntimeError):
@@ -301,6 +302,47 @@ def build_replay_bindings(output: Path, source: Path, builder: Path) -> dict:
     }
 
 
+def build_original_ui_bindings(output: Path, source: Path, builder: Path) -> dict:
+    if not source.is_file():
+        raise BuildError(f"Original UI binding source not found: {source}")
+    if not builder.is_file():
+        raise BuildError(f"Original UI binding builder not found: {builder}")
+
+    target = output / "CampaignOriginalUiBindings.dat"
+    report = output / "CampaignOriginalUiBindings.report.json"
+    cmd = [
+        sys.executable,
+        str(builder),
+        str(source),
+        str(target),
+        "--report",
+        str(report),
+    ]
+    result = subprocess.run(cmd, text=True)
+    if result.returncode != 0:
+        raise BuildError(f"Original UI binding catalog build failed with exit code {result.returncode}")
+
+    try:
+        summary = json.loads(report.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BuildError(f"Invalid Original UI binding report: {exc}") from exc
+
+    if not summary.get("original_ui_only", False):
+        raise BuildError("Original UI policy unexpectedly disabled")
+    if summary.get("custom_ui_assets_allowed", True):
+        raise BuildError("Custom in-game UI assets unexpectedly enabled")
+
+    return {
+        "catalog": target.name,
+        "report": report.name,
+        "count": int(summary.get("count", 0)),
+        "safe_empty_catalog": bool(summary.get("safe_empty_catalog", False)),
+        "original_ui_only": True,
+        "custom_ui_assets_allowed": False,
+        "fallback_if_unmapped": "feature-hidden",
+    }
+
+
 def overlay_directory(output: Path, overlay: Path) -> list[str]:
     if not overlay.is_dir():
         raise BuildError(f"Overlay directory not found: {overlay}")
@@ -326,6 +368,7 @@ def write_status(
     presentation_bindings: dict,
     photo_bindings: dict,
     replay_bindings: dict,
+    original_ui_bindings: dict,
     portable_user_data: list[str],
 ) -> Path:
     status = {
@@ -341,6 +384,10 @@ def write_status(
         "photo_free_camera_ready": bool(photo_bindings.get("free_camera_ready", False)),
         "replay_binding_catalog": replay_bindings,
         "replay_recording_ready": bool(replay_bindings.get("recording_ready", False)),
+        "original_ui_binding_catalog": original_ui_bindings,
+        "original_ui_only": True,
+        "custom_in_game_ui_assets_allowed": False,
+        "unmapped_ui_feature_behavior": "hidden",
         "portable_user_data": portable_user_data,
         "package_metadata_moved_out_of_runtime_root": moved_metadata,
         "portable_startup_ready": False,
@@ -383,6 +430,11 @@ def main() -> int:
         type=Path,
         default=DEFAULT_REPLAY_BINDINGS,
     )
+    parser.add_argument(
+        "--original-ui-bindings",
+        type=Path,
+        default=DEFAULT_ORIGINAL_UI_BINDINGS,
+    )
     parser.add_argument("--offline-overlay", type=Path)
     parser.add_argument("--verify-only", action="store_true")
     args = parser.parse_args()
@@ -395,12 +447,14 @@ def main() -> int:
     presentation_bindings_path = args.presentation_bindings.resolve()
     photo_bindings_path = args.photo_bindings.resolve()
     replay_bindings_path = args.replay_bindings.resolve()
+    original_ui_bindings_path = args.original_ui_bindings.resolve()
     tools_dir = Path(__file__).resolve().parent
     patcher = (tools_dir / "patcher.py").resolve()
     presentation_builder = (tools_dir / "build_presentation_capability_catalog.py").resolve()
     presentation_binding_builder = (tools_dir / "build_presentation_binding_catalog.py").resolve()
     photo_binding_builder = (tools_dir / "build_photo_binding_catalog.py").resolve()
     replay_binding_builder = (tools_dir / "build_replay_binding_catalog.py").resolve()
+    original_ui_binding_builder = (tools_dir / "build_original_ui_binding_catalog.py").resolve()
 
     if not source.is_dir():
         print(f"ERROR: source directory not found: {source}", file=sys.stderr)
@@ -474,6 +528,17 @@ def main() -> int:
             f"(recording ready={replay_bindings['recording_ready']})"
         )
 
+        original_ui_bindings = build_original_ui_bindings(
+            output,
+            original_ui_bindings_path,
+            original_ui_binding_builder,
+        )
+        print(
+            "[UI] original-only verified bindings: "
+            f"{original_ui_bindings['count']} "
+            f"(unmapped features hidden)"
+        )
+
         overlay_files: list[str] = []
         if args.offline_overlay:
             overlay_files = overlay_directory(output, args.offline_overlay.resolve())
@@ -488,6 +553,7 @@ def main() -> int:
             presentation_bindings,
             photo_bindings,
             replay_bindings,
+            original_ui_bindings,
             portable_user_data,
         )
         print(f"[STATUS] {status_path}")
