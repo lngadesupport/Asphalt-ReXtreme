@@ -260,12 +260,30 @@ int main(void) {
     photo.camera_mode = CAMPAIGN_PHOTO_CAMERA_FREE;
     photo.hide_hud = 1;
     photo.fov_x100 = 6500;
+    photo.position_x = 12.5f;
+    photo.position_y = 3.0f;
+    photo.position_z = -8.0f;
+    photo.pitch_x100 = -500;
+    photo.yaw_x100 = 9000;
+    photo.roll_x100 = 250;
+    photo.move_speed_x1000 = 1500;
     if (!CampaignPhotoEnter(&photo)) return Fail(40);
 
     photo_readback.size = sizeof(photo_readback);
     if (!CampaignPhotoGet(&photo_readback)) return Fail(41);
     if (!photo_readback.active || photo_readback.fov_x100 != 6500) return Fail(42);
+    if (photo_readback.position_x != 12.5f ||
+        photo_readback.position_y != 3.0f ||
+        photo_readback.position_z != -8.0f ||
+        photo_readback.pitch_x100 != -500 ||
+        photo_readback.yaw_x100 != 9000 ||
+        photo_readback.roll_x100 != 250 ||
+        photo_readback.move_speed_x1000 != 1500) return Fail(44);
     if (!CampaignPhotoExit()) return Fail(43);
+
+    diagnostics.size = sizeof(diagnostics);
+    if (!CampaignPresentationGetDiagnostics(&diagnostics)) return Fail(45);
+    if (diagnostics.photo_active != 0) return Fail(46);
 
     if (CampaignPresentationCatalogCount() != 0) return Fail(50);
     if (!WriteTestCapabilityCatalog()) return Fail(51);
