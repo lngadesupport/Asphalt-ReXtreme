@@ -9,6 +9,8 @@ on:
       - "ReXtremeSDK/**/*.xaml"
       - "ReXtremeSDK/**/*.csproj"
       - "ReXtremeSDK/Integrations/**"
+      - "ReXtremeSDK/Data/**"
+      - "ReXtremeSDK/schemas/**"
       - ".github/workflows/rextreme-sdk-build.yml"
   workflow_dispatch:
 
@@ -45,6 +47,7 @@ jobs:
         run: |
           Copy-Item ReXtremeSDK/README.md artifacts/ReXtremeSDK/README.txt
           Copy-Item ReXtremeSDK/schemas artifacts/ReXtremeSDK/schemas -Recurse -Force
+          Copy-Item ReXtremeSDK/Data artifacts/ReXtremeSDK/Data -Recurse -Force
           Copy-Item ReXtremeSDK/Integrations artifacts/ReXtremeSDK/Integrations -Recurse -Force
           Set-Content artifacts/ReXtremeSDK/BUILD.txt "ReXtreme SDK standalone Windows x64 - Commit $env:GITHUB_SHA"
 
