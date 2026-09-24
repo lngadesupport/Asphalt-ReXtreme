@@ -252,6 +252,7 @@ def main() -> int:
     complete_states = report.get("subsystems", {})
     report["complete_rebuild"] = (
         report["playable_ready"]
+        and complete_states.get("profile") == "READY"
         and complete_states.get("garage") == "READY"
         and complete_states.get("career") == "READY"
         and complete_states.get("upgrade") == "READY"
