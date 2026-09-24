@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "CampaignEventCatalog.h"
 #include "CampaignSpecialEventCatalog.h"
+#include "CampaignSpecialEventState.h"
 
 typedef struct TestEventCatalogFile {
     uint32_t magic;
@@ -142,10 +143,15 @@ static void Cleanup(void) {
     WCHAR path[1024];
     if (BuildPath(path, 1024, L"CampaignEvents.dat")) DeleteFileW(path);
     if (BuildPath(path, 1024, L"CampaignSpecialEvents.dat")) DeleteFileW(path);
+    if (BuildPath(path, 1024, L"UserData\\CampaignEdition\\SpecialEventPeriodState.dat")) DeleteFileW(path);
+    if (BuildPath(path, 1024, L"UserData\\CampaignEdition\\SpecialEventPeriodState.tmp")) DeleteFileW(path);
 }
 
 int main(void) {
     const CampaignSpecialEventDefinition* def;
+    uint32_t counts[3];
+    uint32_t mask = 0;
+    uint32_t completed = 0;
 
     Cleanup();
     if (!WriteEvents()) return 1;
@@ -161,10 +167,38 @@ int main(void) {
 
     if (!CampaignSpecialEventDateAvailable(def, 20260924u)) return 6;
     if (CampaignSpecialEventDateAvailable(def, 20270101u)) return 7;
+    if (CampaignSpecialEventPeriodKey(def, 20260924u) != 202639u) return 11;
+    if (CampaignSpecialEventPeriodKey(def, 20261001u) != 202640u) return 12;
+
+    if (!CampaignSpecialEventPeriodStateReset()) return 13;
+    counts[0] = 5; counts[1] = 2; counts[2] = 0;
+    if (!CampaignSpecialEventPeriodStateEvaluate(
+            def, 20260924u, counts, 3, &mask, &completed)) return 14;
+    if (mask != 0 || completed != 0) return 15;
+
+    counts[0] = 6; counts[1] = 2; counts[2] = 1;
+    if (!CampaignSpecialEventPeriodStateEvaluate(
+            def, 20260924u, counts, 3, &mask, &completed)) return 16;
+    if (mask != 5u || completed != 2u) return 17;
+
+    /* New weekly period snapshots the permanent Career counts as a new baseline. */
+    if (!CampaignSpecialEventPeriodStateEvaluate(
+            def, 20261001u, counts, 3, &mask, &completed)) return 18;
+    if (mask != 0 || completed != 0) return 19;
+
+    counts[1] = 3;
+    if (!CampaignSpecialEventPeriodStateEvaluate(
+            def, 20261001u, counts, 3, &mask, &completed)) return 20;
+    if (mask != 2u || completed != 1u) return 21;
 
     def = CampaignSpecialEventCatalogFind(5002);
     if (!def || def->schedule != CAMPAIGN_SPECIAL_EVENT_MANUAL) return 8;
     if (!CampaignSpecialEventDateAvailable(def, 20260924u)) return 9;
+    if (CampaignSpecialEventPeriodKey(def, 20260924u) != 0) return 22;
+    counts[0] = 4;
+    if (!CampaignSpecialEventPeriodStateEvaluate(
+            def, 20260924u, counts, 1, &mask, &completed)) return 23;
+    if (mask != 1u || completed != 1u) return 24;
 
     if (!CampaignSpecialEventCatalogGet(0) ||
         CampaignSpecialEventCatalogGet(2)) return 10;
