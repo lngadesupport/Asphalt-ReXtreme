@@ -39,6 +39,7 @@ DEFAULT_REPLAY_BINDINGS = Path("config/replay-bindings.verified.json")
 DEFAULT_ORIGINAL_UI_BINDINGS = Path("config/original-ui-bindings.verified.json")
 DEFAULT_RACE_HUD_BINDINGS = Path("config/race-hud-bindings.verified.json")
 DEFAULT_CHALLENGES = Path("config/campaign_challenges.json")
+DEFAULT_ACHIEVEMENTS = Path("config/campaign_achievements.json")
 
 
 class BuildError(RuntimeError):
@@ -419,6 +420,42 @@ def build_challenge_catalog(output: Path, source: Path, builder: Path) -> dict:
     }
 
 
+def build_achievement_catalog(output: Path, source: Path, builder: Path) -> dict:
+    if not source.is_file():
+        raise BuildError(f"Achievement source not found: {source}")
+    if not builder.is_file():
+        raise BuildError(f"Achievement builder not found: {builder}")
+
+    target = output / "CampaignAchievements.dat"
+    report = output / "CampaignAchievements.report.json"
+    cmd = [
+        sys.executable,
+        str(builder),
+        str(source),
+        str(target),
+        "--report",
+        str(report),
+    ]
+    result = subprocess.run(cmd, text=True)
+    if result.returncode != 0:
+        raise BuildError(f"Achievement catalog build failed with exit code {result.returncode}")
+
+    try:
+        summary = json.loads(report.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BuildError(f"Invalid Achievement report: {exc}") from exc
+
+    return {
+        "catalog": target.name,
+        "report": report.name,
+        "count": int(summary.get("count", 0)),
+        "state": "UserData/CampaignEdition/AchievementState.dat",
+        "metrics_source": "CampaignStatistics-v1",
+        "rewards": "none",
+        "portable": True,
+    }
+
+
 def overlay_directory(output: Path, overlay: Path) -> list[str]:
     if not overlay.is_dir():
         raise BuildError(f"Overlay directory not found: {overlay}")
@@ -447,6 +484,7 @@ def write_status(
     original_ui_bindings: dict,
     race_hud_bindings: dict,
     challenge_catalog: dict,
+    achievement_catalog: dict,
     portable_user_data: list[str],
 ) -> Path:
     status = {
@@ -475,6 +513,11 @@ def write_status(
         "statistics_state": "UserData/CampaignEdition/CampaignStatistics.dat",
         "statistics_source": "CampaignRaceMetrics-v1",
         "statistics_portable": True,
+        "achievement_catalog": achievement_catalog,
+        "achievement_state_portable": True,
+        "achievement_metrics_source": "CampaignStatistics-v1",
+        "achievement_rewards": "none",
+        "achievement_ui_requires_original_templates": True,
         "portable_user_data": portable_user_data,
         "package_metadata_moved_out_of_runtime_root": moved_metadata,
         "portable_startup_ready": False,
@@ -532,6 +575,11 @@ def main() -> int:
         type=Path,
         default=DEFAULT_CHALLENGES,
     )
+    parser.add_argument(
+        "--achievements",
+        type=Path,
+        default=DEFAULT_ACHIEVEMENTS,
+    )
     parser.add_argument("--offline-overlay", type=Path)
     parser.add_argument("--verify-only", action="store_true")
     args = parser.parse_args()
@@ -547,6 +595,7 @@ def main() -> int:
     original_ui_bindings_path = args.original_ui_bindings.resolve()
     race_hud_bindings_path = args.race_hud_bindings.resolve()
     challenges_path = args.challenges.resolve()
+    achievements_path = args.achievements.resolve()
     tools_dir = Path(__file__).resolve().parent
     patcher = (tools_dir / "patcher.py").resolve()
     presentation_builder = (tools_dir / "build_presentation_capability_catalog.py").resolve()
@@ -556,6 +605,7 @@ def main() -> int:
     original_ui_binding_builder = (tools_dir / "build_original_ui_binding_catalog.py").resolve()
     race_hud_binding_builder = (tools_dir / "build_race_hud_binding_catalog.py").resolve()
     challenge_builder = (tools_dir / "build_campaign_challenge_catalog.py").resolve()
+    achievement_builder = (tools_dir / "build_campaign_achievement_catalog.py").resolve()
 
     if not source.is_dir():
         print(f"ERROR: source directory not found: {source}", file=sys.stderr)
@@ -662,6 +712,17 @@ def main() -> int:
             f"(portable state={challenge_catalog['portable']})"
         )
 
+        achievement_catalog = build_achievement_catalog(
+            output,
+            achievements_path,
+            achievement_builder,
+        )
+        print(
+            "[ACHIEVEMENTS] definitions: "
+            f"{achievement_catalog['count']} "
+            f"(metrics={achievement_catalog['metrics_source']}, rewards={achievement_catalog['rewards']})"
+        )
+
         overlay_files: list[str] = []
         if args.offline_overlay:
             overlay_files = overlay_directory(output, args.offline_overlay.resolve())
@@ -679,6 +740,7 @@ def main() -> int:
             original_ui_bindings,
             race_hud_bindings,
             challenge_catalog,
+            achievement_catalog,
             portable_user_data,
         )
         print(f"[STATUS] {status_path}")
