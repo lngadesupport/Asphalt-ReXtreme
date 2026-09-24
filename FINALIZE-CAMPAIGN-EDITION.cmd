@@ -51,6 +51,7 @@ call :get tools/build_campaign_upgrade_ui_map.py tools\build_campaign_upgrade_ui
 call :get tools/build_campaign_production_data.py tools\build_campaign_production_data.py || goto :download_fail
 call :get tools/build_campaign_auxiliary_data.py tools\build_campaign_auxiliary_data.py || goto :download_fail
 call :get tools/build_campaign_store_catalog.py tools\build_campaign_store_catalog.py || goto :download_fail
+call :get tools/audit_campaign_store_keys_from_package.py tools\audit_campaign_store_keys_from_package.py || goto :download_fail
 call :get tools/campaign_garage_v2.py tools\campaign_garage_v2.py || goto :download_fail
 call :get tools/campaign_career_adapter_v2.py tools\campaign_career_adapter_v2.py || goto :download_fail
 call :get tools/campaign_upgrade_adapter_v1.py tools\campaign_upgrade_adapter_v1.py || goto :download_fail
@@ -81,6 +82,13 @@ if %AUXERR% GEQ 3 (
   goto :data_fail
 )
 if errorlevel 1 goto :data_fail
+
+echo.
+echo [STORE] Auditando chaves da loja legada...
+python.exe "%TOOLS%\audit_campaign_store_keys_from_package.py" ^
+  --package "%PKG%" ^
+  --report "%ROOT%\_CAMPAIGN_PRODUCTION_DATA\CampaignStoreKeys.report.json"
+if errorlevel 1 echo [AVISO] Auditoria de chaves da loja falhou; monetizacao ainda sera aposentada.
 
 echo.
 echo [STORE] Criando catalogo offline vazio se nao houver catalogo verificado...
