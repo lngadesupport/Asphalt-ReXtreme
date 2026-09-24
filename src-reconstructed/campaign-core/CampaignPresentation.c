@@ -23,6 +23,8 @@ typedef struct CampaignReplayFileHeader {
     uint32_t marker_count;
     uint32_t first_time_ms;
     uint32_t last_time_ms;
+    uint32_t sample_hash;
+    uint32_t marker_hash;
 } CampaignReplayFileHeader;
 
 static volatile LONG g_presentation_lock;
@@ -67,15 +69,18 @@ static void CopyBytes(void* dst, const void* src, uint32_t count) {
     for (i = 0; i < count; ++i) d[i] = s[i];
 }
 
-static uint32_t HashBytes(const void* p, uint32_t count) {
+static uint32_t HashUpdate(uint32_t h, const void* p, uint32_t count) {
     const unsigned char* s = (const unsigned char*)p;
-    uint32_t h = 2166136261u;
     uint32_t i;
     for (i = 0; i < count; ++i) {
         h ^= s[i];
         h *= 16777619u;
     }
     return h;
+}
+
+static uint32_t HashBytes(const void* p, uint32_t count) {
+    return HashUpdate(2166136261u, p, count);
 }
 
 static uint32_t SettingsChecksum(const CampaignPresentationSettings* settings) {
@@ -500,9 +505,13 @@ int __cdecl CampaignReplaySave(const WCHAR* path) {
     DWORD written;
     uint32_t i;
     uint32_t physical;
+    uint32_t sample_hash = 2166136261u;
     CampaignReplayFileHeader header;
+    WCHAR tmp_path[1024];
 
     if (!path || !path[0]) return 0;
+    if (!WideCopy(tmp_path, 1024, path)) return 0;
+    if (!WideAppend(tmp_path, 1024, L".tmp")) return 0;
 
     PresentationLock();
     if (!g_replay_samples || g_replay_count == 0) {
@@ -520,7 +529,22 @@ int __cdecl CampaignReplaySave(const WCHAR* path) {
     header.first_time_ms = g_replay_samples[ReplayPhysicalIndexUnlocked(0)].time_ms;
     header.last_time_ms = g_replay_samples[ReplayPhysicalIndexUnlocked(g_replay_count - 1u)].time_ms;
 
-    h = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+    for (i = 0; i < g_replay_count; ++i) {
+        physical = ReplayPhysicalIndexUnlocked(i);
+        sample_hash = HashUpdate(
+            sample_hash,
+            &g_replay_samples[physical],
+            (uint32_t)sizeof(CampaignReplaySample)
+        );
+    }
+    header.sample_hash = sample_hash;
+    header.marker_hash = HashBytes(
+        g_replay_markers,
+        g_replay_marker_count * (uint32_t)sizeof(CampaignReplayMarker)
+    );
+
+    DeleteFileW(tmp_path);
+    h = CreateFileW(tmp_path, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
     if (h == INVALID_HANDLE_VALUE) {
         PresentationUnlock();
         return 0;
@@ -530,7 +554,7 @@ int __cdecl CampaignReplaySave(const WCHAR* path) {
     if (!WriteFile(h, &header, (DWORD)sizeof(header), &written, 0) ||
         written != (DWORD)sizeof(header)) {
         CloseHandle(h);
-        DeleteFileW(path);
+        DeleteFileW(tmp_path);
         PresentationUnlock();
         return 0;
     }
@@ -546,7 +570,7 @@ int __cdecl CampaignReplaySave(const WCHAR* path) {
                 0) ||
             written != (DWORD)sizeof(CampaignReplaySample)) {
             CloseHandle(h);
-            DeleteFileW(path);
+            DeleteFileW(tmp_path);
             PresentationUnlock();
             return 0;
         }
@@ -562,7 +586,7 @@ int __cdecl CampaignReplaySave(const WCHAR* path) {
                 0) ||
             written != (DWORD)sizeof(CampaignReplayMarker)) {
             CloseHandle(h);
-            DeleteFileW(path);
+            DeleteFileW(tmp_path);
             PresentationUnlock();
             return 0;
         }
@@ -570,6 +594,16 @@ int __cdecl CampaignReplaySave(const WCHAR* path) {
 
     FlushFileBuffers(h);
     CloseHandle(h);
+
+    if (!MoveFileExW(
+            tmp_path,
+            path,
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        DeleteFileW(tmp_path);
+        PresentationUnlock();
+        return 0;
+    }
+
     PresentationUnlock();
     return 1;
 }
@@ -581,6 +615,8 @@ int __cdecl CampaignReplayLoad(const WCHAR* path) {
     CampaignReplaySample* samples;
     SIZE_T bytes;
     uint32_t i;
+    uint32_t sample_hash;
+    uint32_t marker_hash;
 
     if (!path || !path[0]) return 0;
 
@@ -649,6 +685,22 @@ int __cdecl CampaignReplayLoad(const WCHAR* path) {
             return 0;
         }
         ++g_replay_marker_count;
+    }
+
+    sample_hash = HashBytes(
+        g_replay_samples,
+        g_replay_count * (uint32_t)sizeof(CampaignReplaySample)
+    );
+    marker_hash = HashBytes(
+        g_replay_markers,
+        g_replay_marker_count * (uint32_t)sizeof(CampaignReplayMarker)
+    );
+
+    if (sample_hash != header.sample_hash || marker_hash != header.marker_hash) {
+        ReplayReleaseUnlocked();
+        PresentationUnlock();
+        CloseHandle(h);
+        return 0;
     }
 
     PresentationUnlock();
