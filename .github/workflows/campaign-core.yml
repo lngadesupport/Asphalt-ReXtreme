@@ -54,6 +54,7 @@ on:
       - "src-reconstructed/campaign-core/CampaignChampionshipTest.c"
       - "src-reconstructed/campaign-core/CampaignActivityContext.c"
       - "src-reconstructed/campaign-core/CampaignActivityContext.h"
+      - "src-reconstructed/campaign-core/CampaignActivityContextTest.c"
       - "src-reconstructed/campaign-core/CampaignUpgradeCatalog.c"
       - "src-reconstructed/campaign-core/CampaignUpgradeCatalog.h"
       - "src-reconstructed/campaign-core/CampaignUpgradeUiMap.c"
@@ -247,6 +248,13 @@ jobs:
           if errorlevel 1 exit /b 51
           "prebuilt\campaign-core\CampaignChampionshipTest.exe"
           if errorlevel 1 exit /b 52
+
+          cl.exe /nologo /c /TC /O2 /MT /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /I"src-reconstructed\campaign-core" /Fo"prebuilt\campaign-core\CampaignActivityContextTest.obj" "src-reconstructed\campaign-core\CampaignActivityContextTest.c"
+          if errorlevel 1 exit /b 54
+          link.exe /nologo /machine:x86 /out:"prebuilt\campaign-core\CampaignActivityContextTest.exe" "prebuilt\campaign-core\CampaignActivityContextTest.obj" "prebuilt\campaign-core\CampaignActivityContext.obj" kernel32.lib
+          if errorlevel 1 exit /b 55
+          "prebuilt\campaign-core\CampaignActivityContextTest.exe"
+          if errorlevel 1 exit /b 56
           if errorlevel 1 exit /b 50
 
           exit /b 0
@@ -298,6 +306,8 @@ jobs:
           Remove-Item ".\prebuilt\campaign-core\CampaignSpecialEventTest.exe" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignChampionshipTest.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignChampionshipTest.exe" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignActivityContextTest.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignActivityContextTest.exe" -ErrorAction SilentlyContinue
           Remove-Item $batPath -ErrorAction SilentlyContinue
 
       - name: Verify
