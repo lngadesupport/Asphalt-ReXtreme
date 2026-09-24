@@ -339,6 +339,13 @@ int CampaignOriginalUiFeatureReady(uint32_t feature) {
                UiHas("results.row", CAMPAIGN_ORIGINAL_UI_PANEL) &&
                UiHas("ui.label", CAMPAIGN_ORIGINAL_UI_LABEL) &&
                UiHas("ui.button", CAMPAIGN_ORIGINAL_UI_BUTTON);
+    case CAMPAIGN_ORIGINAL_UI_FEATURE_PROFILE:
+        return UiHas("profile.screen", CAMPAIGN_ORIGINAL_UI_SCREEN) &&
+               UiHas("profile.row", CAMPAIGN_ORIGINAL_UI_PANEL) &&
+               UiHas("ui.tab", CAMPAIGN_ORIGINAL_UI_TAB) &&
+               UiHas("ui.list", CAMPAIGN_ORIGINAL_UI_LIST) &&
+               UiHas("ui.label", CAMPAIGN_ORIGINAL_UI_LABEL) &&
+               UiHas("ui.button", CAMPAIGN_ORIGINAL_UI_BUTTON);
     default:
         return 0;
     }
