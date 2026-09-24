@@ -1,6 +1,6 @@
 {
   "format": "rextreme-presentation-bindings",
-  "version": 1,
+  "version": 2,
   "build": "1.7.3.8-x86",
   "rule": "A binding may exist only for a verified presentation capability and only after its exact runtime storage path is proven.",
   "bindings": []
