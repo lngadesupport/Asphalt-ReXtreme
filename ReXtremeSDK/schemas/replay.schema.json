@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rextreme.local/schema/replay-v1.json",
+  "title": "ReXtreme Replay Preset",
+  "type": "object",
+  "required": ["id", "name", "speed_steps", "cameras"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "id": {"type": "string"},
+    "name": {"type": "string"},
+    "timeline": {"type": "boolean"},
+    "speed_steps": {"type": "array", "items": {"type": "number", "exclusiveMinimum": 0}},
+    "frame_step": {"type": "boolean"},
+    "event_markers": {"type": "array", "items": {"type": "string"}},
+    "cameras": {"type": "array", "items": {"type": "string"}},
+    "allow_target_switch": {"type": "boolean"},
+    "hud_toggle": {"type": "boolean"},
+    "photo_mode": {"type": "boolean"}
+  }
+}
