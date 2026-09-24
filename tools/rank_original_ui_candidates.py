@@ -76,6 +76,14 @@ ROLES = {
         "kind": "panel",
         "terms": ("profile", "statistics", "stat", "record", "row", "panel"),
     },
+    "special_events.screen": {
+        "kind": "screen",
+        "terms": ("special event", "special_event", "specialevent", "limited event", "event"),
+    },
+    "special_events.card": {
+        "kind": "panel",
+        "terms": ("event card", "event_card", "special event", "reward", "stage", "panel"),
+    },
 }
 
 
