@@ -261,9 +261,18 @@ public partial class MainWindow : Window
     {
         try
         {
-            var file = ContentTemplateService.CreateEvent(
-                ProjectRoot, "local.event.new-event", "New Event", "original.track.pending", "classic", 1);
-            Log($"Template de evento criado: {file}");
+            var mode = ((ComboBoxItem)EventModeBox.SelectedItem).Content?.ToString() ?? "classic";
+            var laps = int.TryParse(EventLapsBox.Text, out var parsedLaps) ? Math.Max(1, parsedLaps) : 1;
+            var file = ContentTemplateService.SaveEvent(
+                ProjectRoot,
+                EventIdBox.Text.Trim(),
+                EventNameBox.Text.Trim(),
+                EventTrackBox.Text.Trim(),
+                mode,
+                laps,
+                EventMusicBox.Text,
+                EventHudBox.Text);
+            Log($"Evento salvo: {file}");
             RefreshProjectTree();
         }
         catch (Exception ex) { Fail(ex); }
@@ -273,8 +282,16 @@ public partial class MainWindow : Window
     {
         try
         {
-            var file = ContentTemplateService.CreateCareerSeason(ProjectRoot, "local.career.new-season", "New Season");
-            Log($"Template de temporada criado: {file}");
+            var insertMode = ((ComboBoxItem)SeasonInsertModeBox.SelectedItem).Content?.ToString() ?? "new-season";
+            var events = Lines(SeasonEventsBox.Text);
+            var file = ContentTemplateService.SaveCareerSeason(
+                ProjectRoot,
+                SeasonIdBox.Text.Trim(),
+                SeasonNameBox.Text.Trim(),
+                insertMode,
+                SeasonTargetBox.Text,
+                events);
+            Log($"Temporada salva: {file}");
             RefreshProjectTree();
         }
         catch (Exception ex) { Fail(ex); }
@@ -284,8 +301,14 @@ public partial class MainWindow : Window
     {
         try
         {
-            var file = ContentTemplateService.CreateSpecialEvent(ProjectRoot, "local.special-event.new", "New Special Event");
-            Log($"Evento Especial criado: {file}");
+            var availability = ((ComboBoxItem)SpecialAvailabilityBox.SelectedItem).Content?.ToString() ?? "permanent";
+            var file = ContentTemplateService.SaveSpecialEvent(
+                ProjectRoot,
+                SpecialEventIdBox.Text.Trim(),
+                SpecialEventNameBox.Text.Trim(),
+                availability,
+                Lines(SpecialStagesBox.Text));
+            Log($"Evento Especial salvo: {file}");
             RefreshProjectTree();
         }
         catch (Exception ex) { Fail(ex); }
@@ -467,6 +490,9 @@ public partial class MainWindow : Window
         _dragging = false;
         ModelViewport.ReleaseMouseCapture();
     }
+
+    private static IEnumerable<string> Lines(string value) =>
+        value.Replace("\r", "").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     private static string SafeName(string value)
     {
