@@ -28,7 +28,7 @@ $files=@(
   @{Commit="d9ad618f0255ebd8f90a213f914f9e185103f7c1"; Path="tools/test_frontend_only_v2.ps1"},
   @{Commit="4cd77ca30e43796c925eff48df961d166ad63457"; Path="tools/campaign_career_adapter_v3.py"},
   @{Commit="e20ac2b853e71220e4eb2ef66bd3c77872cc0ff6"; Path="tools/campaign_career_adapter_v2.py"},
-  @{Commit="3119bf76252cc9a011f73e15f331156df2945c8a"; Path="prebuilt/campaign-core/IGPLib_x86.dll"}
+  @{Commit="58f00930d4ba68629a4a740648f8fa4b387b7eba"; Path="prebuilt/campaign-core/IGPLib_x86.dll"}
 )
 
 foreach($f in $files){
