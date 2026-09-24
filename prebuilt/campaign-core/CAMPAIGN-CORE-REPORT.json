@@ -41,6 +41,9 @@
     "ChampionshipsOnlineBackendRequired":  false,
     "ActivityContext":  "UserData\\\\CampaignEdition\\\\ActivityContext.dat",
     "SpecialEventAndChampionshipProgressRequiresExplicitContext":  true,
+    "CareerSeasonCatalog":  "CampaignSeasons.dat",
+    "CareerSeasonsReuseCampaignEvents":  true,
+    "CareerSeasonsOnlineBackendRequired":  false,
     "AchievementRewards":  "none",
     "AchievementUiRequiresOriginalTemplates":  true,
     "LastRaceResultState":  "UserData\\\\CampaignEdition\\\\LastRaceResult.dat",
@@ -86,6 +89,6 @@
     "RaceHudNewWidgetsAllowed":  false,
     "RaceHudLayout":  "UserData\\\\RaceHudLayout.dat",
     "RaceHudLayoutPortable":  true,
-    "Size":  103936,
-    "SHA256":  "5ef857052bc3dd6de55f7535a87f81da7e5b93ee5ad0129adc7f2d13e204f97d"
+    "Size":  106496,
+    "SHA256":  "7751bea9f6140240d307bd648d712c80069887509bcedb676d46027a9b5e2abc"
 }
