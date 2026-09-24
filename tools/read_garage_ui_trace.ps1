@@ -24,7 +24,7 @@ if(-not(Test-Path -LiteralPath $trace -PathType Leaf)){
 }
 
 [byte[]]$d=[IO.File]::ReadAllBytes($trace)
-$recSize=316
+$recSize=448
 if(($d.Length % $recSize)-ne0){
   throw "GarageUiTrace.bin length is not a multiple of $recSize bytes: $($d.Length)"
 }
@@ -36,10 +36,13 @@ $records=@()
 for($o=0;$o-lt$d.Length;$o+=$recSize){
   if((U32 $o)-ne0x49555847){continue}
   $gs=@()
-  for($i=0;$i-lt32;$i++){$gs += U32 ($o+28+$i*4)}
+  for($i=0;$i-lt32;$i++){$gs += U32 ($o+32+$i*4)}
   $widget=@()
-  $widgetStart=$o+28+32*4
+  $widgetStart=$o+32+32*4
   for($i=0;$i-lt40;$i++){$widget += U32 ($widgetStart+$i*4)}
+  $button=@()
+  $buttonStart=$widgetStart+40*4
+  for($i=0;$i-lt32;$i++){$button += U32 ($buttonStart+$i*4)}
 
   $records += [pscustomobject]@{
     Index=($o/$recSize)
@@ -48,8 +51,11 @@ for($o=0;$o-lt$d.Length;$o+=$recSize){
     GS=(U32 ($o+12))
     Widget=(U32 ($o+16))
     GSCompanion=(U32 ($o+20))
+    BuildButton=(U32 ($o+24))
+    BuildButtonControl=(U32 ($o+28))
     GSWords=$gs
     WidgetWords=$widget
+    ButtonWords=$button
   }
 }
 
@@ -66,7 +72,7 @@ Write-Host ("File: "+$trace)
 Write-Host ""
 
 foreach($r in $records){
-  Write-Host ("[SNAP] index={0} step={1} GS={2} GBBW={3} GS+360={4}" -f $r.Index,$r.Step,(H $r.GS),(H $r.Widget),(H $r.GSCompanion))
+  Write-Host ("[SNAP] index={0} step={1} GS={2} GBBW={3} GS+360={4} Button={5} ButtonCtl={6}" -f $r.Index,$r.Step,(H $r.GS),(H $r.Widget),(H $r.GSCompanion),(H $r.BuildButton),(H $r.BuildButtonControl))
 }
 
 function ShowDiff($a,$b){
@@ -97,6 +103,16 @@ function ShowDiff($a,$b){
       elseif($off-eq0x90){$tag="  [known build-area field]"}
       elseif($off-eq0x94){$tag="  [known build-area field]"}
       Write-Host ("GBBW +0x{0:X2}: {1} -> {2}{3}" -f $off,(H $av),(H $bv),$tag)
+      $count++
+    }
+  }
+
+  for($i=0;$i-lt32;$i++){
+    $av=[uint32]$a.ButtonWords[$i]
+    $bv=[uint32]$b.ButtonWords[$i]
+    if($av-ne$bv){
+      $off=$i*4
+      Write-Host ("BUTTON+0x{0:X2}: {1} -> {2}" -f $off,(H $av),(H $bv))
       $count++
     }
   }
