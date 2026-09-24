@@ -11,7 +11,7 @@ File Type: DLL
 FILE HEADER VALUES
              14C machine (x86)
                4 number of sections
-        6AB53E8A time date stamp Thu Sep 24 15:15:22 2026
+        6AB53EDB time date stamp Thu Sep 24 15:16:43 2026
                0 file pointer to symbol table
                0 number of symbols
               E0 size of optional header
@@ -99,7 +99,7 @@ SECTION HEADER #2
 
         Time Type        Size      RVA  Pointer
     -------- ------- -------- -------- --------
-    6AB53E8A coffgrp       DC 0000DAAC     CAAC
+    6AB53EDB coffgrp       DC 0000DAAC     CAAC
 
   Section contains the following imports:
 
