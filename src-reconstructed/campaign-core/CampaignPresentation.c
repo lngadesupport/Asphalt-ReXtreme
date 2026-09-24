@@ -485,6 +485,77 @@ int __cdecl CampaignPresentationSetSettings(const CampaignPresentationSettings* 
     return 1;
 }
 
+int __cdecl CampaignPresentationSimpleFovGet(CampaignSimpleFovControl* out) {
+    const CampaignPresentationCapability* capability;
+    const CampaignPresentationBinding* binding;
+    CampaignPresentationSettings settings;
+
+    if (!out || out->size < (uint32_t)sizeof(*out)) return 0;
+    ZeroBytes(out, (uint32_t)sizeof(*out));
+    out->size = (uint32_t)sizeof(*out);
+
+    capability = CampaignPresentationCatalogFind("fov");
+    binding = CampaignPresentationBindingsFind("fov");
+    if (!capability || !binding ||
+        !(capability->flags & CAMPAIGN_PRESENTATION_CAPABILITY_VERIFIED)) {
+        return 1;
+    }
+
+    ZeroBytes(&settings, (uint32_t)sizeof(settings));
+    settings.size = (uint32_t)sizeof(settings);
+    if (!CampaignPresentationGetSettings(&settings)) return 0;
+
+    out->available = 1;
+    out->minimum_x100 = capability->minimum;
+    out->maximum_x100 = capability->maximum;
+    out->step_x100 = capability->step;
+    out->original_x100 = capability->original_value;
+    out->current_x100 =
+        settings.fov_x100 != 0 ? settings.fov_x100 : capability->original_value;
+    return 1;
+}
+
+int __cdecl CampaignPresentationSimpleFovSet(int32_t fov_x100) {
+    const CampaignPresentationCapability* capability;
+    const CampaignPresentationBinding* binding;
+    CampaignPresentationSettings settings;
+
+    if (fov_x100 == 0) return CampaignPresentationSimpleFovReset();
+
+    capability = CampaignPresentationCatalogFind("fov");
+    binding = CampaignPresentationBindingsFind("fov");
+    if (!capability || !binding ||
+        !(capability->flags & CAMPAIGN_PRESENTATION_CAPABILITY_VERIFIED) ||
+        !CampaignPresentationCapabilityValueValid(capability, fov_x100)) {
+        return 0;
+    }
+
+    ZeroBytes(&settings, (uint32_t)sizeof(settings));
+    settings.size = (uint32_t)sizeof(settings);
+    if (!CampaignPresentationGetSettings(&settings)) return 0;
+    settings.fov_x100 = fov_x100;
+    return CampaignPresentationSetSettings(&settings);
+}
+
+int __cdecl CampaignPresentationSimpleFovReset(void) {
+    CampaignPresentationSettings settings;
+    const CampaignPresentationCapability* capability;
+    const CampaignPresentationBinding* binding;
+
+    capability = CampaignPresentationCatalogFind("fov");
+    binding = CampaignPresentationBindingsFind("fov");
+    if (!capability || !binding ||
+        !(capability->flags & CAMPAIGN_PRESENTATION_CAPABILITY_VERIFIED)) {
+        return 0;
+    }
+
+    ZeroBytes(&settings, (uint32_t)sizeof(settings));
+    settings.size = (uint32_t)sizeof(settings);
+    if (!CampaignPresentationGetSettings(&settings)) return 0;
+    settings.fov_x100 = 0;
+    return CampaignPresentationSetSettings(&settings);
+}
+
 int __cdecl CampaignPresentationResetSettings(void) {
     CampaignPresentationSettings defaults;
     int result;
@@ -1768,6 +1839,17 @@ int __cdecl CampaignPresentationInvoke(CampaignPresentationCommand* command) {
         break;
     case CAMPAIGN_PRESENTATION_OP_RESET_SETTINGS:
         command->status = CampaignPresentationResetSettings();
+        break;
+    case CAMPAIGN_PRESENTATION_OP_FOV_SIMPLE_GET:
+        command->status = CampaignPresentationSimpleFovGet(
+            (CampaignSimpleFovControl*)(uintptr_t)command->ptr0
+        );
+        break;
+    case CAMPAIGN_PRESENTATION_OP_FOV_SIMPLE_SET:
+        command->status = CampaignPresentationSimpleFovSet(command->a);
+        break;
+    case CAMPAIGN_PRESENTATION_OP_FOV_SIMPLE_RESET:
+        command->status = CampaignPresentationSimpleFovReset();
         break;
 
     case CAMPAIGN_PRESENTATION_OP_CAPABILITY_RELOAD:
