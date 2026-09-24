@@ -32,7 +32,8 @@ jobs:
             "tools/capture_beta_runtime.ps1",
             "tools/beta_startup_bisect.ps1",
             "tools/test_profile_only.ps1",
-            "tools/test_profile_offline.ps1"
+            "tools/test_profile_offline.ps1",
+            "tools/test_offline_surface_v5.ps1"
           )) {
             $tokens = $null
             $errors = $null
