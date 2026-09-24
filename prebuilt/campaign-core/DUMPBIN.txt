@@ -1,4 +1,4 @@
-Microsoft (R) COFF/PE Dumper Version 14.51.36256.0
+Microsoft (R) COFF/PE Dumper Version 14.51.36257.0
 Copyright (C) Microsoft Corporation.  All rights reserved.
 
 
@@ -11,7 +11,7 @@ File Type: DLL
 FILE HEADER VALUES
              14C machine (x86)
                4 number of sections
-        6AB53F52 time date stamp Thu Sep 24 15:18:42 2026
+        6AB53F7A time date stamp Thu Sep 24 15:19:22 2026
                0 file pointer to symbol table
                0 number of symbols
               E0 size of optional header
@@ -23,7 +23,7 @@ FILE HEADER VALUES
 OPTIONAL HEADER VALUES
              10B magic # (PE32)
            14.51 linker version
-            BC00 size of code
+            C000 size of code
           125200 size of initialized data
                0 size of uninitialized data
                0 entry point
@@ -49,13 +49,13 @@ OPTIONAL HEADER VALUES
             1000 size of heap commit
                0 loader flags
               10 number of directories
-            D740 [     354] RVA [size] of Export Directory
-            DB98 [      28] RVA [size] of Import Directory
+            D750 [     354] RVA [size] of Export Directory
+            DBA8 [      28] RVA [size] of Import Directory
                0 [       0] RVA [size] of Resource Directory
                0 [       0] RVA [size] of Exception Directory
                0 [       0] RVA [size] of Certificates Directory
-          132000 [     E60] RVA [size] of Base Relocation Directory
-            D720 [      1C] RVA [size] of Debug Directory
+          132000 [     E98] RVA [size] of Base Relocation Directory
+            D728 [      1C] RVA [size] of Debug Directory
                0 [       0] RVA [size] of Architecture Directory
                0 [       0] RVA [size] of Global Pointer Directory
                0 [       0] RVA [size] of Thread Storage Directory
@@ -69,10 +69,10 @@ OPTIONAL HEADER VALUES
 
 SECTION HEADER #1
    .text name
-    BA53 virtual size
-    1000 virtual address (10001000 to 1000CA52)
-    BC00 size of raw data
-     400 file pointer to raw data (00000400 to 0000BFFF)
+    BE03 virtual size
+    1000 virtual address (10001000 to 1000CE02)
+    C000 size of raw data
+     400 file pointer to raw data (00000400 to 0000C3FF)
        0 file pointer to relocation table
        0 file pointer to line numbers
        0 number of relocations
@@ -83,10 +83,10 @@ SECTION HEADER #1
 
 SECTION HEADER #2
   .rdata name
-     DCA virtual size
-    D000 virtual address (1000D000 to 1000DDC9)
+     DDA virtual size
+    D000 virtual address (1000D000 to 1000DDD9)
      E00 size of raw data
-    C000 file pointer to raw data (0000C000 to 0000CDFF)
+    C400 file pointer to raw data (0000C400 to 0000D1FF)
        0 file pointer to relocation table
        0 file pointer to line numbers
        0 number of relocations
@@ -99,13 +99,13 @@ SECTION HEADER #2
 
         Time Type        Size      RVA  Pointer
     -------- ------- -------- -------- --------
-    6AB53F52 coffgrp       DC 0000DAAC     CAAC
+    6AB53F7A coffgrp       DC 0000DABC     CEBC
 
   Section contains the following imports:
 
     KERNEL32.dll
               1000D000 Import Address Table
-              1000DBC0 Import Name Table
+              1000DBD0 Import Name Table
                      0 time date stamp
                      0 Index of first forwarder reference
 
@@ -150,10 +150,10 @@ C0000040 flags
 
 SECTION HEADER #4
   .reloc name
-     E60 virtual size
-  132000 virtual address (10132000 to 10132E5F)
+     E98 virtual size
+  132000 virtual address (10132000 to 10132E97)
     1000 size of raw data
-    CE00 file pointer to raw data (0000CE00 to 0000DDFF)
+    D200 file pointer to raw data (0000D200 to 0000E1FF)
        0 file pointer to relocation table
        0 file pointer to line numbers
        0 number of relocations
