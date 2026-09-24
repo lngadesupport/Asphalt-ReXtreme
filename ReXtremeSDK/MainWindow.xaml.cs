@@ -12,6 +12,7 @@ namespace ReXtremeSDK;
 public partial class MainWindow : Window
 {
     private readonly ProjectService _projects = new();
+    private readonly OriginalVehicleRegistry _vehicleRegistry = new OriginalVehicleRegistryService().Load();
     private Point _dragStart;
     private bool _dragging;
     private readonly AxisAngleRotation3D _rotX = new(new Vector3D(1, 0, 0), 0);
@@ -28,8 +29,10 @@ public partial class MainWindow : Window
         group.Children.Add(new RotateTransform3D(_rotY));
         PreviewVisual.Transform = group;
 
+        RefreshVehicleRegistryUi();
         Log("ReXtreme SDK iniciado como aplicação standalone.");
         Log("O jogo não incorpora o editor; somente o Mod Runtime consumirá os pacotes .rxmod.");
+        Log($"Vehicle Registry: {_vehicleRegistry.Archetypes.Count} arquétipos oficiais; {_vehicleRegistry.Profiles.Count} perfis originais verificados.");
     }
 
     private string ProjectRoot =>
@@ -260,13 +263,21 @@ public partial class MainWindow : Window
     {
         try
         {
-            var category = ((ComboBoxItem)VehicleCategoryBox.SelectedItem).Content?.ToString() ?? "rally";
+            if (VehicleCategoryBox.SelectedItem is not ComboBoxItem archetypeItem || archetypeItem.Tag is not string archetype)
+                throw new InvalidOperationException("Selecione um arquétipo original.");
+            if (VehicleClassBox.SelectedItem is not ComboBoxItem classItem || classItem.Tag is not string performanceClass)
+                throw new InvalidOperationException("Selecione uma classe de performance D–S.");
+            if (VehicleBaseProfileBox.SelectedItem is not ComboBoxItem profileItem || profileItem.Tag is not string profileId)
+                throw new InvalidOperationException(
+                    "Nenhum perfil original verificado está selecionado. Extraia/importe o Original Vehicle Registry antes de criar o veículo.");
+
             var file = ContentTemplateService.CreateVehicle(
                 ProjectRoot,
                 VehicleIdBox.Text.Trim(),
                 VehicleNameBox.Text.Trim(),
-                category,
-                VehicleBaseProfileBox.Text.Trim(),
+                archetype,
+                performanceClass,
+                profileId,
                 SpeedSlider.Value,
                 AccelerationSlider.Value,
                 HandlingSlider.Value,
@@ -275,6 +286,68 @@ public partial class MainWindow : Window
             RefreshProjectTree();
         }
         catch (Exception ex) { Fail(ex); }
+    }
+
+    private void RefreshVehicleRegistryUi()
+    {
+        VehicleCategoryBox.Items.Clear();
+        foreach (var archetype in _vehicleRegistry.Archetypes)
+            VehicleCategoryBox.Items.Add(new ComboBoxItem { Content = archetype.DisplayName, Tag = archetype.Id });
+
+        VehicleClassBox.Items.Clear();
+        foreach (var cls in OriginalVehicleRegistryService.PerformanceClasses)
+            VehicleClassBox.Items.Add(new ComboBoxItem { Content = $"Class {cls}", Tag = cls });
+
+        if (VehicleCategoryBox.Items.Count > 0) VehicleCategoryBox.SelectedIndex = 0;
+        if (VehicleClassBox.Items.Count > 0) VehicleClassBox.SelectedIndex = 0;
+        RefreshVehicleProfiles();
+    }
+
+    private void VehicleCategoryBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => RefreshVehicleProfiles();
+    private void VehicleClassBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => RefreshVehicleProfiles();
+
+    private void RefreshVehicleProfiles()
+    {
+        if (VehicleBaseProfileBox is null || VehicleProfileStatusText is null) return;
+        VehicleBaseProfileBox.Items.Clear();
+
+        var archetype = (VehicleCategoryBox.SelectedItem as ComboBoxItem)?.Tag as string;
+        var cls = (VehicleClassBox.SelectedItem as ComboBoxItem)?.Tag as string;
+        if (archetype is null || cls is null)
+        {
+            VehicleProfileStatusText.Text = "Selecione arquétipo e classe.";
+            return;
+        }
+
+        var matches = _vehicleRegistry.Profiles
+            .Where(p => p.Archetype.Equals(archetype, StringComparison.OrdinalIgnoreCase))
+            .Where(p => p.PerformanceClass.Equals(cls, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        foreach (var profile in matches)
+        {
+            var label = string.IsNullOrWhiteSpace(profile.DisplayName)
+                ? $"{profile.CarDef} (ID {profile.CarId})"
+                : $"{profile.DisplayName} (ID {profile.CarId})";
+            VehicleBaseProfileBox.Items.Add(new ComboBoxItem { Content = label, Tag = profile.Id });
+        }
+
+        VehicleProfileStatusText.Text = matches.Length == 0
+            ? "Nenhum perfil extraído/verificado para este arquétipo e classe."
+            : $"{matches.Length} perfil(is) original(is) verificado(s).";
+        if (matches.Length > 0) VehicleBaseProfileBox.SelectedIndex = 0;
+    }
+
+    private void VehicleBaseProfileBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (VehicleBaseProfileBox.SelectedItem is not ComboBoxItem item || item.Tag is not string profileId) return;
+        var profile = _vehicleRegistry.Profiles.FirstOrDefault(p => p.Id.Equals(profileId, StringComparison.OrdinalIgnoreCase));
+        if (profile?.PerformanceBars is null) return;
+
+        SpeedSlider.Value = profile.PerformanceBars.Speed * 100.0;
+        AccelerationSlider.Value = profile.PerformanceBars.Acceleration * 100.0;
+        HandlingSlider.Value = profile.PerformanceBars.Handling * 100.0;
+        NitroSlider.Value = profile.PerformanceBars.Nitro * 100.0;
     }
 
     private void CreateEvent_Click(object sender, RoutedEventArgs e)
