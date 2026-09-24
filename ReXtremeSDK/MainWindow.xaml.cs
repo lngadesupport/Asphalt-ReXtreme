@@ -16,6 +16,9 @@ public partial class MainWindow : Window
     private bool _dragging;
     private readonly AxisAngleRotation3D _rotX = new(new Vector3D(1, 0, 0), 0);
     private readonly AxisAngleRotation3D _rotY = new(new Vector3D(0, 1, 0), 0);
+    private FrameworkElement? _hudDragElement;
+    private Point _hudDragStart;
+    private Point _hudElementStart;
 
     public MainWindow()
     {
@@ -206,15 +209,75 @@ public partial class MainWindow : Window
         catch (Exception ex) { Fail(ex); }
     }
 
+    private void CreateSpecialEvent_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var file = ContentTemplateService.CreateSpecialEvent(ProjectRoot, "local.special-event.new", "New Special Event");
+            Log($"Evento Especial criado: {file}");
+            RefreshProjectTree();
+        }
+        catch (Exception ex) { Fail(ex); }
+    }
+
+    private void CreateTrack_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var file = ContentTemplateService.CreateTrack(ProjectRoot, "local.track.new", "New Track");
+            Log($"Template de pista criado: {file}");
+            RefreshProjectTree();
+        }
+        catch (Exception ex) { Fail(ex); }
+    }
+
+    private void CreateLivery_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var file = ContentTemplateService.CreateLivery(ProjectRoot, "local.livery.new", "New Livery", "original.vehicle.pending");
+            Log($"Template de pintura/livery criado: {file}");
+            RefreshProjectTree();
+        }
+        catch (Exception ex) { Fail(ex); }
+    }
+
     private void CreateHud_Click(object sender, RoutedEventArgs e)
     {
         try
         {
-            var file = ContentTemplateService.CreateHudLayout(ProjectRoot, "local.hud.custom");
-            Log($"Layout HUD criado: {file}");
+            var components = new[]
+            {
+                HudComponent(HudPositionElement, "position", "original-position", "race.position"),
+                HudComponent(HudSpeedElement, "speed", "original-speedometer", "player.speed"),
+                HudComponent(HudNitroElement, "nitro", "original-nitro", "player.nitro")
+            };
+            var file = ContentTemplateService.SaveHudLayout(ProjectRoot, "local.hud.custom", components);
+            Log($"Layout HUD salvo: {file}");
             RefreshProjectTree();
         }
         catch (Exception ex) { Fail(ex); }
+    }
+
+    private RxHudComponent HudComponent(FrameworkElement element, string id, string type, string binding)
+    {
+        var width = Math.Max(1, HudCanvas.ActualWidth);
+        var height = Math.Max(1, HudCanvas.ActualHeight);
+        var left = Canvas.GetLeft(element);
+        var top = Canvas.GetTop(element);
+        if (double.IsNaN(left)) left = 0;
+        if (double.IsNaN(top)) top = 0;
+        return new RxHudComponent
+        {
+            Id = id,
+            Type = type,
+            Binding = binding,
+            Anchor = "top-left",
+            X = Math.Clamp(left / width, 0, 1),
+            Y = Math.Clamp(top / height, 0, 1),
+            Scale = 1,
+            Opacity = element.Opacity
+        };
     }
 
     private void LoadProjectUi()
@@ -264,6 +327,39 @@ public partial class MainWindow : Window
                 MusicList.Items.Add($"{track.Title}  —  {track.Scope}  [{track.Id}]");
         }
         catch (Exception ex) { Log("MUSIC CATALOG ERROR: " + ex.Message); }
+    }
+
+    private void HudElement_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement element) return;
+        _hudDragElement = element;
+        _hudDragStart = e.GetPosition(HudCanvas);
+        var left = Canvas.GetLeft(element);
+        var top = Canvas.GetTop(element);
+        _hudElementStart = new Point(double.IsNaN(left) ? 0 : left, double.IsNaN(top) ? 0 : top);
+        element.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void HudElement_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (_hudDragElement is null || e.LeftButton != MouseButtonState.Pressed) return;
+        var p = e.GetPosition(HudCanvas);
+        var left = _hudElementStart.X + (p.X - _hudDragStart.X);
+        var top = _hudElementStart.Y + (p.Y - _hudDragStart.Y);
+        left = Math.Clamp(left, 0, Math.Max(0, HudCanvas.ActualWidth - _hudDragElement.ActualWidth));
+        top = Math.Clamp(top, 0, Math.Max(0, HudCanvas.ActualHeight - _hudDragElement.ActualHeight));
+        Canvas.SetLeft(_hudDragElement, left);
+        Canvas.SetTop(_hudDragElement, top);
+        e.Handled = true;
+    }
+
+    private void HudElement_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_hudDragElement is null) return;
+        _hudDragElement.ReleaseMouseCapture();
+        _hudDragElement = null;
+        e.Handled = true;
     }
 
     private void Viewport_MouseDown(object sender, MouseButtonEventArgs e)
