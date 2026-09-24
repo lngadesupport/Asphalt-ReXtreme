@@ -43,6 +43,6 @@
     "PresentationBindingCatalog":  "CampaignPresentationBindings.dat",
     "PresentationValuesRequireVerifiedBinding":  true,
     "UnverifiedPresentationOptionsVisible":  false,
-    "Size":  51712,
-    "SHA256":  "d44244afd7f70f54e6be63d9d227f0ff4d55f03e3c09b81574b54ab3d653e102"
+    "Size":  53248,
+    "SHA256":  "5d84dac87229dfb886ce25c2fbd2766d6edd105c5bde6a15cd34c7765b308de4"
 }

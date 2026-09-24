@@ -11,7 +11,7 @@ File Type: DLL
 FILE HEADER VALUES
              14C machine (x86)
                4 number of sections
-        6AB53D68 time date stamp Thu Sep 24 15:10:32 2026
+        6AB53DC7 time date stamp Thu Sep 24 15:12:07 2026
                0 file pointer to symbol table
                0 number of symbols
               E0 size of optional header
@@ -23,7 +23,7 @@ FILE HEADER VALUES
 OPTIONAL HEADER VALUES
              10B magic # (PE32)
            14.51 linker version
-            AA00 size of code
+            B000 size of code
           123C00 size of initialized data
                0 size of uninitialized data
                0 entry point
@@ -54,7 +54,7 @@ OPTIONAL HEADER VALUES
                0 [       0] RVA [size] of Resource Directory
                0 [       0] RVA [size] of Exception Directory
                0 [       0] RVA [size] of Certificates Directory
-          12F000 [     DA8] RVA [size] of Base Relocation Directory
+          12F000 [     DE8] RVA [size] of Base Relocation Directory
             C6E8 [      1C] RVA [size] of Debug Directory
                0 [       0] RVA [size] of Architecture Directory
                0 [       0] RVA [size] of Global Pointer Directory
@@ -69,10 +69,10 @@ OPTIONAL HEADER VALUES
 
 SECTION HEADER #1
    .text name
-    A820 virtual size
-    1000 virtual address (10001000 to 1000B81F)
-    AA00 size of raw data
-     400 file pointer to raw data (00000400 to 0000ADFF)
+    AE4F virtual size
+    1000 virtual address (10001000 to 1000BE4E)
+    B000 size of raw data
+     400 file pointer to raw data (00000400 to 0000B3FF)
        0 file pointer to relocation table
        0 file pointer to line numbers
        0 number of relocations
@@ -86,7 +86,7 @@ SECTION HEADER #2
      D9A virtual size
     C000 virtual address (1000C000 to 1000CD99)
      E00 size of raw data
-    AE00 file pointer to raw data (0000AE00 to 0000BBFF)
+    B400 file pointer to raw data (0000B400 to 0000C1FF)
        0 file pointer to relocation table
        0 file pointer to line numbers
        0 number of relocations
@@ -99,7 +99,7 @@ SECTION HEADER #2
 
         Time Type        Size      RVA  Pointer
     -------- ------- -------- -------- --------
-    6AB53D68 coffgrp       DC 0000CA7C     B87C
+    6AB53DC7 coffgrp       DC 0000CA7C     BE7C
 
   Section contains the following imports:
 
@@ -136,8 +136,8 @@ SECTION HEADER #2
 
 SECTION HEADER #3
    .data name
-  121E08 virtual size
-    D000 virtual address (1000D000 to 1012EE07)
+  121E48 virtual size
+    D000 virtual address (1000D000 to 1012EE47)
        0 size of raw data
        0 file pointer to raw data
        0 file pointer to relocation table
@@ -150,10 +150,10 @@ C0000040 flags
 
 SECTION HEADER #4
   .reloc name
-     DA8 virtual size
-  12F000 virtual address (1012F000 to 1012FDA7)
+     DE8 virtual size
+  12F000 virtual address (1012F000 to 1012FDE7)
      E00 size of raw data
-    BC00 file pointer to raw data (0000BC00 to 0000C9FF)
+    C200 file pointer to raw data (0000C200 to 0000CFFF)
        0 file pointer to relocation table
        0 file pointer to line numbers
        0 number of relocations
