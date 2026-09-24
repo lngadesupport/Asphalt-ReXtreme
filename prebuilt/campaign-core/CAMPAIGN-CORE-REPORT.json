@@ -28,10 +28,16 @@
     "PresentationSelector":  "0xC0DECA90",
     "ReplayFrameSelector":  "0xC0DEB002",
     "ReplayFrameBindingRegistry":  "config/replay-frame-binding.verified.json",
+    "ReplayTransformBindingCatalog":  "CampaignReplayBindings.dat",
+    "ReplayTransformBindingRegistry":  "config/replay-bindings.verified.json",
+    "ReplayTransformBindingsVerified":  false,
     "ReplayFrameBindingVerified":  false,
     "PhotoFrameSelector":  "0xC0DEB003",
     "PhotoFrameBindingRegistry":  "config/photo-frame-binding.verified.json",
     "PhotoFrameBindingVerified":  false,
+    "PhotoToggleSelector":  "0xC0DEB004",
+    "PhotoToggleBindingRegistry":  "config/photo-toggle-binding.verified.json",
+    "PhotoToggleBindingVerified":  false,
     "PhotoBindingCatalog":  "CampaignPhotoBindings.dat",
     "PhotoFreeCameraRequiresCompleteBindings":  true,
     "PresentationSettings":  "ReXtremePresentation.dat",
@@ -43,6 +49,6 @@
     "PresentationBindingCatalog":  "CampaignPresentationBindings.dat",
     "PresentationValuesRequireVerifiedBinding":  true,
     "UnverifiedPresentationOptionsVisible":  false,
-    "Size":  53248,
-    "SHA256":  "5d84dac87229dfb886ce25c2fbd2766d6edd105c5bde6a15cd34c7765b308de4"
+    "Size":  56832,
+    "SHA256":  "abdd85bd717a4c39c7e660f6f93aad3505d8d6fff28a906979a2a7fbcf42a95a"
 }
