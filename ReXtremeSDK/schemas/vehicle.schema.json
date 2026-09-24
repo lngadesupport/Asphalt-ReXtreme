@@ -2,12 +2,19 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ReXtreme Vehicle",
   "type": "object",
-  "required": ["id", "name", "category", "base_original_profile", "physics_mode", "performance_bars"],
+  "required": ["id", "name", "archetype", "performance_class", "base_original_profile", "physics_mode", "performance_bars"],
   "properties": {
     "id": { "type": "string" },
     "name": { "type": "string" },
-    "category": { "type": "string" },
-    "base_original_profile": { "type": "string", "minLength": 1 },
+    "archetype": {
+      "enum": ["buggy", "rally-car", "suv", "muscle-car", "pickup", "truck", "monster-truck"]
+    },
+    "performance_class": { "enum": ["D", "C", "B", "A", "S"] },
+    "base_original_profile": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Must resolve to a source_verified profile in original_vehicle_registry.json."
+    },
     "physics_mode": { "enum": ["clone-profile", "category-balanced", "advanced"] },
     "performance_bars": {
       "type": "object",
