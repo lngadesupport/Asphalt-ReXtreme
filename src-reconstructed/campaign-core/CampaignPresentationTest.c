@@ -108,6 +108,7 @@ int main(void) {
     CampaignReplayPlaybackState playback;
     CampaignPhotoState photo;
     CampaignPhotoState photo_readback;
+    CampaignPresentationDiagnostics diagnostics;
     const WCHAR* replay_path = L"prebuilt\\campaign-core\\presentation-test.rexreplay";
 
     ZeroMemory(&settings, sizeof(settings));
@@ -122,6 +123,7 @@ int main(void) {
     ZeroMemory(&playback, sizeof(playback));
     ZeroMemory(&photo, sizeof(photo));
     ZeroMemory(&photo_readback, sizeof(photo_readback));
+    ZeroMemory(&diagnostics, sizeof(diagnostics));
 
     if (!CampaignPresentationResetSettings()) return Fail(10);
 
