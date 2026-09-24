@@ -49,6 +49,10 @@
     "PresentationBindingCatalog":  "CampaignPresentationBindings.dat",
     "PresentationValuesRequireVerifiedBinding":  true,
     "UnverifiedPresentationOptionsVisible":  false,
+    "OriginalUiOnly":  true,
+    "CustomInGameUiAssetsAllowed":  false,
+    "UnmappedUiFeatureBehavior":  "hidden",
+    "OriginalUiBindingRegistry":  "config/original-ui-bindings.verified.json",
     "Size":  57856,
-    "SHA256":  "949e66eb6b1fc6ddd000f8e86a88c5c5214faf3312d4683dcfeb98ed5cc58968"
+    "SHA256":  "199783a69067907c9bbda09ffb9202bdcba364fc82546516aa5992b47091e3ee"
 }
