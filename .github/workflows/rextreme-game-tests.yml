@@ -8,11 +8,14 @@ on:
       - "tools/campaign_rebuilder.py"
       - "tools/audit_presentation_capabilities.py"
       - "tools/build_presentation_capability_catalog.py"
+      - "tools/build_presentation_binding_catalog.py"
       - "config/presentation-capabilities.verified.json"
+      - "config/presentation-bindings.verified.json"
       - "config/replay-frame-binding.verified.json"
       - "tests/test_campaign_rebuilder.py"
       - "tests/test_audit_presentation_capabilities.py"
       - "tests/test_build_presentation_capability_catalog.py"
+      - "tests/test_build_presentation_binding_catalog.py"
       - "tools/audit_original_settings_ui.py"
       - "tools/audit_replay_frame_hooks.py"
       - "tools/apply_replay_frame_binding.py"
@@ -42,6 +45,7 @@ jobs:
           tests/test_campaign_rebuilder.py
           tests/test_audit_presentation_capabilities.py
           tests/test_build_presentation_capability_catalog.py
+          tests/test_build_presentation_binding_catalog.py
           tests/test_audit_original_settings_ui.py
           tests/test_audit_replay_frame_hooks.py
           tests/test_apply_replay_frame_binding.py
@@ -58,3 +62,18 @@ jobs:
           if ($r.count -ne 0) { throw "Unverified options leaked into runtime catalog" }
           if (-not $r.safe_empty_catalog) { throw "Expected safe empty catalog" }
           if ((Get-Item CampaignPresentationOptions.dat).Length -ne 16) { throw "Unexpected empty catalog size" }
+
+      - name: Build safe empty presentation binding catalog
+        run: >
+          python tools/build_presentation_binding_catalog.py
+          config/presentation-bindings.verified.json
+          config/presentation-capabilities.verified.json
+          CampaignPresentationBindings.dat
+          --report CampaignPresentationBindings.report.json
+      - name: Verify empty binding allowlist
+        shell: pwsh
+        run: |
+          $r = Get-Content CampaignPresentationBindings.report.json -Raw | ConvertFrom-Json
+          if ($r.count -ne 0) { throw "Unverified presentation bindings leaked into runtime catalog" }
+          if (-not $r.safe_empty_catalog) { throw "Expected safe empty binding catalog" }
+          if ((Get-Item CampaignPresentationBindings.dat).Length -ne 20) { throw "Unexpected empty binding catalog size" }
