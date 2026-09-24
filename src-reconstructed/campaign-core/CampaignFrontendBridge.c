@@ -11,6 +11,7 @@
 #include "CampaignGarageFlow.h"
 #include "CampaignTutorialBuildConsumer.h"
 #include "CampaignGarageTrace.h"
+#include "CampaignGarageUiTrace.h"
 
 static void ZeroBytes(void* p, uint32_t count) {
     volatile unsigned char* q = (volatile unsigned char*)p;
@@ -236,7 +237,10 @@ static void* CampaignFrontendResolveGarageOwnerFromWidget(void* widget) {
 int __cdecl CampaignFrontendGarageBuildFromWidget(void* widget) {
     void* gs_garage;
 
+    CampaignGarageUiTraceWrite(10, 0, widget);
+
     gs_garage = CampaignFrontendResolveGarageOwnerFromWidget(widget);
+    CampaignGarageUiTraceWrite(11, gs_garage, widget);
     if (!gs_garage) return 0;
 
     /*
