@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReXtreme Track",
+  "type": "object",
+  "required": ["id", "name", "geometry"],
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "geometry": { "type": "string" },
+    "collision": { "type": ["string", "null"] },
+    "start_grid": { "type": "array" },
+    "finish": { "type": ["object", "null"] },
+    "checkpoints": { "type": "array" },
+    "respawns": { "type": "array" },
+    "ai_routes": { "type": "array" },
+    "shortcuts": { "type": "array" },
+    "replay_cameras": { "type": "array" },
+    "audio_zones": { "type": "array" },
+    "environment": { "type": ["string", "null"] }
+  }
+}
