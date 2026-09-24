@@ -18,6 +18,8 @@ EXTERN _CampaignEventPoll:PROC
 EXTERN _CampaignFrontendSubmit:PROC
 EXTERN _CampaignFrontendBoot:PROC
 EXTERN _CampaignFrontendLobbyReady:PROC
+EXTERN _CampaignFrontendGarageBuild:PROC
+EXTERN _CampaignFrontendOwnershipContains:PROC
 
 CAMPAIGN_CRAFT_MAGIC   EQU 0C0DEC0DEh
 CAMPAIGN_OWNED_MAGIC   EQU 0C0DE0A11h
@@ -34,6 +36,8 @@ CAMPAIGN_EVENT_POLL_MAGIC   EQU 0C0DE7703h
 CAMPAIGN_FRONTEND_MAGIC     EQU 0C0DE7704h
 CAMPAIGN_FRONTEND_BOOT_MAGIC  EQU 0C0DE7710h
 CAMPAIGN_FRONTEND_LOBBY_MAGIC EQU 0C0DE7711h
+CAMPAIGN_FRONTEND_OWNERSHIP_MAGIC EQU 0C0DE7712h
+CAMPAIGN_FRONTEND_GARAGE_BUILD_MAGIC EQU 0C0DE7713h
 
 .code
 
@@ -111,6 +115,12 @@ campaign_gateway PROC
 
     cmp eax, CAMPAIGN_FRONTEND_LOBBY_MAGIC
     je campaign_frontend_lobby
+
+    cmp eax, CAMPAIGN_FRONTEND_OWNERSHIP_MAGIC
+    je campaign_frontend_ownership
+
+    cmp eax, CAMPAIGN_FRONTEND_GARAGE_BUILD_MAGIC
+    je campaign_frontend_garage_build
 
     xor eax, eax
     ret 4
@@ -199,6 +209,25 @@ campaign_frontend_boot:
 
 campaign_frontend_lobby:
     call _CampaignFrontendLobbyReady
+    ret 4
+
+campaign_frontend_ownership:
+    ; Gateway stack:
+    ; [esp+00] return to AMS stub
+    ; [esp+04] selector
+    ; [esp+08] original caller return
+    ; [esp+0C] original value pointer
+    mov eax, DWORD PTR [esp+0Ch]
+    push eax
+    push ecx
+    call _CampaignFrontendOwnershipContains
+    add esp, 8
+    ret 4
+
+campaign_frontend_garage_build:
+    push ecx
+    call _CampaignFrontendGarageBuild
+    add esp, 4
     ret 4
 campaign_gateway ENDP
 
