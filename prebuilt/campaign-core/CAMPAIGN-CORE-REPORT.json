@@ -35,7 +35,9 @@
     "PhotoModeRuntimeFoundation":  true,
     "RendererOverridesDefaultToOriginal":  true,
     "PresentationCapabilityCatalog":  "CampaignPresentationOptions.dat",
+    "PresentationBindingCatalog":  "CampaignPresentationBindings.dat",
+    "PresentationValuesRequireVerifiedBinding":  true,
     "UnverifiedPresentationOptionsVisible":  false,
-    "Size":  46080,
-    "SHA256":  "ac40c50dbca6d73c3f2eb94a7bd1649ea372cb75ff6ad5227bb2df40d201b88e"
+    "Size":  48128,
+    "SHA256":  "73e9d6926b39ed1c6a03d778b8e00142126798106915ef484e1ae39e5bf8424b"
 }
