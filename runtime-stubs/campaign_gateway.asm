@@ -11,6 +11,7 @@ EXTERN _CampaignBeginCareerFromPreRequest:PROC
 EXTERN _CampaignFinishCareerFromPostRequest:PROC
 EXTERN _CampaignBeginRaceFromGui:PROC
 EXTERN _CampaignFinishRaceFromGui:PROC
+EXTERN _CampaignReplayFrameFromGui:PROC
 EXTERN _CampaignBeginRaceAdapter:PROC
 EXTERN _CampaignPresentationInvoke:PROC
 
@@ -19,6 +20,7 @@ CAMPAIGN_OWNED_MAGIC   EQU 0C0DE0A11h
 CAMPAIGN_COMMAND_MAGIC     EQU 0C0DECA11h
 CAMPAIGN_RACE_BEGIN_MAGIC  EQU 0C0DEB001h
 CAMPAIGN_RACE_FINISH_MAGIC EQU 0C0DEF001h
+CAMPAIGN_REPLAY_FRAME_MAGIC EQU 0C0DEB002h
 CAMPAIGN_CAREER_BEGIN_MAGIC EQU 0C0DEB072h
 CAMPAIGN_UPGRADE_BATCH_MAGIC EQU 0C0DE4401h
 CAMPAIGN_UPGRADE_LEGACY_MAGIC EQU 0C0DE4402h
@@ -72,6 +74,9 @@ campaign_gateway PROC
     cmp eax, CAMPAIGN_RACE_FINISH_MAGIC
     je campaign_race_finish
 
+    cmp eax, CAMPAIGN_REPLAY_FRAME_MAGIC
+    je campaign_replay_frame
+
     cmp eax, CAMPAIGN_CAREER_BEGIN_MAGIC
     je campaign_career_begin
 
@@ -117,6 +122,12 @@ campaign_race_begin:
 campaign_race_finish:
     push ecx
     call _CampaignFinishRaceFromGui
+    add esp, 4
+    ret 4
+
+campaign_replay_frame:
+    push ecx
+    call _CampaignReplayFrameFromGui
     add esp, 4
     ret 4
 
