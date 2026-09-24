@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include "CampaignServices.h"
 #include "CampaignCore.h"
+#include "CampaignCatalog.h"
 #include "CampaignEventBus.h"
 #include "CampaignGarageFlow.h"
 
@@ -85,25 +86,46 @@ int __cdecl CampaignServiceGarageIsOwned(int32_t car_id, CampaignGarageResult* o
 
 int __cdecl CampaignServiceGarageAcquire(int32_t car_id, CampaignGarageResult* out) {
     CampaignCommand cmd;
+    CampaignCommand owned_count;
 
     if (car_id <= 0 || !out || out->size < (uint32_t)sizeof(*out)) return 0;
 
     out->car_id = car_id;
     out->owned = 0;
-    out->acquisition_type = 0;
+    out->acquisition_type = CAMPAIGN_ACQUIRE_NONE;
     out->balance_before = 0;
     out->balance_after = 0;
     out->revision = 0;
 
-    if (!Run(&cmd, CAMPAIGN_OP_ACQUIRE_CATALOG, car_id, 0, 0, 0)) return 0;
+    /*
+      Normal Campaign acquisition always wins first.
+      The only fallback is the first-ever car in a fresh Campaign save:
+      that is the tutorial/starter acquisition and is intentionally free.
+    */
+    if (!Run(&cmd, CAMPAIGN_OP_ACQUIRE_CATALOG, car_id, 0, 0, 0)) {
+        if (!Run(&owned_count, CAMPAIGN_OP_GET_OWNED_COUNT, 0, 0, 0, 0)) return 0;
+        if (owned_count.out0 != 0) return 0;
+        if (!Run(&cmd, CAMPAIGN_OP_ACQUIRE_CAR, car_id, 0, 0, 0)) return 0;
+
+        out->acquisition_type = CAMPAIGN_ACQUIRE_FREE;
+        out->balance_before = 0;
+        out->balance_after = 0;
+    } else {
+        out->acquisition_type = cmd.out0;
+        out->balance_before = cmd.out1;
+        out->balance_after = cmd.out2;
+    }
 
     out->owned = 1;
-    out->acquisition_type = cmd.out0;
-    out->balance_before = cmd.out1;
-    out->balance_after = cmd.out2;
     out->revision = cmd.revision;
 
-    Publish(CAMPAIGN_EVENT_OWNERSHIP_CHANGED, car_id, 1, cmd.out1, cmd.out2);
+    Publish(
+        CAMPAIGN_EVENT_OWNERSHIP_CHANGED,
+        car_id,
+        1,
+        out->balance_before,
+        out->balance_after
+    );
     return 1;
 }
 
