@@ -55,6 +55,7 @@ call :get tools/build_campaign_store_from_shop.py tools\build_campaign_store_fro
 call :get tools/audit_campaign_store_keys_from_package.py tools\audit_campaign_store_keys_from_package.py || goto :download_fail
 call :get tools/campaign_garage_v2.py tools\campaign_garage_v2.py || goto :download_fail
 call :get tools/campaign_career_adapter_v2.py tools\campaign_career_adapter_v2.py || goto :download_fail
+call :get tools/campaign_career_adapter_v3.py tools\campaign_career_adapter_v3.py || goto :download_fail
 call :get tools/campaign_upgrade_adapter_v1.py tools\campaign_upgrade_adapter_v1.py || goto :download_fail
 call :get tools/campaign_store_adapter_v1.py tools\campaign_store_adapter_v1.py || goto :download_fail
 call :get tools/validate_campaign_data_prepatch.py tools\validate_campaign_data_prepatch.py || goto :download_fail
@@ -79,11 +80,11 @@ python.exe "%TOOLS%\build_campaign_auxiliary_data.py" ^
   --package-dir "%PKG%" ^
   --report-dir "%ROOT%\_CAMPAIGN_PRODUCTION_DATA"
 set "AUXERR=%ERRORLEVEL%"
-if %AUXERR% GEQ 3 (
-  echo [BLOQUEIO] Objetivos possuem tipos ainda nao mapeados.
+if "%AUXERR%"=="5" (
+  echo [BLOQUEIO] CampaignUpgradeUiMap.dat nao foi reconstruido.
   goto :data_fail
 )
-if errorlevel 1 goto :data_fail
+if not "%AUXERR%"=="0" goto :data_fail
 
 echo.
 echo [STORE] Auditando chaves da loja legada...
@@ -136,7 +137,7 @@ if errorlevel 1 goto :patch_fail
 
 echo.
 echo [PATCH 2/4] Carreira / corrida / recompensas...
-python.exe "%TOOLS%\campaign_career_adapter_v2.py" --project-root "%ROOT%"
+python.exe "%TOOLS%\campaign_career_adapter_v3.py" --project-root "%ROOT%"
 if errorlevel 1 goto :patch_fail
 
 echo.
