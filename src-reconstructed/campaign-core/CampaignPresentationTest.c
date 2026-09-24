@@ -534,6 +534,34 @@ int main(void) {
         g_test_photo_roll != 250 ||
         g_test_photo_hud != 0) return Fail(51);
 
+    if (!CampaignPhotoMove(500, -500, 1000)) return Fail(107);
+    if (g_test_photo_x != 13.0f ||
+        g_test_photo_y != 2.5f ||
+        g_test_photo_z != -7.0f) return Fail(108);
+
+    if (!CampaignPhotoRotate(100, -200, 50)) return Fail(109);
+    if (g_test_photo_pitch != -400 ||
+        g_test_photo_yaw != 8800 ||
+        g_test_photo_roll != 300) return Fail(110);
+
+    if (!CampaignPhotoSetMoveSpeed(2500)) return Fail(111);
+    ZeroMemory(&photo_readback, sizeof(photo_readback));
+    photo_readback.size = sizeof(photo_readback);
+    if (!CampaignPhotoGet(&photo_readback) ||
+        photo_readback.move_speed_x1000 != 2500) return Fail(112);
+
+    /* No verified FOV binding exists in this test catalog. */
+    if (CampaignPhotoSetFov(6500)) return Fail(113);
+
+    if (!CampaignPhotoResetView()) return Fail(114);
+    if (g_test_photo_x != 1.25f ||
+        g_test_photo_y != 2.5f ||
+        g_test_photo_z != -3.75f ||
+        g_test_photo_pitch != 100 ||
+        g_test_photo_yaw != 200 ||
+        g_test_photo_roll != 300 ||
+        g_test_photo_hud != 0) return Fail(115);
+
     if (!CampaignPhotoExit()) return Fail(52);
     if (g_test_photo_x != 1.25f ||
         g_test_photo_y != 2.5f ||
