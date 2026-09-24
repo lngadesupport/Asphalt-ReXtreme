@@ -395,6 +395,8 @@ function Update-Beta {
         "tools/test_frontend_only_boot_v1.ps1",
         "tools/campaign_frontend_garage_v1.py",
         "tools/test_frontend_only_garage_v1.ps1",
+        "tools/campaign_frontend_garage_v2.py",
+        "tools/test_frontend_only_v2.ps1",
         "tools/xtea_assets.py",
         "tools/rextreme_economy.py",
         "tools/economy_audit.py",
