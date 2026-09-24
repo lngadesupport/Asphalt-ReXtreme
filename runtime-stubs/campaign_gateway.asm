@@ -12,6 +12,7 @@ EXTERN _CampaignFinishCareerFromPostRequest:PROC
 EXTERN _CampaignBeginRaceFromGui:PROC
 EXTERN _CampaignFinishRaceFromGui:PROC
 EXTERN _CampaignBeginRaceAdapter:PROC
+EXTERN _CampaignPresentationInvoke:PROC
 
 CAMPAIGN_CRAFT_MAGIC   EQU 0C0DEC0DEh
 CAMPAIGN_OWNED_MAGIC   EQU 0C0DE0A11h
@@ -22,6 +23,7 @@ CAMPAIGN_CAREER_BEGIN_MAGIC EQU 0C0DEB072h
 CAMPAIGN_UPGRADE_BATCH_MAGIC EQU 0C0DE4401h
 CAMPAIGN_UPGRADE_LEGACY_MAGIC EQU 0C0DE4402h
 CAMPAIGN_STORE_LEGACY_MAGIC EQU 0C0DE5501h
+CAMPAIGN_PRESENTATION_MAGIC EQU 0C0DECA90h
 
 .code
 
@@ -82,6 +84,9 @@ campaign_gateway PROC
     cmp eax, CAMPAIGN_STORE_LEGACY_MAGIC
     je campaign_store_legacy
 
+    cmp eax, CAMPAIGN_PRESENTATION_MAGIC
+    je campaign_presentation
+
     xor eax, eax
     ret 4
 
@@ -136,6 +141,12 @@ campaign_upgrade_legacy:
 campaign_store_legacy:
     push ecx
     call _CampaignPurchaseLegacyStore
+    add esp, 4
+    ret 4
+
+campaign_presentation:
+    push ecx
+    call _CampaignPresentationInvoke
     add esp, 4
     ret 4
 campaign_gateway ENDP
