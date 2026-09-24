@@ -13,6 +13,7 @@
 #include "CampaignReplayBindings.h"
 #include "CampaignOriginalUiBindings.h"
 #include "CampaignRaceHudLayout.h"
+#include "CampaignChallengeCatalog.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
 #define CAMPAIGN_VERSION 3u
@@ -2002,6 +2003,8 @@ int __cdecl CampaignFinishRaceFromGui(void* game_mode_gui) {
         result = CommitMutationUnlocked();
         if (result) {
             DeleteFileW(g_race_session_consuming_path);
+            /* Challenge sidecar is secondary: a failure never invalidates the race commit. */
+            CampaignChallengesOnRace(g_race_session_buffer.event_id, &metrics);
         } else {
             CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
             MoveFileExW(
@@ -2379,6 +2382,8 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             }
 
             DeleteFileW(g_race_session_consuming_path);
+            /* Only full metric finishes contribute to Challenges. */
+            CampaignChallengesOnRace(g_race_session_buffer.event_id, metrics);
 
             c->out0 = metrics->credits_awarded;
             c->out1 = metrics->premium_awarded;
@@ -2418,6 +2423,77 @@ static int ExecuteUnlocked(CampaignCommand* c) {
         c->out1 = (int32_t)CAMPAIGN_VERSION;
         c->out2 =
             GetFileAttributesW(g_race_session_path) != INVALID_FILE_ATTRIBUTES ? 1 : 0;
+        c->status = 1;
+        c->revision = g_state.revision;
+        return 1;
+
+    case CAMPAIGN_OP_CHALLENGE_COUNT:
+        c->out0 = (int32_t)CampaignChallengeCatalogCount();
+        c->status = 1;
+        c->revision = g_state.revision;
+        return 1;
+
+    case CAMPAIGN_OP_CHALLENGE_ID_AT:
+        {
+            const CampaignChallengeDefinition* def =
+                CampaignChallengeCatalogGet((uint32_t)c->a);
+            if (!def) return 0;
+            c->out0 = def->challenge_id;
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_CHALLENGE_STATUS:
+        {
+            CampaignChallengeStatus status;
+            ZeroBytes(&status, (uint32_t)sizeof(status));
+            status.size = (uint32_t)sizeof(status);
+            if (!CampaignChallengesGetStatus(c->a, &status)) return 0;
+            c->out0 = status.progress;
+            c->out1 = status.goal;
+            c->out2 =
+                (status.completed ? 1 : 0) |
+                (status.claimed ? 2 : 0) |
+                (status.has_progress ? 4 : 0) |
+                ((status.scope & 0xFF) << 8) |
+                ((status.metric & 0xFF) << 16) |
+                ((status.progress_mode & 0xFF) << 24);
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_CHALLENGE_REWARD:
+        {
+            CampaignChallengeStatus status;
+            ZeroBytes(&status, (uint32_t)sizeof(status));
+            status.size = (uint32_t)sizeof(status);
+            if (!CampaignChallengesGetStatus(c->a, &status)) return 0;
+            c->out0 = status.reward_credits;
+            c->out1 = status.reward_premium;
+            c->out2 = status.reward_item_id;
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_CHALLENGE_ITEM_REWARD:
+        {
+            CampaignChallengeStatus status;
+            ZeroBytes(&status, (uint32_t)sizeof(status));
+            status.size = (uint32_t)sizeof(status);
+            if (!CampaignChallengesGetStatus(c->a, &status)) return 0;
+            c->out0 = status.reward_item_id;
+            c->out1 = status.reward_item_amount;
+            c->out2 = status.completed && !status.claimed ? 1 : 0;
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_CHALLENGE_REFRESH:
+        c->out0 = CampaignChallengesRefreshPeriods() ? 1 : 0;
         c->status = 1;
         c->revision = g_state.revision;
         return 1;
