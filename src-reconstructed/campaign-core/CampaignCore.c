@@ -2224,6 +2224,7 @@ int __cdecl CampaignFinishRaceFromGui(void* game_mode_gui) {
 
     LockState();
     EnsureLoadedUnlocked();
+    RecoverActivityContextUnlocked();
 
     RecoverConsumingRaceSessionUnlocked();
 
@@ -2579,6 +2580,7 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             );
 
             if (finish_status == 2) {
+                RecoverActivityContextUnlocked();
                 c->status = 1;
                 c->revision = g_state.revision;
                 return 1;
@@ -3293,6 +3295,7 @@ int __cdecl CampaignFinishRaceAdapter(const CampaignRaceFinishArgs* args) {
     }
 
     if (finish_status == 2) {
+        RecoverActivityContextUnlocked();
         UnlockState();
         return 1;
     }
