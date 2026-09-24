@@ -32,7 +32,7 @@ Get-Process AMS -ErrorAction SilentlyContinue|Stop-Process -Force -ErrorAction S
 Copy-Item $phase2 $ams -Force
 Copy-Item $core $igp -Force
 
-& $python $tool --project-root $ProjectRoot
+& $python $tool --project-root $ProjectRoot --allow-legacy-cave
 if($LASTEXITCODE-ne0){throw "Offline Surface v5 apply failed: $LASTEXITCODE"}
 
 [xml]$mx=Get-Content $manifest -Raw
