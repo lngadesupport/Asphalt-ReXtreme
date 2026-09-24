@@ -360,13 +360,12 @@ def main() -> int:
     )
     print(json.dumps(status, indent=2, ensure_ascii=False))
 
-    # Objectives are required for career authority. UI-map absence only blocks
-    # the upgrade adapter; all other rebuilt systems remain buildable.
+    # Career Adapter v3 consumes the star1/star2/star3 result flags already
+    # produced by the preserved race client, so objective reconstruction is
+    # diagnostic rather than runtime-authoritative. Upgrade UI mapping remains
+    # required until its runtime metadata adapter is complete.
     if not obj_ok:
-        return 3
-    if not (package / "CampaignObjectives.dat").is_file():
-        print("CampaignObjectives.dat missing after successful objective build")
-        return 4
+        print("CampaignObjectives.dat unavailable; Career Adapter v3 will use verified post-race star flags.")
     if not (package / "CampaignUpgradeUiMap.dat").is_file():
         print("CampaignUpgradeUiMap.dat missing after auxiliary build")
         return 5
