@@ -5,9 +5,16 @@ on:
     branches:
       - rextreme-sdk-foundation
     paths:
-      - "ReXtremeSDK/**"
+      - "ReXtremeSDK/**/*.cs"
+      - "ReXtremeSDK/**/*.xaml"
+      - "ReXtremeSDK/**/*.csproj"
+      - "ReXtremeSDK/Integrations/**"
       - ".github/workflows/rextreme-sdk-build.yml"
   workflow_dispatch:
+
+concurrency:
+  group: rextreme-sdk-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-windows-x64:
@@ -33,10 +40,12 @@ jobs:
       - name: Publish standalone single-file
         run: dotnet publish ReXtremeSDK/ReXtremeSDK.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/ReXtremeSDK
 
-      - name: Copy documentation
+      - name: Copy SDK support files
         shell: pwsh
         run: |
           Copy-Item ReXtremeSDK/README.md artifacts/ReXtremeSDK/README.txt
+          Copy-Item ReXtremeSDK/schemas artifacts/ReXtremeSDK/schemas -Recurse -Force
+          Copy-Item ReXtremeSDK/Integrations artifacts/ReXtremeSDK/Integrations -Recurse -Force
           Set-Content artifacts/ReXtremeSDK/BUILD.txt "ReXtreme SDK standalone Windows x64 - Commit $env:GITHUB_SHA"
 
       - name: Zip distributable
