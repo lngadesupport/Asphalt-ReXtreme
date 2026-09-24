@@ -9,6 +9,7 @@
 #include "CampaignUpgradeUiMap.h"
 #include "CampaignStoreCatalog.h"
 #include "CampaignPresentation.h"
+#include "CampaignPhotoBindings.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
 #define CAMPAIGN_VERSION 3u
@@ -1909,11 +1910,10 @@ int __cdecl CampaignPhotoFrameFromGui(void* game_mode_gui) {
     if (!CampaignPhotoGet(&photo) || !photo.active) return 0;
 
     /*
-      Do not guess camera/HUD offsets. A verified Photo binding adapter will
-      apply this state to the preserved Asphalt Xtreme camera only after the
-      exact original chain is proven.
+      This call is fail-closed: CampaignPhotoBindingsApply requires the full
+      verified semantic set for Free Camera and writable proven targets.
     */
-    return 0;
+    return CampaignPhotoBindingsApply(&photo);
 }
 
 int __cdecl CampaignFinishRaceFromGui(void* game_mode_gui) {
