@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReXtreme Career Season",
+  "type": "object",
+  "required": ["id", "name", "nodes"],
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "insert_mode": { "enum": ["new-season", "append-to-season", "branch"] },
+    "target_original_season": { "type": ["string", "null"] },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "event"],
+        "properties": {
+          "id": { "type": "string" },
+          "event": { "type": "string" },
+          "requires": { "type": "array", "items": { "type": "string" } },
+          "star_gate": { "type": ["integer", "null"], "minimum": 0 }
+        }
+      }
+    },
+    "completion_rewards": { "type": "array" }
+  }
+}
