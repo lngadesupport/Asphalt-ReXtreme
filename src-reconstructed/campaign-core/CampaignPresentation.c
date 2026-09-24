@@ -1811,6 +1811,7 @@ int __cdecl CampaignPresentationGetDiagnostics(CampaignPresentationDiagnostics* 
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_SPECIAL_EVENTS)) out->original_ui_feature_mask |= 1u << 9;
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_CHAMPIONSHIPS)) out->original_ui_feature_mask |= 1u << 10;
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_CAREER_SEASONS)) out->original_ui_feature_mask |= 1u << 11;
+    if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_GARAGE)) out->original_ui_feature_mask |= 1u << 12;
     out->race_hud_binding_count = CampaignRaceHudBindingsCount();
     out->race_hud_original_ui_ready =
         CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_RACE_HUD) ? 1u : 0u;
