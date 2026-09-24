@@ -138,3 +138,20 @@ int __cdecl CampaignFrontendSubmit(CampaignFrontendRequest* r) {
 int __cdecl CampaignFrontendPoll(CampaignEvent* event) {
     return CampaignEventPoll(event);
 }
+
+
+int __cdecl CampaignFrontendBoot(void) {
+    CampaignFrontendRequest request;
+    ZeroBytes(&request, (uint32_t)sizeof(request));
+    request.size = (uint32_t)sizeof(request);
+    request.type = CAMPAIGN_FRONTEND_BOOT;
+    return CampaignFrontendSubmit(&request);
+}
+
+int __cdecl CampaignFrontendLobbyReady(void) {
+    CampaignFrontendRequest request;
+    ZeroBytes(&request, (uint32_t)sizeof(request));
+    request.size = (uint32_t)sizeof(request);
+    request.type = CAMPAIGN_FRONTEND_ENTER_LOBBY;
+    return CampaignFrontendSubmit(&request);
+}
