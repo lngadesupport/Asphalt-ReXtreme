@@ -87,6 +87,7 @@ typedef struct CampaignReplayInfo {
     uint32_t sample_count;
     uint32_t capacity;
     uint32_t dropped_samples;
+    uint32_t throttled_samples;
     uint32_t marker_count;
     uint32_t dropped_markers;
     uint32_t first_time_ms;
@@ -264,6 +265,7 @@ int __cdecl CampaignReplayStart(uint32_t capacity);
 int __cdecl CampaignReplayStop(void);
 int __cdecl CampaignReplayClear(void);
 int __cdecl CampaignReplayRecord(const CampaignReplaySample* sample);
+int __cdecl CampaignReplayRecordFrame(const CampaignReplaySample* sample);
 int __cdecl CampaignReplayGetInfo(CampaignReplayInfo* out);
 int __cdecl CampaignReplayGetSample(uint32_t chronological_index, CampaignReplaySample* out);
 int __cdecl CampaignReplaySave(const wchar_t* path);
