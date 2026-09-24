@@ -36,7 +36,7 @@
 #define CAMPAIGN_DEFAULT_PREMIUM 0
 
 #define CAMPAIGN_RACE_SESSION_MAGIC 0x53525852u /* RXRS */
-#define CAMPAIGN_RACE_SESSION_VERSION 1u
+#define CAMPAIGN_RACE_SESSION_VERSION 2u
 
 /* Verified x86 client adapter RVAs, relative to AMS.exe image base. */
 #define CAMPAIGN_AMS_RVA_CURRENT_RACE_MANAGER 0x0153AC20u
@@ -70,6 +70,16 @@ typedef struct CampaignEventStateEntry {
     int32_t best_time_ms;
 } CampaignEventStateEntry;
 
+typedef struct CampaignRaceSessionV1Legacy {
+    uint32_t magic;
+    uint32_t version;
+    uint32_t session_id;
+    int32_t event_id;
+    int32_t car_id;
+    uint32_t start_revision;
+    uint32_t checksum;
+} CampaignRaceSessionV1Legacy;
+
 typedef struct CampaignRaceSession {
     uint32_t magic;
     uint32_t version;
@@ -77,6 +87,10 @@ typedef struct CampaignRaceSession {
     int32_t event_id;
     int32_t car_id;
     uint32_t start_revision;
+    uint32_t activity_type;
+    int32_t activity_id;
+    uint32_t activity_slot;
+    uint32_t activity_period_key;
     uint32_t checksum;
 } CampaignRaceSession;
 
@@ -193,6 +207,7 @@ static WCHAR g_user_dir[1024];
 static volatile LONG g_portable_save;
 static volatile LONG g_presentation_bootstrap_attempted;
 static CampaignRaceSession g_race_session_buffer;
+static CampaignRaceSessionV1Legacy g_race_session_v1_buffer;
 
 static void LockState(void) {
     while (InterlockedCompareExchange(&g_lock, 1, 0) != 0) Sleep(0);
@@ -257,6 +272,13 @@ static uint32_t StateChecksumV1(const CampaignStateV1* s) {
 
 static uint32_t RaceSessionChecksum(const CampaignRaceSession* s) {
     return Fnv1a((const unsigned char*)s, (uint32_t)(sizeof(CampaignRaceSession) - sizeof(uint32_t)));
+}
+
+static uint32_t RaceSessionChecksumV1(const CampaignRaceSessionV1Legacy* s) {
+    return Fnv1a(
+        (const unsigned char*)s,
+        (uint32_t)(sizeof(CampaignRaceSessionV1Legacy) - sizeof(uint32_t))
+    );
 }
 
 static void InitDefaultState(CampaignStateV3* s) {
@@ -444,13 +466,32 @@ static int ValidateRaceSession(const CampaignRaceSession* session) {
     if (session->magic != CAMPAIGN_RACE_SESSION_MAGIC) return 0;
     if (session->version != CAMPAIGN_RACE_SESSION_VERSION) return 0;
     if (session->session_id == 0 || session->event_id <= 0) return 0;
+    if (session->activity_type > CAMPAIGN_ACTIVITY_CHAMPIONSHIP) return 0;
+    if (session->activity_type == CAMPAIGN_ACTIVITY_NONE) {
+        if (session->activity_id != 0 ||
+            session->activity_slot != 0 ||
+            session->activity_period_key != 0) return 0;
+    } else {
+        if (session->activity_id <= 0 || session->activity_slot >= 16u) return 0;
+        if (session->activity_type == CAMPAIGN_ACTIVITY_CHAMPIONSHIP &&
+            session->activity_period_key != 0) return 0;
+    }
     if (session->checksum != RaceSessionChecksum(session)) return 0;
     return 1;
+}
+
+static int ValidateRaceSessionV1(const CampaignRaceSessionV1Legacy* session) {
+    if (!session) return 0;
+    if (session->magic != CAMPAIGN_RACE_SESSION_MAGIC || session->version != 1u) return 0;
+    if (session->session_id == 0 || session->event_id <= 0) return 0;
+    return session->checksum == RaceSessionChecksumV1(session);
 }
 
 static int ReadRaceSessionFile(const WCHAR* path, CampaignRaceSession* out) {
     HANDLE h;
     DWORD got = 0;
+    DWORD file_size;
+    CampaignRaceSessionV1Legacy* legacy = &g_race_session_v1_buffer;
 
     if (!path || !out) return 0;
     ZeroBytes(out, (uint32_t)sizeof(*out));
@@ -466,19 +507,45 @@ static int ReadRaceSessionFile(const WCHAR* path, CampaignRaceSession* out) {
     );
     if (h == INVALID_HANDLE_VALUE) return 0;
 
-    if (!ReadFile(h, out, (DWORD)sizeof(*out), &got, 0) ||
-        got != (DWORD)sizeof(*out)) {
+    file_size = GetFileSize(h, 0);
+    if (file_size == (DWORD)sizeof(*out)) {
+        if (!ReadFile(h, out, (DWORD)sizeof(*out), &got, 0) ||
+            got != (DWORD)sizeof(*out)) {
+            CloseHandle(h);
+            ZeroBytes(out, (uint32_t)sizeof(*out));
+            return 0;
+        }
         CloseHandle(h);
-        ZeroBytes(out, (uint32_t)sizeof(*out));
-        return 0;
+        if (!ValidateRaceSession(out)) {
+            ZeroBytes(out, (uint32_t)sizeof(*out));
+            return 0;
+        }
+        return 1;
     }
-    CloseHandle(h);
 
-    if (!ValidateRaceSession(out)) {
-        ZeroBytes(out, (uint32_t)sizeof(*out));
-        return 0;
+    if (file_size == (DWORD)sizeof(*legacy)) {
+        ZeroBytes(legacy, (uint32_t)sizeof(*legacy));
+        if (!ReadFile(h, legacy, (DWORD)sizeof(*legacy), &got, 0) ||
+            got != (DWORD)sizeof(*legacy)) {
+            CloseHandle(h);
+            return 0;
+        }
+        CloseHandle(h);
+        if (!ValidateRaceSessionV1(legacy)) return 0;
+
+        out->magic = CAMPAIGN_RACE_SESSION_MAGIC;
+        out->version = CAMPAIGN_RACE_SESSION_VERSION;
+        out->session_id = legacy->session_id;
+        out->event_id = legacy->event_id;
+        out->car_id = legacy->car_id;
+        out->start_revision = legacy->start_revision;
+        out->activity_type = CAMPAIGN_ACTIVITY_NONE;
+        out->checksum = RaceSessionChecksum(out);
+        return 1;
     }
-    return 1;
+
+    CloseHandle(h);
+    return 0;
 }
 
 static int WriteRaceSessionUnlocked(const CampaignRaceSession* source) {
