@@ -1,0 +1,99 @@
+name: ReXtreme Game Build Check
+
+on:
+  push:
+    branches: [rextreme-game-buildcheck]
+  workflow_dispatch:
+
+jobs:
+  core-x86:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and smoke-test Campaign Core x86
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ([Environment]::GetEnvironmentVariable("ProgramFiles(x86)")) "Microsoft Visual Studio\Installer\vswhere.exe"
+          $install = (& $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath).Trim()
+          if (-not $install) { throw "MSVC x86 toolchain not found" }
+          $vcvars = Join-Path $install "VC\Auxiliary\Build\vcvarsall.bat"
+          New-Item -ItemType Directory -Force -Path "prebuilt\campaign-core" | Out-Null
+
+          $sources = @(
+            "CampaignCore",
+            "CampaignCatalog",
+            "CampaignEventCatalog",
+            "CampaignObjectiveCatalog",
+            "CampaignUpgradeCatalog",
+            "CampaignUpgradeUiMap",
+            "CampaignStoreCatalog",
+            "CampaignStoreAdapter",
+            "CampaignCareerAdapter",
+            "CampaignUpgradeAdapter",
+            "CampaignPresentation",
+            "CampaignPresentationCatalog"
+          )
+
+          $lines = @("@echo off", "call `"$vcvars`" x86", "if errorlevel 1 exit /b 11")
+          foreach ($name in $sources) {
+            $lines += "cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo`"prebuilt\campaign-core\$name.obj`" `"src-reconstructed\campaign-core\$name.c`""
+            $lines += "if errorlevel 1 exit /b 12"
+          }
+          $lines += "ml.exe /nologo /c /coff /Fo`"prebuilt\campaign-core\campaign_gateway.obj`" `"runtime-stubs\campaign_gateway.asm`""
+          $lines += "if errorlevel 1 exit /b 13"
+
+          $objects = ($sources | ForEach-Object { "`"prebuilt\campaign-core\$_.obj`"" }) -join " "
+          $lines += "link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:`"runtime-stubs\IGPLib_x86_campaign.def`" /out:`"prebuilt\campaign-core\IGPLib_x86.dll`" $objects `"prebuilt\campaign-core\campaign_gateway.obj`" kernel32.lib"
+          $lines += "if errorlevel 1 exit /b 14"
+          $lines += "dumpbin.exe /headers /imports `"prebuilt\campaign-core\IGPLib_x86.dll`" > `"prebuilt\campaign-core\DUMPBIN.txt`""
+          $lines += "if errorlevel 1 exit /b 15"
+
+          $lines += "cl.exe /nologo /c /TC /O2 /MT /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /I`"src-reconstructed\campaign-core`" /Fo`"prebuilt\campaign-core\CampaignPresentationTest.obj`" `"src-reconstructed\campaign-core\CampaignPresentationTest.c`""
+          $lines += "if errorlevel 1 exit /b 25"
+          $lines += "link.exe /nologo /machine:x86 /out:`"prebuilt\campaign-core\CampaignPresentationTest.exe`" `"prebuilt\campaign-core\CampaignPresentationTest.obj`" `"prebuilt\campaign-core\CampaignPresentation.obj`" `"prebuilt\campaign-core\CampaignPresentationCatalog.obj`" kernel32.lib"
+          $lines += "if errorlevel 1 exit /b 26"
+          $lines += "`"prebuilt\campaign-core\CampaignPresentationTest.exe`""
+          $lines += "if errorlevel 1 exit /b 27"
+
+          $bat = Join-Path $PWD "buildcheck.cmd"
+          Set-Content $bat $lines -Encoding ASCII
+          & cmd.exe /d /c $bat
+          if ($LASTEXITCODE -ne 0) { throw "buildcheck failed: $LASTEXITCODE" }
+
+          $dump = Get-Content "prebuilt\campaign-core\DUMPBIN.txt" -Raw
+          if ($dump -match "VCRUNTIME|MSVCP|ucrtbase") { throw "CRT dependency in Campaign Core" }
+
+          [byte[]]$d = [IO.File]::ReadAllBytes("prebuilt\campaign-core\IGPLib_x86.dll")
+          $pe = [BitConverter]::ToInt32($d,0x3C)
+          if ([BitConverter]::ToUInt16($d,$pe+4) -ne 0x014C) { throw "not x86" }
+          $opt=$pe+24
+          if ([BitConverter]::ToUInt32($d,$opt+16) -ne 0) { throw "unexpected DLL entry point" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ReXtreme-Game-Core-buildcheck
+          path: |
+            prebuilt/campaign-core/IGPLib_x86.dll
+            prebuilt/campaign-core/DUMPBIN.txt
+          if-no-files-found: error
+          retention-days: 7
+
+  python-tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install pytest
+      - run: >
+          python -m pytest -q
+          tests/test_campaign_rebuilder.py
+          tests/test_audit_presentation_capabilities.py
+          tests/test_build_presentation_capability_catalog.py
+          tests/test_audit_original_settings_ui.py
+      - run: >
+          python tools/build_presentation_capability_catalog.py
+          config/presentation-capabilities.verified.json
+          CampaignPresentationOptions.dat
+          --report CampaignPresentationOptions.report.json
