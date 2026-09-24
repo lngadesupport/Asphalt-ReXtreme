@@ -9,6 +9,8 @@ extern "C" {
 #define CAMPAIGN_PRESENTATION_SETTINGS_VERSION 1u
 #define CAMPAIGN_REPLAY_FORMAT_VERSION 3u
 #define CAMPAIGN_REPLAY_MARKER_MAX 4096u
+#define CAMPAIGN_REPLAY_LIBRARY_MAX 256u
+#define CAMPAIGN_REPLAY_FILENAME_MAX 260u
 
 /*
   Presentation settings are deliberately conservative.
@@ -102,6 +104,21 @@ typedef struct CampaignReplayPlaybackState {
     uint32_t selected_marker;
 } CampaignReplayPlaybackState;
 
+typedef struct CampaignReplayLibraryEntry {
+    uint32_t size;
+    wchar_t filename[CAMPAIGN_REPLAY_FILENAME_MAX];
+    CampaignReplayMetadata metadata;
+    uint32_t sample_count;
+    uint32_t marker_count;
+    uint32_t first_time_ms;
+    uint32_t last_time_ms;
+    uint32_t duration_ms;
+    uint32_t file_size_low;
+    uint32_t file_size_high;
+    uint32_t modified_time_low;
+    uint32_t modified_time_high;
+} CampaignReplayLibraryEntry;
+
 enum CampaignPhotoCameraMode {
     CAMPAIGN_PHOTO_CAMERA_ORIGINAL = 0,
     CAMPAIGN_PHOTO_CAMERA_FREE = 1,
@@ -174,6 +191,12 @@ enum CampaignPresentationOp {
     CAMPAIGN_PRESENTATION_OP_PHOTO_GET = 42,
     CAMPAIGN_PRESENTATION_OP_PHOTO_SET = 43,
 
+    CAMPAIGN_PRESENTATION_OP_REPLAY_LIBRARY_REFRESH = 50,
+    CAMPAIGN_PRESENTATION_OP_REPLAY_LIBRARY_COUNT = 51,
+    CAMPAIGN_PRESENTATION_OP_REPLAY_LIBRARY_GET = 52,
+    CAMPAIGN_PRESENTATION_OP_REPLAY_LIBRARY_LOAD = 53,
+    CAMPAIGN_PRESENTATION_OP_REPLAY_LIBRARY_DELETE = 54,
+
     CAMPAIGN_PRESENTATION_OP_DIAGNOSTICS = 60
 };
 
@@ -241,6 +264,12 @@ int __cdecl CampaignReplayNextMarker(uint32_t from_time_ms, CampaignReplayMarker
 int __cdecl CampaignReplayPreviousMarker(uint32_t from_time_ms, CampaignReplayMarker* out);
 int __cdecl CampaignReplayAdvance(uint32_t real_delta_ms);
 int __cdecl CampaignReplayStep(int32_t direction, int32_t entity_id);
+
+int __cdecl CampaignReplayLibraryRefresh(void);
+uint32_t __cdecl CampaignReplayLibraryCount(void);
+int __cdecl CampaignReplayLibraryGet(uint32_t index, CampaignReplayLibraryEntry* out);
+int __cdecl CampaignReplayLibraryLoad(uint32_t index);
+int __cdecl CampaignReplayLibraryDelete(uint32_t index);
 
 int __cdecl CampaignPhotoEnter(const CampaignPhotoState* initial);
 int __cdecl CampaignPhotoExit(void);
