@@ -40,6 +40,7 @@ def normalize(raw,seen):
  if metric not in METRICS:raise AchievementError(f"{ident}: invalid metric {metric!r}")
  if compare not in COMPARE:raise AchievementError(f"{ident}: invalid compare {compare!r}")
  threshold=u32(raw.get("threshold"),f"{ident}.threshold")
+ if threshold==0:raise AchievementError(f"{ident}.threshold must be > 0")
  flags=u32(raw.get("flags",0),f"{ident}.flags")
  return (ident,METRICS[metric],COMPARE[compare],threshold,flags,0,0,0)
 
