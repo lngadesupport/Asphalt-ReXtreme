@@ -26,6 +26,7 @@ int CampaignLastResultRecord(
     uint32_t campaign_revision
 );
 int CampaignLastResultGet(CampaignLastResultSnapshot* out);
+int CampaignLastResultReload(void);
 int CampaignLastResultClear(void);
 
 #ifdef __cplusplus
