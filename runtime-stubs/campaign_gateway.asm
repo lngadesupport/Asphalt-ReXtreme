@@ -16,6 +16,8 @@ EXTERN _CampaignUiSubmit:PROC
 EXTERN _CampaignOnlineResolve:PROC
 EXTERN _CampaignEventPoll:PROC
 EXTERN _CampaignFrontendSubmit:PROC
+EXTERN _CampaignFrontendBoot:PROC
+EXTERN _CampaignFrontendLobbyReady:PROC
 
 CAMPAIGN_CRAFT_MAGIC   EQU 0C0DEC0DEh
 CAMPAIGN_OWNED_MAGIC   EQU 0C0DE0A11h
@@ -30,6 +32,8 @@ CAMPAIGN_UI_MAGIC           EQU 0C0DE7701h
 CAMPAIGN_POLICY_MAGIC       EQU 0C0DE7702h
 CAMPAIGN_EVENT_POLL_MAGIC   EQU 0C0DE7703h
 CAMPAIGN_FRONTEND_MAGIC     EQU 0C0DE7704h
+CAMPAIGN_FRONTEND_BOOT_MAGIC  EQU 0C0DE7710h
+CAMPAIGN_FRONTEND_LOBBY_MAGIC EQU 0C0DE7711h
 
 .code
 
@@ -101,6 +105,12 @@ campaign_gateway PROC
 
     cmp eax, CAMPAIGN_FRONTEND_MAGIC
     je campaign_frontend
+
+    cmp eax, CAMPAIGN_FRONTEND_BOOT_MAGIC
+    je campaign_frontend_boot
+
+    cmp eax, CAMPAIGN_FRONTEND_LOBBY_MAGIC
+    je campaign_frontend_lobby
 
     xor eax, eax
     ret 4
@@ -181,6 +191,14 @@ campaign_frontend:
     push ecx
     call _CampaignFrontendSubmit
     add esp, 4
+    ret 4
+
+campaign_frontend_boot:
+    call _CampaignFrontendBoot
+    ret 4
+
+campaign_frontend_lobby:
+    call _CampaignFrontendLobbyReady
     ret 4
 campaign_gateway ENDP
 
