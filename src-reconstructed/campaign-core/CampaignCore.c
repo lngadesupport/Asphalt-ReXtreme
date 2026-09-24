@@ -1474,7 +1474,6 @@ static int BeginChampionshipRoundUnlocked(
         return 0;
     }
 
-    CampaignReplayBeginLifecycleUnlocked(event_id,car_id,sid);
     if(session_id)*session_id=sid;
     return 1;
 }
