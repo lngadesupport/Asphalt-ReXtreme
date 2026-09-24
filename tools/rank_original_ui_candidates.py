@@ -60,6 +60,38 @@ ROLES = {
         "kind": "panel",
         "terms": ("hud", "race", "position", "lap"),
     },
+    "career.screen": {
+        "kind": "screen",
+        "terms": ("career", "season", "screen", "menu"),
+    },
+    "career.card": {
+        "kind": "panel",
+        "terms": ("career", "season", "event", "card", "tile"),
+    },
+    "special_events.screen": {
+        "kind": "screen",
+        "terms": ("special", "event", "screen", "menu"),
+    },
+    "special_events.card": {
+        "kind": "panel",
+        "terms": ("special", "event", "card", "tile"),
+    },
+    "results.screen": {
+        "kind": "screen",
+        "terms": ("result", "race", "screen"),
+    },
+    "results.row": {
+        "kind": "panel",
+        "terms": ("result", "reward", "row", "item"),
+    },
+    "profile.screen": {
+        "kind": "screen",
+        "terms": ("profile", "player", "screen"),
+    },
+    "profile.row": {
+        "kind": "panel",
+        "terms": ("profile", "stat", "row", "item"),
+    },
     "results.screen": {
         "kind": "screen",
         "terms": ("result", "results", "finish", "reward", "continue"),
