@@ -7,6 +7,11 @@ Set-StrictMode -Version Latest
 
 if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
     $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+} else {
+    # Tolerate legacy CMD launchers that accidentally pass a trailing quote
+    # after %~dp0 (for example C:\\path\\project\\").
+    $ProjectRoot = $ProjectRoot.Trim().Trim('"')
+    $ProjectRoot = $ProjectRoot.TrimEnd("\\")
 }
 $ProjectRoot = (Resolve-Path -LiteralPath $ProjectRoot).Path
 $PackageRoot = Join-Path $ProjectRoot "_PACKAGE_PHASE5"
