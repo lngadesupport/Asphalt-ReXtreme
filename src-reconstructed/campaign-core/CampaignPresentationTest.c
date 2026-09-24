@@ -65,6 +65,8 @@ typedef struct TestPhotoBindingHeader {
     uint32_t count;
     uint32_t entry_size;
     uint32_t entries_hash;
+    uint32_t pe_time_date_stamp;
+    uint32_t pe_size_of_image;
 } TestPhotoBindingHeader;
 
 static int Fail(int code) {
@@ -167,9 +169,12 @@ static int WriteTestPhotoBindingCatalog(void) {
     }
 
     header.magic = 0x48505852u;
-    header.version = 1;
+    header.version = 2;
     header.count = 7;
     header.entry_size = sizeof(CampaignPhotoBinding);
+    if (!CurrentTestPeFingerprint(
+            &header.pe_time_date_stamp,
+            &header.pe_size_of_image)) return 0;
     header.entries_hash = TestFnv1a(
         (const unsigned char*)bindings,
         (uint32_t)sizeof(bindings)
