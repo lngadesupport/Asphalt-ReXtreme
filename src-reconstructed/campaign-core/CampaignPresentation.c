@@ -782,6 +782,27 @@ int __cdecl CampaignPresentationInvoke(CampaignPresentationCommand* command) {
             command->status = 1;
         }
         break;
+    case CAMPAIGN_PRESENTATION_OP_CAPABILITY_GET_VALUE:
+        command->status = CampaignPresentationCatalogGetValue(
+            (uint32_t)command->a,
+            &command->out0
+        );
+        break;
+    case CAMPAIGN_PRESENTATION_OP_CAPABILITY_SET_VALUE:
+        command->status = CampaignPresentationCatalogSetValue(
+            (uint32_t)command->a,
+            command->b
+        );
+        if (command->status) command->out0 = command->b;
+        break;
+    case CAMPAIGN_PRESENTATION_OP_CAPABILITY_RESET_VALUE:
+        command->status = CampaignPresentationCatalogResetValue(
+            (uint32_t)command->a
+        );
+        if (command->status) {
+            CampaignPresentationCatalogGetValue((uint32_t)command->a, &command->out0);
+        }
+        break;
 
     case CAMPAIGN_PRESENTATION_OP_REPLAY_START:
         command->status = CampaignReplayStart((uint32_t)command->a);
