@@ -23,7 +23,9 @@
     "ChallengeState":  "UserData\\\\CampaignEdition\\\\ChallengeState.dat",
     "ChallengeScopes":  "Permanent,Daily,Weekly",
     "ChallengeMetricsSource":  "CampaignRaceMetrics-v1",
-    "ChallengeRewardsClaiming":  "pending-safe-transaction",
+    "ChallengeRewardsClaiming":  "revision-journaled",
+    "StatisticsState":  "UserData\\\\CampaignEdition\\\\CampaignStatistics.dat",
+    "StatisticsSource":  "CampaignRaceMetrics-v1",
     "UpgradeCatalog":  "CampaignUpgrades.dat",
     "UpgradeUiMap":  "CampaignUpgradeUiMap.dat",
     "StoreCatalog":  "CampaignStore.dat",
@@ -65,6 +67,6 @@
     "RaceHudNewWidgetsAllowed":  false,
     "RaceHudLayout":  "UserData\\\\RaceHudLayout.dat",
     "RaceHudLayoutPortable":  true,
-    "Size":  76288,
-    "SHA256":  "7475e003faa7c054f6a7c0cd0df92d98380628b7e0937b642152ea446fd1e589"
+    "Size":  79872,
+    "SHA256":  "71dcd3f2fbf53752331e7f8db1f2fb021281ffa8075612306d58af3e74068b64"
 }
