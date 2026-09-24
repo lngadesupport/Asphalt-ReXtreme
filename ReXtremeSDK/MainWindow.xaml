@@ -162,6 +162,17 @@
                     <TextBlock x:Name="InspectorProjectId" Text="—" Margin="0,0,0,8"/>
                     <TextBlock Text="Tipo" Foreground="{StaticResource EditorMuted}"/>
                     <TextBlock x:Name="InspectorProjectType" Text="—" Margin="0,0,0,14"/>
+
+                    <TextBlock Text="DEPENDÊNCIAS" FontWeight="Bold" Margin="0,4,0,5"/>
+                    <ListBox x:Name="DependenciesList" Height="105" Background="#17191D" Foreground="{StaticResource EditorText}" Margin="0,0,0,6"/>
+                    <TextBlock Text="Mod ID" Foreground="{StaticResource EditorMuted}"/>
+                    <TextBox x:Name="DependencyIdBox" Padding="5" Margin="0,2,0,5"/>
+                    <TextBlock Text="Versão / range" Foreground="{StaticResource EditorMuted}"/>
+                    <TextBox x:Name="DependencyVersionBox" Text="*" Padding="5" Margin="0,2,0,5"/>
+                    <WrapPanel Margin="0,0,0,10">
+                        <Button Content="Adicionar" Click="AddDependency_Click"/>
+                        <Button Content="Remover selecionada" Click="RemoveDependency_Click"/>
+                    </WrapPanel>
                     <Separator/>
                     <TextBlock Text="Arquitetura" FontWeight="Bold" Margin="0,12,0,4"/>
                     <TextBlock TextWrapping="Wrap" Foreground="{StaticResource EditorMuted}"
