@@ -35,6 +35,7 @@ DEFAULT_CONFIG = Path("config/ReXtreme-1.0.ini")
 DEFAULT_PRESENTATION_CAPABILITIES = Path("config/presentation-capabilities.verified.json")
 DEFAULT_PRESENTATION_BINDINGS = Path("config/presentation-bindings.verified.json")
 DEFAULT_PHOTO_BINDINGS = Path("config/photo-bindings.verified.json")
+DEFAULT_REPLAY_BINDINGS = Path("config/replay-bindings.verified.json")
 
 
 class BuildError(RuntimeError):
@@ -266,6 +267,40 @@ def build_photo_bindings(output: Path, source: Path, builder: Path) -> dict:
     }
 
 
+def build_replay_bindings(output: Path, source: Path, builder: Path) -> dict:
+    if not source.is_file():
+        raise BuildError(f"Replay binding source not found: {source}")
+    if not builder.is_file():
+        raise BuildError(f"Replay binding builder not found: {builder}")
+
+    target = output / "CampaignReplayBindings.dat"
+    report = output / "CampaignReplayBindings.report.json"
+    cmd = [
+        sys.executable,
+        str(builder),
+        str(source),
+        str(target),
+        "--report",
+        str(report),
+    ]
+    result = subprocess.run(cmd, text=True)
+    if result.returncode != 0:
+        raise BuildError(f"Replay binding catalog build failed with exit code {result.returncode}")
+
+    try:
+        summary = json.loads(report.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BuildError(f"Invalid Replay binding report: {exc}") from exc
+
+    return {
+        "catalog": target.name,
+        "report": report.name,
+        "count": int(summary.get("count", 0)),
+        "recording_ready": bool(summary.get("recording_ready", False)),
+        "safe_empty_catalog": bool(summary.get("safe_empty_catalog", False)),
+    }
+
+
 def overlay_directory(output: Path, overlay: Path) -> list[str]:
     if not overlay.is_dir():
         raise BuildError(f"Overlay directory not found: {overlay}")
@@ -290,6 +325,7 @@ def write_status(
     presentation_catalog: dict,
     presentation_bindings: dict,
     photo_bindings: dict,
+    replay_bindings: dict,
     portable_user_data: list[str],
 ) -> Path:
     status = {
@@ -303,6 +339,8 @@ def write_status(
         "presentation_values_require_verified_binding": True,
         "photo_binding_catalog": photo_bindings,
         "photo_free_camera_ready": bool(photo_bindings.get("free_camera_ready", False)),
+        "replay_binding_catalog": replay_bindings,
+        "replay_recording_ready": bool(replay_bindings.get("recording_ready", False)),
         "portable_user_data": portable_user_data,
         "package_metadata_moved_out_of_runtime_root": moved_metadata,
         "portable_startup_ready": False,
@@ -340,6 +378,11 @@ def main() -> int:
         type=Path,
         default=DEFAULT_PHOTO_BINDINGS,
     )
+    parser.add_argument(
+        "--replay-bindings",
+        type=Path,
+        default=DEFAULT_REPLAY_BINDINGS,
+    )
     parser.add_argument("--offline-overlay", type=Path)
     parser.add_argument("--verify-only", action="store_true")
     args = parser.parse_args()
@@ -351,11 +394,13 @@ def main() -> int:
     presentation_capabilities_path = args.presentation_capabilities.resolve()
     presentation_bindings_path = args.presentation_bindings.resolve()
     photo_bindings_path = args.photo_bindings.resolve()
+    replay_bindings_path = args.replay_bindings.resolve()
     tools_dir = Path(__file__).resolve().parent
     patcher = (tools_dir / "patcher.py").resolve()
     presentation_builder = (tools_dir / "build_presentation_capability_catalog.py").resolve()
     presentation_binding_builder = (tools_dir / "build_presentation_binding_catalog.py").resolve()
     photo_binding_builder = (tools_dir / "build_photo_binding_catalog.py").resolve()
+    replay_binding_builder = (tools_dir / "build_replay_binding_catalog.py").resolve()
 
     if not source.is_dir():
         print(f"ERROR: source directory not found: {source}", file=sys.stderr)
@@ -418,6 +463,17 @@ def main() -> int:
             f"(free camera ready={photo_bindings['free_camera_ready']})"
         )
 
+        replay_bindings = build_replay_bindings(
+            output,
+            replay_bindings_path,
+            replay_binding_builder,
+        )
+        print(
+            "[REPLAY] verified bindings: "
+            f"{replay_bindings['count']} "
+            f"(recording ready={replay_bindings['recording_ready']})"
+        )
+
         overlay_files: list[str] = []
         if args.offline_overlay:
             overlay_files = overlay_directory(output, args.offline_overlay.resolve())
@@ -431,6 +487,7 @@ def main() -> int:
             presentation_catalog,
             presentation_bindings,
             photo_bindings,
+            replay_bindings,
             portable_user_data,
         )
         print(f"[STATUS] {status_path}")
