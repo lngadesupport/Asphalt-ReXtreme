@@ -1,0 +1,14 @@
+{
+  "format": "rextreme-campaign-special-events",
+  "version": 1,
+  "special_events": [
+    {
+      "id": 5001,
+      "schedule": "permanent",
+      "required_node_id": 0,
+      "start_date": null,
+      "end_date": null,
+      "stages": [1001, 1002, 1003]
+    }
+  ]
+}
