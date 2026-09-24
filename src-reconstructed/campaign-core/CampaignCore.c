@@ -10,6 +10,7 @@
 #include "CampaignStoreCatalog.h"
 #include "CampaignPresentation.h"
 #include "CampaignPhotoBindings.h"
+#include "CampaignReplayBindings.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
 #define CAMPAIGN_VERSION 3u
@@ -1877,21 +1878,24 @@ int __cdecl CampaignBeginRaceFromGui(void* game_mode_gui) {
 
 int __cdecl CampaignReplayFrameFromGui(void* game_mode_gui) {
     CampaignPresentationDiagnostics diagnostics;
+    CampaignReplaySample sample;
 
     if (!game_mode_gui) return 0;
 
-    /*
-      The lifecycle hook is verified, but the player transform chain is not.
-      Never guess offsets here. The future verified adapter will resolve the
-      original player/vehicle transform, build CampaignReplaySample and call
-      CampaignReplayRecord().
-    */
     ZeroBytes(&diagnostics, (uint32_t)sizeof(diagnostics));
     diagnostics.size = (uint32_t)sizeof(diagnostics);
     if (!CampaignPresentationGetDiagnostics(&diagnostics)) return 0;
     if (!diagnostics.replay_recording) return 0;
 
-    return 0;
+    /*
+      Fail closed until the exact player transform chain for 1.7.3.8 is
+      represented by CampaignReplayBindings.dat. No offsets are hardcoded here.
+    */
+    if (!CampaignReplayBindingsReady()) return 0;
+
+    ZeroBytes(&sample, (uint32_t)sizeof(sample));
+    if (!CampaignReplayBindingsSample(game_mode_gui, &sample)) return 0;
+    return CampaignReplayRecord(&sample);
 }
 
 int __cdecl CampaignPhotoFrameFromGui(void* game_mode_gui) {
