@@ -756,7 +756,9 @@ int main(void) {
         diagnostics.photo_binding_count != 7 ||
         !diagnostics.photo_free_camera_ready ||
         diagnostics.original_ui_binding_count != 0 ||
-        diagnostics.original_ui_feature_mask != 0) return Fail(54);
+        diagnostics.original_ui_feature_mask != 0 ||
+        diagnostics.race_hud_binding_count != 0 ||
+        diagnostics.race_hud_original_ui_ready != 0) return Fail(54);
 
     if (CampaignOriginalUiBindingsCount() != 0) return Fail(116);
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_GRAPHICS_SETTINGS)) return Fail(117);
@@ -837,7 +839,11 @@ int main(void) {
     diagnostics.size = sizeof(diagnostics);
     if (!CampaignPresentationGetDiagnostics(&diagnostics)) return Fail(99);
     if (diagnostics.verified_capability_count != 1 ||
-        diagnostics.verified_binding_count != 1) return Fail(100);
+        diagnostics.verified_binding_count != 1 ||
+        diagnostics.original_ui_binding_count != 12 ||
+        diagnostics.original_ui_feature_mask != 0x1Fu ||
+        diagnostics.race_hud_binding_count != 5 ||
+        diagnostics.race_hud_original_ui_ready != 1) return Fail(100);
 
     if (!CampaignReplayStart(256)) return Fail(101);
     ZeroMemory(&sample, sizeof(sample));
