@@ -20,6 +20,7 @@
 #include "CampaignSpecialEventCatalog.h"
 #include "CampaignSpecialEventState.h"
 #include "CampaignChampionshipCatalog.h"
+#include "CampaignActivityContext.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
 #define CAMPAIGN_VERSION 3u
@@ -1232,22 +1233,158 @@ static uint32_t SpecialEventCompletedStagesUnlocked(
     return completed;
 }
 
-static void ChampionshipsOnCommittedRaceUnlocked(
-    int32_t event_id,
-    const CampaignRaceMetrics* metrics
+static int BeginSpecialEventStageUnlocked(
+    int32_t special_event_id,
+    int32_t stage_index,
+    int32_t car_id,
+    uint32_t* session_id,
+    uint32_t* period_key_out
 ) {
-    uint32_t i,j;
-    if(event_id<=0||!metrics)return;
-    for(i=0;i<CampaignChampionshipCatalogCount();++i){
-        const CampaignChampionshipDefinition* def=CampaignChampionshipCatalogGet(i);
-        if(!def||!ProgressGateUnlocked(def->required_node_id))continue;
-        for(j=0;j<def->round_count;++j){
-            if(def->round_event_ids[j]==event_id){
-                /* Sidecar failure is intentionally non-fatal to the race commit. */
-                CampaignChampionshipsRecordRound(def->championship_id,event_id,metrics);
-                break;
-            }
+    const CampaignSpecialEventDefinition* def;
+    CampaignActivityContext context;
+    uint32_t completed_mask=0;
+    uint32_t completed_count=0;
+    uint32_t day;
+    uint32_t period_key;
+    uint32_t sid=0;
+    int32_t event_id;
+
+    if(stage_index<0)return 0;
+    def=CampaignSpecialEventCatalogFind(special_event_id);
+    if(!def||(uint32_t)stage_index>=def->stage_count)return 0;
+    if(!SpecialEventAvailableUnlocked(def))return 0;
+    if(!SpecialEventProgressUnlocked(def,&completed_mask,&completed_count))return 0;
+    if(stage_index>0&&!(completed_mask&(1u<<((uint32_t)stage_index-1u))))return 0;
+
+    event_id=def->stage_event_ids[stage_index];
+    day=CurrentLocalDayKey();
+    if(day==0)return 0;
+    period_key=CampaignSpecialEventPeriodKey(def,day);
+
+    if(!BeginEventRaceUnlocked(event_id,car_id,&sid))return 0;
+
+    ZeroBytes(&context,(uint32_t)sizeof(context));
+    context.size=(uint32_t)sizeof(context);
+    context.version=CAMPAIGN_ACTIVITY_CONTEXT_VERSION;
+    context.session_id=sid;
+    context.activity_type=CAMPAIGN_ACTIVITY_SPECIAL_EVENT;
+    context.activity_id=special_event_id;
+    context.slot_index=(uint32_t)stage_index;
+    context.event_id=event_id;
+    context.period_key=period_key;
+
+    if(!CampaignActivityContextSet(&context)){
+        CancelEventRaceUnlocked(sid);
+        return 0;
+    }
+
+    CampaignReplayBeginLifecycleUnlocked(event_id,car_id,sid);
+    if(session_id)*session_id=sid;
+    if(period_key_out)*period_key_out=period_key;
+    return 1;
+}
+
+static int BeginChampionshipRoundUnlocked(
+    int32_t championship_id,
+    int32_t round_index,
+    int32_t car_id,
+    uint32_t* session_id
+) {
+    const CampaignChampionshipDefinition* def;
+    CampaignChampionshipRoundStatus previous;
+    CampaignActivityContext context;
+    uint32_t sid=0;
+    int32_t event_id;
+
+    if(round_index<0)return 0;
+    def=CampaignChampionshipCatalogFind(championship_id);
+    if(!def||(uint32_t)round_index>=def->round_count)return 0;
+    if(!ProgressGateUnlocked(def->required_node_id))return 0;
+
+    if(round_index>0){
+        ZeroBytes(&previous,(uint32_t)sizeof(previous));
+        previous.size=(uint32_t)sizeof(previous);
+        if(!CampaignChampionshipsGetRoundStatus(
+                championship_id,(uint32_t)round_index-1u,&previous)||
+           !previous.completed)return 0;
+    }
+
+    event_id=def->round_event_ids[round_index];
+    if(!BeginEventRaceUnlocked(event_id,car_id,&sid))return 0;
+
+    ZeroBytes(&context,(uint32_t)sizeof(context));
+    context.size=(uint32_t)sizeof(context);
+    context.version=CAMPAIGN_ACTIVITY_CONTEXT_VERSION;
+    context.session_id=sid;
+    context.activity_type=CAMPAIGN_ACTIVITY_CHAMPIONSHIP;
+    context.activity_id=championship_id;
+    context.slot_index=(uint32_t)round_index;
+    context.event_id=event_id;
+
+    if(!CampaignActivityContextSet(&context)){
+        CancelEventRaceUnlocked(sid);
+        return 0;
+    }
+
+    CampaignReplayBeginLifecycleUnlocked(event_id,car_id,sid);
+    if(session_id)*session_id=sid;
+    return 1;
+}
+
+static int CaptureActivityResultUnlocked(uint32_t session_id,int32_t placement){
+    CampaignActivityContext context;
+    ZeroBytes(&context,(uint32_t)sizeof(context));
+    context.size=(uint32_t)sizeof(context);
+    if(!CampaignActivityContextGet(&context))return 1;
+    if(context.session_id!=session_id)return 1;
+    return CampaignActivityContextSetResult(session_id,placement);
+}
+
+static int ApplyActivityContextUnlocked(uint32_t session_id){
+    CampaignActivityContext context;
+    int applied=0;
+
+    ZeroBytes(&context,(uint32_t)sizeof(context));
+    context.size=(uint32_t)sizeof(context);
+    if(!CampaignActivityContextGet(&context))return 1;
+    if(context.session_id!=session_id)return 1;
+    if(!context.result_valid)return 0;
+
+    if(context.activity_type==CAMPAIGN_ACTIVITY_SPECIAL_EVENT){
+        const CampaignSpecialEventDefinition* def=
+            CampaignSpecialEventCatalogFind(context.activity_id);
+        if(def&&context.slot_index<def->stage_count&&
+           def->stage_event_ids[context.slot_index]==context.event_id){
+            applied=CampaignSpecialEventPeriodStateMarkStage(
+                def,context.period_key,context.slot_index);
         }
+    }else if(context.activity_type==CAMPAIGN_ACTIVITY_CHAMPIONSHIP){
+        const CampaignChampionshipDefinition* def=
+            CampaignChampionshipCatalogFind(context.activity_id);
+        CampaignRaceMetrics metrics;
+        if(def&&context.slot_index<def->round_count&&
+           def->round_event_ids[context.slot_index]==context.event_id){
+            ZeroBytes(&metrics,(uint32_t)sizeof(metrics));
+            metrics.size=(uint32_t)sizeof(metrics);
+            metrics.version=CAMPAIGN_RACE_METRICS_VERSION;
+            metrics.session_id=context.session_id;
+            metrics.placement=context.result_placement;
+            applied=CampaignChampionshipsRecordRound(
+                context.activity_id,context.event_id,&metrics);
+        }
+    }
+
+    if(!applied)return 0;
+    return CampaignActivityContextClear(session_id);
+}
+
+static void RecoverActivityContextUnlocked(void){
+    CampaignActivityContext context;
+    ZeroBytes(&context,(uint32_t)sizeof(context));
+    context.size=(uint32_t)sizeof(context);
+    if(!CampaignActivityContextGet(&context))return;
+    if(context.session_id==g_state.last_completed_race_session_id&&context.result_valid){
+        ApplyActivityContextUnlocked(context.session_id);
     }
 }
 
