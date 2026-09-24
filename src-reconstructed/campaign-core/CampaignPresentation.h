@@ -107,7 +107,14 @@ typedef struct CampaignPhotoState {
     int32_t fov_x100;       /* 0 = original/current */
     int32_t distance_x1000;
     int32_t height_x1000;
+
+    float position_x;
+    float position_y;
+    float position_z;
+    int32_t pitch_x100;
+    int32_t yaw_x100;
     int32_t roll_x100;
+    int32_t move_speed_x1000;
 } CampaignPhotoState;
 
 enum CampaignPresentationOp {
