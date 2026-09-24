@@ -287,7 +287,7 @@ static void* ResolveValueAddress(const CampaignReplayBinding* b, void* game_mode
     return current;
 }
 
-static int ReadRaw(const CampaignReplayBinding* b, void* game_mode_gui, int32_t* out) {
+static int ReplayReadRaw(const CampaignReplayBinding* b, void* game_mode_gui, int32_t* out) {
     void* target;
     float f;
 
@@ -336,7 +336,7 @@ static int ReadFloatSemantic(
 
     if (!out) return 0;
     b = CampaignReplayBindingsFind(semantic);
-    if (!b || !ReadRaw(b, game_mode_gui, &raw)) return 0;
+    if (!b || !ReplayReadRaw(b, game_mode_gui, &raw)) return 0;
 
     scale = b->value_kind == CAMPAIGN_PRESENTATION_VALUE_FLOAT_SCALED ?
         b->scale_divisor : 1000;
@@ -352,11 +352,11 @@ int CampaignReplayBindingsSample(void* game_mode_gui, CampaignReplaySample* out)
     if (!game_mode_gui || !out || !CampaignReplayBindingsReady()) return 0;
     ZeroBytes(out, (uint32_t)sizeof(*out));
 
-    if (!ReadRaw(CampaignReplayBindingsFind(CAMPAIGN_REPLAY_BIND_TIME_MS), game_mode_gui, &raw)) return 0;
+    if (!ReplayReadRaw(CampaignReplayBindingsFind(CAMPAIGN_REPLAY_BIND_TIME_MS), game_mode_gui, &raw)) return 0;
     if (raw < 0) return 0;
     out->time_ms = (uint32_t)raw;
 
-    if (!ReadRaw(CampaignReplayBindingsFind(CAMPAIGN_REPLAY_BIND_ENTITY_ID), game_mode_gui, &out->entity_id)) return 0;
+    if (!ReplayReadRaw(CampaignReplayBindingsFind(CAMPAIGN_REPLAY_BIND_ENTITY_ID), game_mode_gui, &out->entity_id)) return 0;
 
     if (!ReadFloatSemantic(CAMPAIGN_REPLAY_BIND_POSITION_X, game_mode_gui, &out->position_x) ||
         !ReadFloatSemantic(CAMPAIGN_REPLAY_BIND_POSITION_Y, game_mode_gui, &out->position_y) ||
@@ -377,7 +377,7 @@ int CampaignReplayBindingsSample(void* game_mode_gui, CampaignReplaySample* out)
 
     optional = CampaignReplayBindingsFind(CAMPAIGN_REPLAY_BIND_STATE_FLAGS);
     if (optional) {
-        if (!ReadRaw(optional, game_mode_gui, &raw) || raw < 0) return 0;
+        if (!ReplayReadRaw(optional, game_mode_gui, &raw) || raw < 0) return 0;
         out->state_flags = (uint32_t)raw;
     }
 
