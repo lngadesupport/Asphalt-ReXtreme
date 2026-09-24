@@ -7,6 +7,7 @@
 #include "CampaignPhotoBindings.h"
 #include "CampaignReplayBindings.h"
 #include "CampaignOriginalUiBindings.h"
+#include "CampaignRaceHudBindings.h"
 
 #define RXPS_MAGIC 0x53505852u /* RXPS */
 #define RXRP_MAGIC 0x50525852u /* RXRP */
@@ -1727,6 +1728,9 @@ int __cdecl CampaignPresentationGetDiagnostics(CampaignPresentationDiagnostics* 
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_REPLAY)) out->original_ui_feature_mask |= 1u << 2;
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_PHOTO_MODE)) out->original_ui_feature_mask |= 1u << 3;
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_RACE_HUD)) out->original_ui_feature_mask |= 1u << 4;
+    out->race_hud_binding_count = CampaignRaceHudBindingsCount();
+    out->race_hud_original_ui_ready =
+        CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_RACE_HUD) ? 1u : 0u;
 
     PresentationUnlock();
     return 1;
@@ -1988,6 +1992,27 @@ int __cdecl CampaignPresentationInvoke(CampaignPresentationCommand* command) {
     case CAMPAIGN_PRESENTATION_OP_ORIGINAL_UI_FEATURE_READY:
         command->out0 = CampaignOriginalUiFeatureReady((uint32_t)command->a) ? 1 : 0;
         command->status = 1;
+        break;
+
+    case CAMPAIGN_PRESENTATION_OP_RACE_HUD_RELOAD:
+        command->status = CampaignRaceHudBindingsLoad();
+        command->out0 = (int32_t)CampaignRaceHudBindingsCount();
+        break;
+    case CAMPAIGN_PRESENTATION_OP_RACE_HUD_COUNT:
+        command->out0 = (int32_t)CampaignRaceHudBindingsCount();
+        command->status = 1;
+        break;
+    case CAMPAIGN_PRESENTATION_OP_RACE_HUD_ELEMENT_READY:
+        command->out0 = CampaignRaceHudElementReady(
+            (uint32_t)command->a,
+            (uint32_t)command->b
+        ) ? 1 : 0;
+        command->status = 1;
+        break;
+    case CAMPAIGN_PRESENTATION_OP_RACE_HUD_APPLY_ELEMENT:
+        command->status = CampaignRaceHudApplyElement(
+            (const CampaignRaceHudElementState*)(uintptr_t)command->ptr0
+        );
         break;
     default:
         return 0;
