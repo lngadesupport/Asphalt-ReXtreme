@@ -40,6 +40,8 @@ int __cdecl CampaignFrontendSubmit(CampaignFrontendRequest* request);
 int __cdecl CampaignFrontendPoll(CampaignEvent* event);
 int __cdecl CampaignFrontendBoot(void);
 int __cdecl CampaignFrontendLobbyReady(void);
+int __cdecl CampaignFrontendGarageBuild(void* gs_garage);
+int __cdecl CampaignFrontendOwnershipContains(void* legacy_container, const int32_t* value);
 
 #ifdef __cplusplus
 }
