@@ -129,9 +129,15 @@ static int HudBindingValid(const CampaignRaceHudBinding* b) {
     if (!b || !HudElementValid(b->element) || !HudPropertyValid(b->property)) return 0;
     if (!(b->flags & RXHB_VERIFIED)) return 0;
     if (b->base_kind != CAMPAIGN_PRESENTATION_BASE_MODULE_RVA &&
-        b->base_kind != CAMPAIGN_PRESENTATION_BASE_POINTER_RVA) return 0;
+        b->base_kind != CAMPAIGN_PRESENTATION_BASE_POINTER_RVA &&
+        b->base_kind != CAMPAIGN_RACE_HUD_BASE_GUI_ARGUMENT) return 0;
     image_size = HudImageSize();
-    if (image_size == 0 || b->target_rva == 0 || b->target_rva >= image_size) return 0;
+    if (image_size == 0) return 0;
+    if (b->base_kind == CAMPAIGN_RACE_HUD_BASE_GUI_ARGUMENT) {
+        if (b->target_rva != 0) return 0;
+    } else if (b->target_rva == 0 || b->target_rva >= image_size) {
+        return 0;
+    }
     if (b->value_kind != CAMPAIGN_PRESENTATION_VALUE_I32 &&
         b->value_kind != CAMPAIGN_PRESENTATION_VALUE_U32 &&
         b->value_kind != CAMPAIGN_PRESENTATION_VALUE_U8_BOOL &&
@@ -253,7 +259,11 @@ int CampaignRaceHudElementReady(uint32_t element, uint32_t property_mask) {
     return 1;
 }
 
-static void* HudResolve(const CampaignRaceHudBinding* b, SIZE_T size) {
+static void* HudResolve(
+    const CampaignRaceHudBinding* b,
+    SIZE_T size,
+    void* game_mode_gui
+) {
     unsigned char* module;
     unsigned char* base;
     unsigned char* target;
@@ -263,12 +273,18 @@ static void* HudResolve(const CampaignRaceHudBinding* b, SIZE_T size) {
     module = (unsigned char*)GetModuleHandleW(0);
     if (!module) return 0;
     image_size = HudImageSize();
-    if (b->target_rva == 0 || b->target_rva >= image_size) return 0;
+    if (image_size == 0) return 0;
 
-    if (b->base_kind == CAMPAIGN_PRESENTATION_BASE_MODULE_RVA) {
+    if (b->base_kind == CAMPAIGN_RACE_HUD_BASE_GUI_ARGUMENT) {
+        if (b->target_rva != 0 || !game_mode_gui) return 0;
+        base = (unsigned char*)game_mode_gui;
+    } else if (b->base_kind == CAMPAIGN_PRESENTATION_BASE_MODULE_RVA) {
+        if (b->target_rva == 0 || b->target_rva >= image_size) return 0;
         base = module + b->target_rva;
     } else {
-        void** source = (void**)(module + b->target_rva);
+        void** source;
+        if (b->target_rva == 0 || b->target_rva >= image_size) return 0;
+        source = (void**)(module + b->target_rva);
         if (!HudMemoryWritable(source, sizeof(void*))) {
             MEMORY_BASIC_INFORMATION mbi;
             if (VirtualQuery(source, &mbi, sizeof(mbi)) != sizeof(mbi) ||
@@ -286,13 +302,13 @@ static void* HudResolve(const CampaignRaceHudBinding* b, SIZE_T size) {
     return target;
 }
 
-static int HudApplyFixed(const CampaignRaceHudBinding* b, int32_t value_x1000) {
+static int HudApplyFixed(const CampaignRaceHudBinding* b, int32_t value_x1000, void* game_mode_gui) {
     void* target;
     float f;
 
     if (!b) return 0;
     if (b->value_kind == CAMPAIGN_PRESENTATION_VALUE_FLOAT_SCALED) {
-        target = HudResolve(b, sizeof(float));
+        target = HudResolve(b, sizeof(float), game_mode_gui);
         if (!target) return 0;
         /*
           value_x1000 is the canonical HUD fixed-point representation.
@@ -305,14 +321,14 @@ static int HudApplyFixed(const CampaignRaceHudBinding* b, int32_t value_x1000) {
     }
 
     if (b->value_kind == CAMPAIGN_PRESENTATION_VALUE_I32) {
-        target = HudResolve(b, sizeof(int32_t));
+        target = HudResolve(b, sizeof(int32_t), game_mode_gui);
         if (!target) return 0;
         *(volatile int32_t*)target = value_x1000;
         return 1;
     }
     if (b->value_kind == CAMPAIGN_PRESENTATION_VALUE_U32) {
         if (value_x1000 < 0) return 0;
-        target = HudResolve(b, sizeof(uint32_t));
+        target = HudResolve(b, sizeof(uint32_t), game_mode_gui);
         if (!target) return 0;
         *(volatile uint32_t*)target = (uint32_t)value_x1000;
         return 1;
@@ -320,23 +336,23 @@ static int HudApplyFixed(const CampaignRaceHudBinding* b, int32_t value_x1000) {
     return 0;
 }
 
-static int HudApplyVisible(const CampaignRaceHudBinding* b, int32_t visible) {
+static int HudApplyVisible(const CampaignRaceHudBinding* b, int32_t visible, void* game_mode_gui) {
     void* target;
     if (!b || (visible != 0 && visible != 1)) return 0;
     if (b->value_kind == CAMPAIGN_PRESENTATION_VALUE_U8_BOOL) {
-        target = HudResolve(b, sizeof(unsigned char));
+        target = HudResolve(b, sizeof(unsigned char), game_mode_gui);
         if (!target) return 0;
         *(volatile unsigned char*)target = visible ? 1u : 0u;
         return 1;
     }
     if (b->value_kind == CAMPAIGN_PRESENTATION_VALUE_I32) {
-        target = HudResolve(b, sizeof(int32_t));
+        target = HudResolve(b, sizeof(int32_t), game_mode_gui);
         if (!target) return 0;
         *(volatile int32_t*)target = visible;
         return 1;
     }
     if (b->value_kind == CAMPAIGN_PRESENTATION_VALUE_U32) {
-        target = HudResolve(b, sizeof(uint32_t));
+        target = HudResolve(b, sizeof(uint32_t), game_mode_gui);
         if (!target) return 0;
         *(volatile uint32_t*)target = visible ? 1u : 0u;
         return 1;
@@ -344,7 +360,10 @@ static int HudApplyVisible(const CampaignRaceHudBinding* b, int32_t visible) {
     return 0;
 }
 
-int CampaignRaceHudApplyElement(const CampaignRaceHudElementState* state) {
+int CampaignRaceHudApplyElementFromGui(
+    void* game_mode_gui,
+    const CampaignRaceHudElementState* state
+) {
     const CampaignRaceHudBinding* b;
 
     if (!state || state->size < (uint32_t)sizeof(*state) ||
@@ -355,27 +374,31 @@ int CampaignRaceHudApplyElement(const CampaignRaceHudElementState* state) {
 
     if (state->set_flags & CAMPAIGN_RACE_HUD_SET_X) {
         b = CampaignRaceHudBindingsFind(state->element, CAMPAIGN_RACE_HUD_PROP_X);
-        if (!HudApplyFixed(b, state->x_x1000)) return 0;
+        if (!HudApplyFixed(b, state->x_x1000, game_mode_gui)) return 0;
     }
     if (state->set_flags & CAMPAIGN_RACE_HUD_SET_Y) {
         b = CampaignRaceHudBindingsFind(state->element, CAMPAIGN_RACE_HUD_PROP_Y);
-        if (!HudApplyFixed(b, state->y_x1000)) return 0;
+        if (!HudApplyFixed(b, state->y_x1000, game_mode_gui)) return 0;
     }
     if (state->set_flags & CAMPAIGN_RACE_HUD_SET_SCALE) {
         if (state->scale_x1000 <= 0) return 0;
         b = CampaignRaceHudBindingsFind(state->element, CAMPAIGN_RACE_HUD_PROP_SCALE);
-        if (!HudApplyFixed(b, state->scale_x1000)) return 0;
+        if (!HudApplyFixed(b, state->scale_x1000, game_mode_gui)) return 0;
     }
     if (state->set_flags & CAMPAIGN_RACE_HUD_SET_OPACITY) {
         if (state->opacity_x1000 < 0 || state->opacity_x1000 > 1000) return 0;
         b = CampaignRaceHudBindingsFind(state->element, CAMPAIGN_RACE_HUD_PROP_OPACITY);
-        if (!HudApplyFixed(b, state->opacity_x1000)) return 0;
+        if (!HudApplyFixed(b, state->opacity_x1000, game_mode_gui)) return 0;
     }
     if (state->set_flags & CAMPAIGN_RACE_HUD_SET_VISIBLE) {
         b = CampaignRaceHudBindingsFind(state->element, CAMPAIGN_RACE_HUD_PROP_VISIBLE);
-        if (!HudApplyVisible(b, state->visible)) return 0;
+        if (!HudApplyVisible(b, state->visible, game_mode_gui)) return 0;
     }
     return 1;
+}
+
+int CampaignRaceHudApplyElement(const CampaignRaceHudElementState* state) {
+    return CampaignRaceHudApplyElementFromGui(0, state);
 }
 
 int _race_hud_fltused_anchor = 0;
