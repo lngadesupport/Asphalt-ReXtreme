@@ -1,0 +1,7 @@
+{
+  "format": "rextreme-presentation-capabilities",
+  "version": 1,
+  "build": "1.7.3.8-x86",
+  "rule": "Only add an entry after its runtime path and visible behavior are verified on the supported original build.",
+  "capabilities": []
+}
