@@ -380,6 +380,9 @@ def main() -> int:
     if not (package / "CampaignUpgradeUiMap.dat").is_file():
         print("CampaignUpgradeUiMap.dat missing after auxiliary build")
         return 5
+    if not ui_ok and ui_report.get("fallback") == "empty-fail-closed":
+        print("CampaignUpgradeUiMap.dat installed as zero-entry fail-closed beta map.")
+        print("Upgrade actions will be rejected locally until raw UI ids are reconstructed.")
     return 0
 
 
