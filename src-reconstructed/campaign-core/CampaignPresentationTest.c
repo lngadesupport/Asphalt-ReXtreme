@@ -590,6 +590,25 @@ int main(void) {
     if (diagnostics.verified_capability_count != 1 ||
         diagnostics.verified_binding_count != 1) return Fail(100);
 
+    if (!CampaignReplayStart(256)) return Fail(101);
+    ZeroMemory(&sample, sizeof(sample));
+    sample.entity_id = 1;
+    sample.rotation_w = 1.0f;
+    sample.time_ms = 1000;
+    if (!CampaignReplayRecordFrame(&sample)) return Fail(102);
+    sample.time_ms = 1010;
+    if (!CampaignReplayRecordFrame(&sample)) return Fail(103);
+    sample.time_ms = 1033;
+    if (!CampaignReplayRecordFrame(&sample)) return Fail(104);
+
+    ZeroMemory(&info, sizeof(info));
+    info.size = sizeof(info);
+    if (!CampaignReplayGetInfo(&info)) return Fail(105);
+    if (info.sample_count != 2 ||
+        info.throttled_samples != 1 ||
+        info.dropped_samples != 0) return Fail(106);
+    CampaignReplayStop();
+
     DeleteFileW(replay_path);
     DeleteFileW(L"prebuilt\\campaign-core\\ReXtremePresentation.dat");
     DeleteFileW(L"prebuilt\\campaign-core\\ReXtremePresentation.tmp");
