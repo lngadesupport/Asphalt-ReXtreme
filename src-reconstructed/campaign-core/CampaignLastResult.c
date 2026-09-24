@@ -140,6 +140,13 @@ int CampaignLastResultGet(CampaignLastResultSnapshot* out){
     if(!out||out->size<sizeof(*out)||!CampaignLastResultEnsureLoaded())return 0;
     LrLock();LrCopy(out,&g_result.snapshot,sizeof(*out));LrUnlock();return 1;
 }
+int CampaignLastResultReload(void){
+    LrLock();
+    LrZero(&g_result,sizeof(g_result));LrZero(&g_load,sizeof(g_load));
+    InterlockedExchange(&g_loaded,0);
+    LrUnlock();
+    return CampaignLastResultEnsureLoaded();
+}
 int CampaignLastResultClear(void){
     int ok;
     LrLock();
