@@ -32,6 +32,16 @@ typedef struct SeasonCatalogFile {
     uint32_t checksum;
 } SeasonCatalogFile;
 
+typedef struct LegacyRaceSession {
+    uint32_t magic;
+    uint32_t version;
+    uint32_t session_id;
+    int32_t event_id;
+    int32_t car_id;
+    uint32_t start_revision;
+    uint32_t checksum;
+} LegacyRaceSession;
+
 static uint32_t Hash(const void* p,uint32_t n){
     const unsigned char* s=(const unsigned char*)p;
     uint32_t h=2166136261u,i;
@@ -131,6 +141,19 @@ static int WriteSeason(void){
     return WriteBlob(L"CampaignSeasons.dat",&f,(DWORD)sizeof(f));
 }
 
+static int WriteLegacyRaceSession(uint32_t session_id,int32_t event_id,uint32_t revision){
+    LegacyRaceSession s;
+    ZeroMemory(&s,sizeof(s));
+    s.magic=0x53525852u;
+    s.version=1u;
+    s.session_id=session_id;
+    s.event_id=event_id;
+    s.car_id=0;
+    s.start_revision=revision;
+    s.checksum=Hash(&s,(uint32_t)sizeof(s)-(uint32_t)sizeof(uint32_t));
+    return WriteBlob(L"UserData\\CampaignEdition\\CampaignRaceSession.dat",&s,(DWORD)sizeof(s));
+}
+
 static int Exec(uint32_t op,int32_t a,int32_t b,int32_t c0,int32_t d,CampaignCommand* out){
     CampaignCommand cmd;
     ZeroMemory(&cmd,sizeof(cmd));cmd.size=sizeof(cmd);cmd.op=op;
@@ -158,12 +181,17 @@ int main(void){
     if(!WriteChampionship())return 3;
     if(!WriteSeason())return 44;
 
+    /* Initialize portable Campaign directories, then emulate a pending v1 race session. */
+    if(!Exec(CAMPAIGN_OP_GET_CREDITS,0,0,0,0,&cmd))return 55;
+    if(!WriteLegacyRaceSession(4242u,1001,cmd.revision))return 56;
+
     /* Stage 2 is sequentially locked before stage 1. */
     if(Exec(CAMPAIGN_OP_BEGIN_SPECIAL_EVENT_STAGE,5001,1,0,0,&cmd))return 4;
 
-    /* A normal Career run of event 1001 must not advance either sidecar. */
+    /* Legacy v1 Career session is migrated in-memory and remains a Career race. */
     if(!Exec(CAMPAIGN_OP_BEGIN_EVENT_RACE,1001,0,0,0,&cmd))return 5;
     session=(uint32_t)cmd.out0;
+    if(session!=4242u)return 57;
     if(!Finish(session,1))return 6;
     if(!NoActivity())return 7;
     if(!Exec(CAMPAIGN_OP_SPECIAL_EVENT_STAGE,5001,0,0,0,&cmd))return 8;
