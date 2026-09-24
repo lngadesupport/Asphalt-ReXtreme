@@ -98,6 +98,7 @@ class CampaignRebuilderTests(unittest.TestCase):
                 {"catalog": "CampaignAchievements.dat", "report": "CampaignAchievements.report.json", "count": 0, "state": "UserData/CampaignEdition/AchievementState.dat", "metrics_source": "CampaignStatistics-v1", "rewards": "none", "portable": True},
                 {"catalog": "CampaignSpecialEvents.dat", "report": "CampaignSpecialEvents.report.json", "count": 0, "validated_against_event_catalog": False, "uses_existing_campaign_events_only": True, "online_backend_required": False, "portable": True},
                 {"catalog": "CampaignChampionships.dat", "report": "CampaignChampionships.report.json", "count": 0, "validated_against_event_catalog": False, "uses_existing_campaign_events_only": True, "online_backend_required": False, "state": "UserData/CampaignEdition/ChampionshipState.dat", "portable": True},
+                {"catalog": "CampaignSeasons.dat", "report": "CampaignSeasons.report.json", "count": 0, "validated_against_event_catalog": False, "uses_existing_campaign_events_only": True, "online_backend_required": False},
                 ["UserData/CampaignEdition/", "UserData/Replays/", "UserData/Screenshots/"],
             )
             data = json.loads(status_path.read_text(encoding="utf-8"))
@@ -142,6 +143,10 @@ class CampaignRebuilderTests(unittest.TestCase):
             self.assertTrue(data["championships_reuse_campaign_events"])
             self.assertFalse(data["championships_online_backend_required"])
             self.assertTrue(data["championships_ui_requires_original_templates"])
+            self.assertEqual(data["season_catalog"]["count"], 0)
+            self.assertTrue(data["career_seasons_reuse_campaign_events"])
+            self.assertFalse(data["career_seasons_online_backend_required"])
+            self.assertTrue(data["career_seasons_ui_requires_original_templates"])
             self.assertEqual(
                 data["activity_context_state"],
                 "UserData/CampaignEdition/ActivityContext.dat",
