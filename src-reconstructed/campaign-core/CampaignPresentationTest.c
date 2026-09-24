@@ -97,8 +97,8 @@ static int TestCopyAscii(char* dst, uint32_t cap, const char* src) {
 static int WriteTestOriginalUiCatalog(void) {
     const WCHAR* path = L"prebuilt\\campaign-core\\CampaignOriginalUiBindings.dat";
     TestBindingHeader header;
-    CampaignOriginalUiBinding bindings[12];
-    static const char* ids[12] = {
+    CampaignOriginalUiBinding bindings[13];
+    static const char* ids[13] = {
         "settings.screen",
         "settings.row",
         "ui.slider",
@@ -108,11 +108,12 @@ static int WriteTestOriginalUiCatalog(void) {
         "ui.screen",
         "ui.panel",
         "ui.list",
+        "ui.tab",
         "pause.screen",
         "pause.menu.slot",
         "race.hud"
     };
-    static const uint32_t kinds[12] = {
+    static const uint32_t kinds[13] = {
         CAMPAIGN_ORIGINAL_UI_SCREEN,
         CAMPAIGN_ORIGINAL_UI_PANEL,
         CAMPAIGN_ORIGINAL_UI_SLIDER,
@@ -122,6 +123,7 @@ static int WriteTestOriginalUiCatalog(void) {
         CAMPAIGN_ORIGINAL_UI_SCREEN,
         CAMPAIGN_ORIGINAL_UI_PANEL,
         CAMPAIGN_ORIGINAL_UI_LIST,
+        CAMPAIGN_ORIGINAL_UI_TAB,
         CAMPAIGN_ORIGINAL_UI_SCREEN,
         CAMPAIGN_ORIGINAL_UI_PANEL,
         CAMPAIGN_ORIGINAL_UI_PANEL
@@ -142,7 +144,7 @@ static int WriteTestOriginalUiCatalog(void) {
     if (!module || !CurrentTestPeFingerprint(&stamp, &image_size)) return 0;
     base = (uintptr_t)module;
 
-    for (i = 0; i < 12; ++i) {
+    for (i = 0; i < 13; ++i) {
         target = (uintptr_t)&g_test_ui_targets[i];
         if (target <= base || target - base > 0xFFFFFFFFu) return 0;
         if (!TestCopyAscii(bindings[i].id, CAMPAIGN_ORIGINAL_UI_ID_MAX, ids[i])) return 0;
@@ -155,7 +157,7 @@ static int WriteTestOriginalUiCatalog(void) {
 
     header.magic = 0x55495852u;
     header.version = 1;
-    header.count = 12;
+    header.count = 13;
     header.entry_size = sizeof(CampaignOriginalUiBinding);
     header.entries_hash = TestFnv1a((const unsigned char*)bindings, sizeof(bindings));
     header.pe_time_date_stamp = stamp;
@@ -774,12 +776,13 @@ int main(void) {
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_GRAPHICS_SETTINGS)) return Fail(117);
     if (!WriteTestOriginalUiCatalog()) return Fail(118);
     if (!CampaignOriginalUiBindingsLoad()) return Fail(119);
-    if (CampaignOriginalUiBindingsCount() != 12) return Fail(120);
+    if (CampaignOriginalUiBindingsCount() != 13) return Fail(120);
     if (!CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_GRAPHICS_SETTINGS) ||
         !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_CAMERA_SETTINGS) ||
         !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_REPLAY) ||
         !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_PHOTO_MODE) ||
-        !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_RACE_HUD)) return Fail(121);
+        !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_RACE_HUD) ||
+        !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_CHALLENGES)) return Fail(121);
     if (CampaignOriginalUiBindingsResolve("ui.button") != (void*)&g_test_ui_targets[4]) return Fail(122);
 
     if (CampaignRaceHudBindingsCount() != 0) return Fail(123);
@@ -897,8 +900,8 @@ int main(void) {
     if (!CampaignPresentationGetDiagnostics(&diagnostics)) return Fail(99);
     if (diagnostics.verified_capability_count != 1 ||
         diagnostics.verified_binding_count != 1 ||
-        diagnostics.original_ui_binding_count != 12 ||
-        diagnostics.original_ui_feature_mask != 0x1Fu ||
+        diagnostics.original_ui_binding_count != 13 ||
+        diagnostics.original_ui_feature_mask != 0x3Fu ||
         diagnostics.race_hud_binding_count != 6 ||
         diagnostics.race_hud_original_ui_ready != 1 ||
         diagnostics.race_hud_layout_count != 1) return Fail(100);
