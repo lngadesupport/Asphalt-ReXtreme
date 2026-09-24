@@ -217,6 +217,37 @@
                     </Grid>
                 </TabItem>
 
+                <TabItem Header="Replay / Foto / Gráficos">
+                    <ScrollViewer Background="{StaticResource EditorBackground}">
+                        <StackPanel Margin="20" MaxWidth="850" HorizontalAlignment="Left">
+                            <TextBlock Text="REPLAY / PHOTO / GRAPHICS AUTHORING" FontSize="22" FontWeight="Bold" Margin="0,0,0,14"/>
+                            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource EditorMuted}" Margin="0,0,0,16"
+                                       Text="Estes arquivos descrevem recursos para o Mod Runtime. O editor permanece somente no ReXtremeSDK.exe; nada desta interface é embutido no jogo."/>
+
+                            <GroupBox Header="Replay Mode" Padding="12" Margin="0,0,0,14">
+                                <StackPanel>
+                                    <TextBlock Text="Cria um preset com timeline, velocidades, frame-step, marcadores, troca de alvo e câmeras livres/cinematográficas." TextWrapping="Wrap"/>
+                                    <Button Content="Criar preset de Replay" Width="190" HorizontalAlignment="Left" Margin="0,10,0,0" Click="CreateReplayPreset_Click"/>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <GroupBox Header="Photo Mode" Padding="12" Margin="0,0,0,14">
+                                <StackPanel>
+                                    <TextBlock Text="Cria um preset utilizável no pause da corrida e no replay pausado. Efeitos do renderer ficam vazios até serem confirmados na engine original." TextWrapping="Wrap"/>
+                                    <Button Content="Criar preset de Photo Mode" Width="220" HorizontalAlignment="Left" Margin="0,10,0,0" Click="CreatePhotoPreset_Click"/>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <GroupBox Header="Configurações Gráficas" Padding="12">
+                                <StackPanel>
+                                    <TextBlock Text="Cria um catálogo vazio de capacidades. Opções só podem ser preenchidas depois da auditoria do renderer original; o SDK não inventa efeitos." TextWrapping="Wrap"/>
+                                    <Button Content="Criar preset gráfico auditável" Width="220" HorizontalAlignment="Left" Margin="0,10,0,0" Click="CreateGraphicsPreset_Click"/>
+                                </StackPanel>
+                            </GroupBox>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
                 <TabItem Header="Música">
                     <StackPanel Margin="20" Background="{StaticResource EditorBackground}">
                         <TextBlock Text="MUSIC LIBRARY" FontSize="22" FontWeight="Bold"/>
