@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReXtreme Special Event",
+  "type": "object",
+  "required": ["id", "name", "stages"],
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "banner": { "type": ["string", "null"] },
+    "availability": { "enum": ["permanent", "daily-rotation", "weekly-rotation", "monthly-rotation", "manual", "unlock-based"] },
+    "unlock_requirement": { "type": ["object", "null"] },
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["event"],
+        "properties": {
+          "event": { "type": "string" },
+          "required_previous": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "completion_rewards": { "type": "array" }
+  }
+}
