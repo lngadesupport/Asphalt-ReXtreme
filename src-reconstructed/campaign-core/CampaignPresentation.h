@@ -204,6 +204,7 @@ typedef struct CampaignPresentationDiagnostics {
     uint32_t size;
     uint32_t settings_revision;
     uint32_t verified_capability_count;
+    uint32_t verified_binding_count;
     uint32_t replay_recording;
     uint32_t replay_sample_count;
     uint32_t replay_marker_count;
