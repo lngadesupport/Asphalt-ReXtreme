@@ -642,6 +642,13 @@ static void CampaignReplayFinishLifecycleUnlocked(
     marker.value = metrics->placement;
     CampaignReplayAddMarker(&marker);
     CampaignReplayStop();
+
+    /*
+      Autosave succeeds only after the verified per-frame sampler has recorded
+      at least one transform sample. Metadata-only sessions are intentionally
+      not written as playable replay files.
+    */
+    CampaignReplaySaveAuto();
 }
 
 static int FinishEventRaceUnlocked(
