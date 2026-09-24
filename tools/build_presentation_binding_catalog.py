@@ -8,10 +8,10 @@ import struct
 from pathlib import Path
 
 MAGIC = 0x42505852  # RXPB
-VERSION = 1
+VERSION = 2
 MAX_ENTRIES = 64
 ID_BYTES = 32
-HEADER = struct.Struct("<IIIII")
+HEADER = struct.Struct("<IIIIIII")
 ENTRY = struct.Struct("<32sIIiIiI")
 
 BASE_KINDS = {
@@ -89,6 +89,21 @@ def load_source(path: Path) -> dict:
     if len(bindings) > MAX_ENTRIES:
         raise BindingCatalogError(f"too many bindings: {len(bindings)} > {MAX_ENTRIES}")
     return data
+
+
+def target_fingerprint(data: dict, binding_count: int) -> tuple[int, int]:
+    target = data.get("target_pe")
+    if binding_count == 0 and target is None:
+        return 0, 0
+    if not isinstance(target, dict):
+        raise BindingCatalogError("non-empty bindings require target_pe fingerprint")
+    stamp = parse_int(target.get("time_date_stamp"), "target_pe.time_date_stamp")
+    size = parse_int(target.get("size_of_image"), "target_pe.size_of_image")
+    if not 0 < stamp <= 0xFFFFFFFF:
+        raise BindingCatalogError("target_pe.time_date_stamp must be non-zero uint32")
+    if not 0 < size <= 0xFFFFFFFF:
+        raise BindingCatalogError("target_pe.size_of_image must be non-zero uint32")
+    return stamp, size
 
 
 def normalize(raw: dict, capabilities: dict[str, dict], seen: set[str]) -> tuple:
@@ -171,7 +186,16 @@ def build(source: Path, capability_source: Path, output: Path, report: Path | No
         ids.append(raw["id"])
 
     body = b"".join(packed)
-    payload = HEADER.pack(MAGIC, VERSION, len(packed), ENTRY.size, fnv1a(body)) + body
+    stamp, size_of_image = target_fingerprint(data, len(packed))
+    payload = HEADER.pack(
+        MAGIC,
+        VERSION,
+        len(packed),
+        ENTRY.size,
+        fnv1a(body),
+        stamp,
+        size_of_image,
+    ) + body
 
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_bytes(payload)
@@ -184,6 +208,10 @@ def build(source: Path, capability_source: Path, output: Path, report: Path | No
         "entry_size": ENTRY.size,
         "output": str(output),
         "binding_ids": ids,
+        "target_pe": {
+            "time_date_stamp": stamp,
+            "size_of_image": size_of_image,
+        },
         "safe_empty_catalog": len(packed) == 0,
     }
     if report is not None:
