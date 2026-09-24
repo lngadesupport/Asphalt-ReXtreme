@@ -1779,6 +1779,7 @@ int __cdecl CampaignPresentationGetDiagnostics(CampaignPresentationDiagnostics* 
     out->size = (uint32_t)sizeof(*out);
     out->settings_revision = g_settings.revision;
     out->verified_capability_count = CampaignPresentationCatalogCount();
+    out->runtime_ready_capability_count = CampaignPresentationCatalogRuntimeReadyCount();
     out->verified_binding_count = CampaignPresentationBindingsCount();
     out->replay_recording = g_replay_active;
     out->replay_sample_count = g_replay_count;
@@ -1850,6 +1851,12 @@ int __cdecl CampaignPresentationInvoke(CampaignPresentationCommand* command) {
         break;
     case CAMPAIGN_PRESENTATION_OP_FOV_SIMPLE_RESET:
         command->status = CampaignPresentationSimpleFovReset();
+        break;
+    case CAMPAIGN_PRESENTATION_OP_CAPABILITY_READY:
+        command->out0 = CampaignPresentationCapabilityRuntimeReady(
+            (uint32_t)command->a
+        ) ? 1 : 0;
+        command->status = 1;
         break;
 
     case CAMPAIGN_PRESENTATION_OP_CAPABILITY_RELOAD:
