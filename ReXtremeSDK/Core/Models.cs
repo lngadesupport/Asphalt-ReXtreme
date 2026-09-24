@@ -23,7 +23,8 @@ public sealed class RxVehicle
 {
     [JsonPropertyName("id")] public string Id { get; set; } = "";
     [JsonPropertyName("name")] public string Name { get; set; } = "";
-    [JsonPropertyName("category")] public string Category { get; set; } = "rally";
+    [JsonPropertyName("archetype")] public string Archetype { get; set; } = "rally-car";
+    [JsonPropertyName("performance_class")] public string PerformanceClass { get; set; } = "D";
     [JsonPropertyName("base_original_profile")] public string BaseOriginalProfile { get; set; } = "";
     [JsonPropertyName("physics_mode")] public string PhysicsMode { get; set; } = "clone-profile";
     [JsonPropertyName("performance_bars")] public RxPerformanceBars Performance { get; set; } = new();
