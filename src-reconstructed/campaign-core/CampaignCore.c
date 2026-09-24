@@ -3035,22 +3035,19 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             const CampaignSpecialEventDefinition* def =
                 CampaignSpecialEventCatalogFind(c->a);
             const CampaignEventDefinition* event_def;
-            int index;
+            uint32_t completed_mask = 0;
+            uint32_t completed_count = 0;
             int completed = 0;
             int unlocked = 0;
             if (!def || c->b < 0 || (uint32_t)c->b >= def->stage_count) return 0;
-            {
-                uint32_t completed_mask = 0;
-                uint32_t completed_count = 0;
-                c->out0 = def->stage_event_ids[c->b];
-                index = FindEventStateIndex(c->out0);
-                if (!SpecialEventProgressUnlocked(def, &completed_mask, &completed_count)) return 0;
-                completed = (completed_mask & (1u << (uint32_t)c->b)) ? 1 : 0;
-            }
+            c->out0 = def->stage_event_ids[c->b];
+            if (!SpecialEventProgressUnlocked(def, &completed_mask, &completed_count)) return 0;
+            completed = (completed_mask & (1u << (uint32_t)c->b)) ? 1 : 0;
             event_def = CampaignEventCatalogFind(c->out0);
             if (!event_def) return 0;
             if (SpecialEventAvailableUnlocked(def) &&
-                ProgressGateUnlocked(event_def->required_node_id)) {
+                ProgressGateUnlocked(event_def->required_node_id) &&
+                (c->b == 0 || (completed_mask & (1u << ((uint32_t)c->b - 1u))))) {
                 unlocked = 1;
             }
             c->out1 = completed;
@@ -3086,6 +3083,23 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             c->out0 = (int32_t)CampaignSpecialEventPeriodKey(def, day);
             c->out1 = (int32_t)completed;
             c->out2 = SpecialEventAvailableUnlocked(def) ? 1 : 0;
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_BEGIN_SPECIAL_EVENT_STAGE:
+        {
+            uint32_t session_id = 0;
+            uint32_t period_key = 0;
+            const CampaignSpecialEventDefinition* def =
+                CampaignSpecialEventCatalogFind(c->a);
+            if (!def || c->b < 0 || (uint32_t)c->b >= def->stage_count) return 0;
+            if (!BeginSpecialEventStageUnlocked(
+                    c->a, c->b, c->c, &session_id, &period_key)) return 0;
+            c->out0 = (int32_t)session_id;
+            c->out1 = def->stage_event_ids[c->b];
+            c->out2 = (int32_t)period_key;
             c->status = 1;
             c->revision = g_state.revision;
             return 1;
@@ -3138,6 +3152,18 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             const CampaignChampionshipDefinition* def=CampaignChampionshipCatalogFind(c->a);
             if(!def||c->b<1||c->b>(int32_t)CAMPAIGN_CHAMPIONSHIP_POSITION_MAX)return 0;
             c->out0=def->points_by_position[c->b-1];
+            c->status=1;c->revision=g_state.revision;return 1;
+        }
+
+    case CAMPAIGN_OP_BEGIN_CHAMPIONSHIP_ROUND:
+        {
+            uint32_t session_id=0;
+            const CampaignChampionshipDefinition* def=CampaignChampionshipCatalogFind(c->a);
+            if(!def||c->b<0||(uint32_t)c->b>=def->round_count)return 0;
+            if(!BeginChampionshipRoundUnlocked(c->a,c->b,c->c,&session_id))return 0;
+            c->out0=(int32_t)session_id;
+            c->out1=def->round_event_ids[c->b];
+            c->out2=c->b;
             c->status=1;c->revision=g_state.revision;return 1;
         }
 
