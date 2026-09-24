@@ -40,6 +40,7 @@ static WCHAR g_catalog_path[1024];
 static WCHAR g_state_dir[1024];
 static WCHAR g_state_path[1024];
 static WCHAR g_state_tmp[1024];
+static WCHAR g_exe_path[1024];
 
 static void AchZero(void* p,uint32_t n){
     volatile unsigned char* q=(volatile unsigned char*)p;uint32_t i;
@@ -68,15 +69,16 @@ static int EnsureDir(const WCHAR* p){
     return GetLastError()==ERROR_ALREADY_EXISTS?1:0;
 }
 static int BuildPaths(void){
-    WCHAR exe[1024];DWORD n;int i;
+    DWORD n;int i;
     if(g_catalog_path[0]&&g_state_path[0])return 1;
-    AchZero(exe,sizeof(exe));n=GetModuleFileNameW(0,exe,1024);
+    AchZero(g_exe_path,sizeof(g_exe_path));
+    n=GetModuleFileNameW(0,g_exe_path,1024);
     if(n==0||n>=1024)return 0;i=(int)n-1;
-    while(i>=0&&exe[i]!=L'\\'&&exe[i]!=L'/')--i;
-    if(i<0)return 0;exe[i+1]=0;
+    while(i>=0&&g_exe_path[i]!=L'\\'&&g_exe_path[i]!=L'/')--i;
+    if(i<0)return 0;g_exe_path[i+1]=0;
 
-    if(!WideAppend(g_catalog_path,1024,exe)||!WideAppend(g_catalog_path,1024,L"CampaignAchievements.dat"))return 0;
-    if(!WideAppend(g_state_dir,1024,exe)||!WideAppend(g_state_dir,1024,L"UserData"))return 0;
+    if(!WideAppend(g_catalog_path,1024,g_exe_path)||!WideAppend(g_catalog_path,1024,L"CampaignAchievements.dat"))return 0;
+    if(!WideAppend(g_state_dir,1024,g_exe_path)||!WideAppend(g_state_dir,1024,L"UserData"))return 0;
     if(!EnsureDir(g_state_dir))return 0;
     if(!WideAppend(g_state_dir,1024,L"\\CampaignEdition"))return 0;
     if(!EnsureDir(g_state_dir))return 0;
