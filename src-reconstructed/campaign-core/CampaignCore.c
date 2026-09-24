@@ -576,9 +576,28 @@ static void CampaignReplayBeginLifecycleUnlocked(
     uint32_t session_id
 ) {
     CampaignReplayMetadata metadata;
+    CampaignReplayMetadata current_metadata;
+    CampaignPresentationDiagnostics diagnostics;
     CampaignReplayMarker marker;
 
     if (!CampaignReplayEnabledUnlocked()) return;
+
+    /*
+      GameModeGUIBase construction can re-enter for the same active race.
+      Preserve an already-recording buffer when it belongs to the same
+      Campaign race session.
+    */
+    ZeroBytes(&diagnostics, (uint32_t)sizeof(diagnostics));
+    diagnostics.size = (uint32_t)sizeof(diagnostics);
+    ZeroBytes(&current_metadata, (uint32_t)sizeof(current_metadata));
+    current_metadata.size = (uint32_t)sizeof(current_metadata);
+
+    if (CampaignPresentationGetDiagnostics(&diagnostics) &&
+        diagnostics.replay_recording &&
+        CampaignReplayGetMetadata(&current_metadata) &&
+        current_metadata.session_id == session_id) {
+        return;
+    }
 
     /*
       Capacity is deliberately generous but bounded by CampaignReplayStart().
@@ -2353,6 +2372,9 @@ int __cdecl CampaignBeginRaceAdapter(const CampaignRaceBeginArgs* args) {
     LockState();
     EnsureLoadedUnlocked();
     result = BeginEventRaceUnlocked(args->event_id, args->car_id, &session_id);
+    if (result) {
+        CampaignReplayBeginLifecycleUnlocked(args->event_id, args->car_id, session_id);
+    }
     UnlockState();
 
     return result;
@@ -2378,6 +2400,16 @@ int __cdecl CampaignFinishRaceAdapter(const CampaignRaceFinishArgs* args) {
         0,
         0
     );
+
+    {
+        CampaignRaceMetrics replay_metrics;
+        ZeroBytes(&replay_metrics, (uint32_t)sizeof(replay_metrics));
+        replay_metrics.size = (uint32_t)sizeof(replay_metrics);
+        replay_metrics.version = CAMPAIGN_RACE_METRICS_VERSION;
+        replay_metrics.placement = args->position;
+        replay_metrics.finish_time_ms = args->finish_time_ms;
+        CampaignReplayFinishLifecycleUnlocked(&replay_metrics);
+    }
 
     if (finish_status == 2) {
         UnlockState();
