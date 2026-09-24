@@ -31,6 +31,12 @@ KEYWORDS = (
 )
 
 TYPE_RE = re.compile(rb"\.\?AV[^\x00]{1,180}@@\x00")
+MEM_WRITE_RE = re.compile(
+    r"^(?:mov|movss|movsd|fst|fstp|inc|dec|add|sub|and|or|xor)\s+"
+    r"(?:byte ptr |word ptr |dword ptr |qword ptr )?"
+    r"\[([a-z]{2,3})(?:\s*\+\s*(0x[0-9a-f]+|\d+))?\]",
+    re.IGNORECASE,
+)
 
 
 def sha256(path: Path) -> str:
@@ -142,6 +148,7 @@ def disassemble_method(pe: PE32, va: int, max_instructions: int = 96) -> dict:
         if len(instructions) >= max_instructions:
             break
 
+    field_writes = extract_field_writes(instructions)
     return {
         "instructions": instructions,
         "instruction_count": len(instructions),
@@ -150,8 +157,33 @@ def disassemble_method(pe: PE32, va: int, max_instructions: int = 96) -> dict:
         "branch_count": branches,
         "refs_game_mode_field_0x14": refs_game_mode_field,
         "scalar_float_ops": refs_float,
+        "field_writes": field_writes,
+        "field_write_count": len(field_writes),
         "ret_seen": ret_seen,
     }
+
+
+def extract_field_writes(instructions: list[dict]) -> list[dict]:
+    rows: list[dict] = []
+    for ins in instructions:
+        text = str(ins.get("text", ""))
+        m = MEM_WRITE_RE.match(text)
+        if not m:
+            continue
+        reg = m.group(1).lower()
+        raw_disp = m.group(2)
+        displacement = int(raw_disp, 0) if raw_disp else 0
+        mnemonic = text.split(" ", 1)[0].lower()
+        rows.append({
+            "va": ins.get("va"),
+            "text": text,
+            "base_register": reg,
+            "field_offset": displacement,
+            "field_offset_hex": f"0x{displacement:X}",
+            "scalar_float_write": mnemonic in {"movss", "movsd", "fst", "fstp"},
+            "status": "candidate-only",
+        })
+    return rows
 
 
 def score_method(method: dict, slot: int, xrefs: list[int]) -> tuple[int, list[str]]:
@@ -178,6 +210,12 @@ def score_method(method: dict, slot: int, xrefs: list[int]) -> tuple[int, list[s
     if method["scalar_float_ops"] > 0:
         score += 2
         reasons.append("scalar float operations")
+    if method.get("field_write_count", 0) > 0:
+        score += 2
+        reasons.append("writes object fields")
+    if any(row.get("scalar_float_write") for row in method.get("field_writes", [])):
+        score += 2
+        reasons.append("writes scalar float field")
     if method["ret_seen"]:
         score += 1
     if xrefs:
@@ -308,6 +346,20 @@ def main() -> int:
         "keyword_classes_discovered": classes,
         "mapped_classes": mapped,
         "top_candidates": candidate_methods[:120],
+        "top_field_write_candidates": [
+            {
+                "class": row["class"],
+                "vtable_va": row["vtable_va"],
+                "slot_index": row["slot_index"],
+                "slot_offset": row["slot_offset"],
+                "method_va": row["method_va"],
+                "score": row["score"],
+                "field_writes": row.get("field_writes", []),
+                "status": "candidate-only",
+            }
+            for row in candidate_methods
+            if row.get("field_write_count", 0) > 0
+        ][:120],
         "verified_bindings": [],
     }
 
