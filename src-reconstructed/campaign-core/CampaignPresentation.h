@@ -144,6 +144,8 @@ enum CampaignPresentationOp {
     CAMPAIGN_PRESENTATION_OP_CAPABILITY_SET_VALUE = 14,
     CAMPAIGN_PRESENTATION_OP_CAPABILITY_RESET_VALUE = 15,
 
+    CAMPAIGN_PRESENTATION_OP_REPLAY_GET_AUTO_PATH = 16,
+    CAMPAIGN_PRESENTATION_OP_REPLAY_SAVE_AUTO = 17,
     CAMPAIGN_PRESENTATION_OP_REPLAY_SET_METADATA = 18,
     CAMPAIGN_PRESENTATION_OP_REPLAY_GET_METADATA = 19,
     CAMPAIGN_PRESENTATION_OP_REPLAY_START = 20,
@@ -215,6 +217,8 @@ int __cdecl CampaignPresentationGetSettings(CampaignPresentationSettings* out);
 int __cdecl CampaignPresentationSetSettings(const CampaignPresentationSettings* settings);
 int __cdecl CampaignPresentationResetSettings(void);
 
+int __cdecl CampaignReplayGetAutoPath(wchar_t* out, uint32_t capacity_chars);
+int __cdecl CampaignReplaySaveAuto(void);
 int __cdecl CampaignReplaySetMetadata(const CampaignReplayMetadata* metadata);
 int __cdecl CampaignReplayGetMetadata(CampaignReplayMetadata* out);
 int __cdecl CampaignReplayStart(uint32_t capacity);
