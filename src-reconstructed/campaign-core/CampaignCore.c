@@ -645,6 +645,40 @@ static int BeginEventRaceUnlocked(
     return 1;
 }
 
+static int SetRaceSessionActivityUnlocked(
+    uint32_t session_id,
+    uint32_t activity_type,
+    int32_t activity_id,
+    uint32_t activity_slot,
+    uint32_t activity_period_key
+) {
+    CampaignRaceSession* session = &g_race_session_buffer;
+
+    if (session_id == 0 ||
+        (activity_type != CAMPAIGN_ACTIVITY_SPECIAL_EVENT &&
+         activity_type != CAMPAIGN_ACTIVITY_CHAMPIONSHIP) ||
+        activity_id <= 0 ||
+        activity_slot >= 16u) return 0;
+    if (activity_type == CAMPAIGN_ACTIVITY_CHAMPIONSHIP &&
+        activity_period_key != 0) return 0;
+
+    if (!ReadRaceSessionFile(g_race_session_path, session)) return 0;
+    if (session->session_id != session_id) return 0;
+
+    if (session->activity_type != CAMPAIGN_ACTIVITY_NONE) {
+        return session->activity_type == activity_type &&
+               session->activity_id == activity_id &&
+               session->activity_slot == activity_slot &&
+               session->activity_period_key == activity_period_key;
+    }
+
+    session->activity_type = activity_type;
+    session->activity_id = activity_id;
+    session->activity_slot = activity_slot;
+    session->activity_period_key = activity_period_key;
+    return WriteRaceSessionUnlocked(session);
+}
+
 static int CampaignReplayEnabledUnlocked(void) {
     CampaignPresentationSettings settings;
     ZeroBytes(&settings, (uint32_t)sizeof(settings));
@@ -774,20 +808,39 @@ static int FinishEventRaceUnlocked(
         return 0;
     }
 
-    if (!RecordEventUnlocked(
-            def,
-            position,
-            stars,
-            finish_time_ms,
-            credits_awarded,
-            premium_awarded,
-            completion_count)) {
-        MoveFileExW(
-            g_race_session_consuming_path,
-            g_race_session_path,
-            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
-        );
-        return 0;
+    if (session->activity_type == CAMPAIGN_ACTIVITY_NONE) {
+        if (!RecordEventUnlocked(
+                def,
+                position,
+                stars,
+                finish_time_ms,
+                credits_awarded,
+                premium_awarded,
+                completion_count)) {
+            MoveFileExW(
+                g_race_session_consuming_path,
+                g_race_session_path,
+                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+            );
+            return 0;
+        }
+    } else {
+        /*
+          Special Events and Championships reuse original race definitions but
+          never mutate Career event completion, stars or Career rewards.
+        */
+        if (g_state.race_count == 0xFFFFFFFFu) {
+            MoveFileExW(
+                g_race_session_consuming_path,
+                g_race_session_path,
+                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+            );
+            return 0;
+        }
+        ++g_state.race_count;
+        if (credits_awarded) *credits_awarded = 0;
+        if (premium_awarded) *premium_awarded = 0;
+        if (completion_count) *completion_count = 0;
     }
 
     g_state.last_completed_race_session_id = session_id;
@@ -1339,6 +1392,15 @@ static int BeginSpecialEventStageUnlocked(
     period_key=CampaignSpecialEventPeriodKey(def,day);
 
     if(!BeginEventRaceUnlocked(event_id,car_id,&sid))return 0;
+    if(!SetRaceSessionActivityUnlocked(
+            sid,
+            CAMPAIGN_ACTIVITY_SPECIAL_EVENT,
+            special_event_id,
+            (uint32_t)stage_index,
+            period_key)){
+        CancelEventRaceUnlocked(sid);
+        return 0;
+    }
 
     ZeroBytes(&context,(uint32_t)sizeof(context));
     context.size=(uint32_t)sizeof(context);
@@ -1387,6 +1449,15 @@ static int BeginChampionshipRoundUnlocked(
 
     event_id=def->round_event_ids[round_index];
     if(!BeginEventRaceUnlocked(event_id,car_id,&sid))return 0;
+    if(!SetRaceSessionActivityUnlocked(
+            sid,
+            CAMPAIGN_ACTIVITY_CHAMPIONSHIP,
+            championship_id,
+            (uint32_t)round_index,
+            0)){
+        CancelEventRaceUnlocked(sid);
+        return 0;
+    }
 
     ZeroBytes(&context,(uint32_t)sizeof(context));
     context.size=(uint32_t)sizeof(context);
@@ -1409,10 +1480,32 @@ static int BeginChampionshipRoundUnlocked(
 
 static int CaptureActivityResultUnlocked(uint32_t session_id,int32_t placement){
     CampaignActivityContext context;
+    int have_context;
+
+    if(session_id==0||placement<=0||placement>7)return 0;
     ZeroBytes(&context,(uint32_t)sizeof(context));
     context.size=(uint32_t)sizeof(context);
-    if(!CampaignActivityContextGet(&context))return 1;
-    if(context.session_id!=session_id)return 1;
+    have_context=CampaignActivityContextGet(&context);
+
+    if(g_race_session_buffer.session_id==session_id &&
+       g_race_session_buffer.activity_type!=CAMPAIGN_ACTIVITY_NONE){
+        if(!have_context||context.session_id!=session_id){
+            ZeroBytes(&context,(uint32_t)sizeof(context));
+            context.size=(uint32_t)sizeof(context);
+            context.version=CAMPAIGN_ACTIVITY_CONTEXT_VERSION;
+            context.session_id=session_id;
+            context.activity_type=g_race_session_buffer.activity_type;
+            context.activity_id=g_race_session_buffer.activity_id;
+            context.slot_index=g_race_session_buffer.activity_slot;
+            context.event_id=g_race_session_buffer.event_id;
+            context.period_key=g_race_session_buffer.activity_period_key;
+            if(!CampaignActivityContextSet(&context))return 0;
+        }
+        return CampaignActivityContextSetResult(session_id,placement);
+    }
+
+    /* Normal Career race: no activity sidecar is required. */
+    if(!have_context||context.session_id!=session_id)return 1;
     return CampaignActivityContextSetResult(session_id,placement);
 }
 
