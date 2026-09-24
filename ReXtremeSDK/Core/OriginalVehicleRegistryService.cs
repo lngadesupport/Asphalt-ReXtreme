@@ -39,10 +39,15 @@ public sealed class OriginalVehicleRegistryService
 
     public static readonly string[] PerformanceClasses = ["D", "C", "B", "A", "S"];
 
+    public static string UserRegistryPath =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "ReXtremeSDK", "Data", "original_vehicle_registry.json");
+
     public OriginalVehicleRegistry Load()
     {
         var candidates = new[]
         {
+            UserRegistryPath,
             Path.Combine(AppContext.BaseDirectory, "Data", "original_vehicle_registry.json"),
             Path.Combine(AppContext.BaseDirectory, "original_vehicle_registry.json")
         };
@@ -57,6 +62,60 @@ public sealed class OriginalVehicleRegistryService
         }
 
         return Normalize(new OriginalVehicleRegistry());
+    }
+
+    public OriginalVehicleRegistry ImportVerified(string sourceFile)
+    {
+        if (!File.Exists(sourceFile))
+            throw new FileNotFoundException("Registry não encontrado.", sourceFile);
+
+        var registry = JsonSerializer.Deserialize<OriginalVehicleRegistry>(
+            File.ReadAllText(sourceFile),
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+            ?? throw new InvalidDataException("Registry JSON vazio ou inválido.");
+
+        ValidateStrict(registry);
+
+        var normalized = Normalize(registry);
+        Directory.CreateDirectory(Path.GetDirectoryName(UserRegistryPath)!);
+        File.WriteAllText(UserRegistryPath,
+            JsonSerializer.Serialize(normalized, new JsonSerializerOptions { WriteIndented = true }) + Environment.NewLine);
+        return normalized;
+    }
+
+    public static void ValidateStrict(OriginalVehicleRegistry registry)
+    {
+        if (registry.SchemaVersion != 1)
+            throw new InvalidDataException($"Registry schema_version não suportado: {registry.SchemaVersion}");
+
+        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var carIds = new HashSet<int>();
+
+        foreach (var p in registry.Profiles)
+        {
+            if (!p.SourceVerified)
+                throw new InvalidDataException($"Perfil {p.Id} não está marcado como source_verified.");
+            if (string.IsNullOrWhiteSpace(p.Id) || !ids.Add(p.Id))
+                throw new InvalidDataException($"ID de perfil vazio ou duplicado: {p.Id}");
+            if (p.CarId <= 0 || !carIds.Add(p.CarId))
+                throw new InvalidDataException($"car_id inválido ou duplicado no registry: {p.CarId}");
+            if (!OfficialArchetypes.Contains(p.Archetype, StringComparer.OrdinalIgnoreCase))
+                throw new InvalidDataException($"Arquétipo não original em {p.Id}: {p.Archetype}");
+            if (!PerformanceClasses.Contains(p.PerformanceClass, StringComparer.OrdinalIgnoreCase))
+                throw new InvalidDataException($"Classe inválida em {p.Id}: {p.PerformanceClass}");
+            if (p.PerformanceBars is not null)
+            {
+                foreach (var (name, value) in new[]
+                {
+                    ("speed", p.PerformanceBars.Speed),
+                    ("acceleration", p.PerformanceBars.Acceleration),
+                    ("handling", p.PerformanceBars.Handling),
+                    ("nitro", p.PerformanceBars.Nitro)
+                })
+                    if (value is < 0 or > 1)
+                        throw new InvalidDataException($"{p.Id}: barra {name} fora da faixa 0..1.");
+            }
+        }
     }
 
     public static OriginalVehicleRegistry Normalize(OriginalVehicleRegistry registry)
