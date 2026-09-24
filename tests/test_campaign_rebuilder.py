@@ -89,11 +89,14 @@ class CampaignRebuilderTests(unittest.TestCase):
                 ["AppxManifest.xml"],
                 [],
                 {"catalog": "CampaignPresentationOptions.dat", "report": "CampaignPresentationOptions.report.json", "count": 0, "safe_empty_catalog": True},
+                {"catalog": "CampaignPresentationBindings.dat", "report": "CampaignPresentationBindings.report.json", "count": 0, "safe_empty_catalog": True},
                 ["UserData/CampaignEdition/", "UserData/Replays/", "UserData/Screenshots/"],
             )
             data = json.loads(status_path.read_text(encoding="utf-8"))
             self.assertEqual(data["edition"], "Campaign")
             self.assertFalse(data["portable_startup_ready"])
+            self.assertTrue(data["presentation_values_require_verified_binding"])
+            self.assertEqual(data["presentation_binding_catalog"]["count"], 0)
 
 
 if __name__ == "__main__":
