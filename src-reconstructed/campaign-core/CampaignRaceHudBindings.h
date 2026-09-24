@@ -8,6 +8,8 @@ extern "C" {
 
 #define CAMPAIGN_RACE_HUD_BINDING_MAX 128u
 
+#define CAMPAIGN_RACE_HUD_BASE_GUI_ARGUMENT 3u
+
 enum CampaignRaceHudElement {
     CAMPAIGN_RACE_HUD_POSITION = 1,
     CAMPAIGN_RACE_HUD_SPEED = 2,
@@ -61,6 +63,7 @@ uint32_t CampaignRaceHudBindingsCount(void);
 const CampaignRaceHudBinding* CampaignRaceHudBindingsFind(uint32_t element, uint32_t property);
 int CampaignRaceHudElementReady(uint32_t element, uint32_t property_mask);
 int CampaignRaceHudApplyElement(const CampaignRaceHudElementState* state);
+int CampaignRaceHudApplyElementFromGui(void* game_mode_gui, const CampaignRaceHudElementState* state);
 
 #ifdef __cplusplus
 }
