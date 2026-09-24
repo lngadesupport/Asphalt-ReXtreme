@@ -4,8 +4,21 @@ Set-StrictMode -Version Latest
 
 if([string]::IsNullOrWhiteSpace($ProjectRoot)){
   $ProjectRoot=(Get-Location).Path
+
+  if(-not(Test-Path -LiteralPath (Join-Path $ProjectRoot "_PACKAGE_PHASE5\AMS.exe") -PathType Leaf)){
+    $leaf=Split-Path -Leaf $ProjectRoot
+    $nested=Join-Path $ProjectRoot $leaf
+    if(Test-Path -LiteralPath (Join-Path $nested "_PACKAGE_PHASE5\AMS.exe") -PathType Leaf){
+      $ProjectRoot=(Resolve-Path -LiteralPath $nested).Path
+      Write-Host ("[AUTO] Project root detected: "+$ProjectRoot) -ForegroundColor Yellow
+    }
+  }
 }else{
   $ProjectRoot=(Resolve-Path -LiteralPath $ProjectRoot).Path
+}
+
+if(-not(Test-Path -LiteralPath (Join-Path $ProjectRoot "_PACKAGE_PHASE5\AMS.exe") -PathType Leaf)){
+  throw "Project root invalid: _PACKAGE_PHASE5\AMS.exe not found under $ProjectRoot"
 }
 
 $raw="https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme"
