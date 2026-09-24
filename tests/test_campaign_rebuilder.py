@@ -95,6 +95,7 @@ class CampaignRebuilderTests(unittest.TestCase):
                 {"catalog": "CampaignOriginalUiBindings.dat", "report": "CampaignOriginalUiBindings.report.json", "count": 0, "safe_empty_catalog": True, "original_ui_only": True, "custom_ui_assets_allowed": False, "fallback_if_unmapped": "feature-hidden"},
                 {"catalog": "CampaignRaceHudBindings.dat", "report": "CampaignRaceHudBindings.report.json", "count": 0, "safe_empty_catalog": True, "original_elements_only": True, "create_new_hud_widgets": False},
                 {"catalog": "CampaignChallenges.dat", "report": "CampaignChallenges.report.json", "count": 0, "state": "UserData/CampaignEdition/ChallengeState.dat", "portable": True},
+                {"catalog": "CampaignAchievements.dat", "report": "CampaignAchievements.report.json", "count": 0, "state": "UserData/CampaignEdition/AchievementState.dat", "metrics_source": "CampaignStatistics-v1", "rewards": "none", "portable": True},
                 ["UserData/CampaignEdition/", "UserData/Replays/", "UserData/Screenshots/"],
             )
             data = json.loads(status_path.read_text(encoding="utf-8"))
@@ -116,6 +117,11 @@ class CampaignRebuilderTests(unittest.TestCase):
             self.assertEqual(data["challenge_catalog"]["count"], 0)
             self.assertTrue(data["challenge_state_portable"])
             self.assertEqual(data["challenge_metrics_source"], "CampaignRaceMetrics-v1")
+            self.assertEqual(data["achievement_catalog"]["count"], 0)
+            self.assertTrue(data["achievement_state_portable"])
+            self.assertEqual(data["achievement_metrics_source"], "CampaignStatistics-v1")
+            self.assertEqual(data["achievement_rewards"], "none")
+            self.assertTrue(data["achievement_ui_requires_original_templates"])
 
 
 if __name__ == "__main__":
