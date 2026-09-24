@@ -426,6 +426,8 @@ static int WriteWholeFile(const WCHAR* path, const void* data, DWORD size) {
 
 static int IsOwnedUnlocked(int32_t car_id);
 static int ProgressGateUnlocked(int32_t node_id);
+static int CancelEventRaceUnlocked(uint32_t session_id);
+
 static int RecordEventUnlocked(
     const CampaignEventDefinition* def,
     int32_t position,
