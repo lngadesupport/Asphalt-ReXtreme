@@ -16,7 +16,7 @@ $phase2=Join-Path $ProjectRoot "_AMS_PHASE2\AMS.exe"
 $core=Join-Path $ProjectRoot "prebuilt\campaign-core\IGPLib_x86.dll"
 $python=Join-Path $ProjectRoot "runtime\python312-x86\python.exe"
 $boot=Join-Path $ProjectRoot "tools\campaign_frontend_boot_v1.py"
-$garage=Join-Path $ProjectRoot "tools\campaign_frontend_garage_v3.py"
+$garage=Join-Path $ProjectRoot "tools\campaign_frontend_garage_v4.py"
 $career=Join-Path $ProjectRoot "tools\campaign_career_adapter_v3.py"
 $careerV2=Join-Path $ProjectRoot "tools\campaign_career_adapter_v2.py"
 $catalog=Join-Path $pkg "CampaignCatalog.dat"
@@ -42,7 +42,7 @@ Copy-Item $core $igp -Force
 if($LASTEXITCODE-ne0){throw "Frontend-Only Boot apply failed: $LASTEXITCODE"}
 
 & $python $garage --project-root $ProjectRoot
-if($LASTEXITCODE-ne0){throw "Frontend-Only Garage v3 apply failed: $LASTEXITCODE"}
+if($LASTEXITCODE-ne0){throw "Frontend-Only Garage v4 apply failed: $LASTEXITCODE"}
 
 & $python $career --project-root $ProjectRoot
 if($LASTEXITCODE-ne0){throw "Campaign Career v3 apply failed: $LASTEXITCODE"}
@@ -76,7 +76,7 @@ Write-Host "  Profile              : local"
 Write-Host "  Lobby                : local"
 Write-Host ""
 Write-Host "Garage:"
-Write-Host "  MONTAR               : direct local button callback -> CampaignGarageService"
+Write-Host "  MONTAR               : local callback (ABI ret 8) -> CampaignGarageService"
 Write-Host "  Ownership authority  : CampaignSave"
 Write-Host "  Ownership API        : CampaignFrontendIsOwned(car_id)"
 Write-Host "  async build signal   : BYPASSED"
