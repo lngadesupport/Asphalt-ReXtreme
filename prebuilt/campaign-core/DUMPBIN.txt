@@ -11,7 +11,7 @@ File Type: DLL
 FILE HEADER VALUES
              14C machine (x86)
                4 number of sections
-        6AB579C4 time date stamp Thu Sep 24 19:28:04 2026
+        6AB579EA time date stamp Thu Sep 24 19:28:42 2026
                0 file pointer to symbol table
                0 number of symbols
               E0 size of optional header
@@ -69,8 +69,8 @@ OPTIONAL HEADER VALUES
 
 SECTION HEADER #1
    .text name
-    5C63 virtual size
-    1000 virtual address (10001000 to 10006C62)
+    5D09 virtual size
+    1000 virtual address (10001000 to 10006D08)
     5E00 size of raw data
      400 file pointer to raw data (00000400 to 000061FF)
        0 file pointer to relocation table
@@ -99,7 +99,7 @@ SECTION HEADER #2
 
         Time Type        Size      RVA  Pointer
     -------- ------- -------- -------- --------
-    6AB579C4 coffgrp       DC 0000774C     694C
+    6AB579EA coffgrp       DC 0000774C     694C
 
   Section contains the following imports:
 
