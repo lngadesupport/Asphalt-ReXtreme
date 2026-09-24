@@ -10,6 +10,7 @@
 #include "CampaignStartupService.h"
 #include "CampaignGarageFlow.h"
 #include "CampaignTutorialBuildConsumer.h"
+#include "CampaignGarageTrace.h"
 
 static void ZeroBytes(void* p, uint32_t count) {
     volatile unsigned char* q = (volatile unsigned char*)p;
