@@ -29,6 +29,9 @@
     "ReplayFrameSelector":  "0xC0DEB002",
     "ReplayFrameBindingRegistry":  "config/replay-frame-binding.verified.json",
     "ReplayFrameBindingVerified":  false,
+    "PhotoFrameSelector":  "0xC0DEB003",
+    "PhotoFrameBindingRegistry":  "config/photo-frame-binding.verified.json",
+    "PhotoFrameBindingVerified":  false,
     "PresentationSettings":  "ReXtremePresentation.dat",
     "ReplayFormat":  ".rexreplay",
     "ReplayRuntimeFoundation":  true,
@@ -39,5 +42,5 @@
     "PresentationValuesRequireVerifiedBinding":  true,
     "UnverifiedPresentationOptionsVisible":  false,
     "Size":  48640,
-    "SHA256":  "13d507a6bb98b30c20e16d8bfbc8e9fb8419e6cd74d1fa95cb3e5825eaab5df9"
+    "SHA256":  "2e59a584e53fe1ff875d98c9ace3ef09bddcceaefbdbc91b3de09cf1db1a5995"
 }
