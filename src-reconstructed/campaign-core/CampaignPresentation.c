@@ -1730,6 +1730,7 @@ int __cdecl CampaignPresentationGetDiagnostics(CampaignPresentationDiagnostics* 
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_PHOTO_MODE)) out->original_ui_feature_mask |= 1u << 3;
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_RACE_HUD)) out->original_ui_feature_mask |= 1u << 4;
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_CHALLENGES)) out->original_ui_feature_mask |= 1u << 5;
+    if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_ACHIEVEMENTS)) out->original_ui_feature_mask |= 1u << 6;
     out->race_hud_binding_count = CampaignRaceHudBindingsCount();
     out->race_hud_original_ui_ready =
         CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_RACE_HUD) ? 1u : 0u;
