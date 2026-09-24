@@ -195,6 +195,9 @@ jobs:
             CareerPreSelector = "0xC0DECA72"
             CareerPostSelector = "0xC0DECA73"
             PresentationSelector = "0xC0DECA90"
+            ReplayFrameSelector = "0xC0DEB002"
+            ReplayFrameBindingRegistry = "config/replay-frame-binding.verified.json"
+            ReplayFrameBindingVerified = $false
             PresentationSettings = "ReXtremePresentation.dat"
             ReplayFormat = ".rexreplay"
             ReplayRuntimeFoundation = $true
