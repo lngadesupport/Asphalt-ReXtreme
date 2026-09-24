@@ -17,6 +17,9 @@ public sealed class ProjectService
     public static readonly HashSet<string> MusicExtensions =
         new(StringComparer.OrdinalIgnoreCase) { ".wav", ".flac", ".ogg", ".mp3", ".aac", ".m4a" };
 
+    public static readonly HashSet<string> TextureExtensions =
+        new(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg", ".tga", ".dds", ".tif", ".tiff", ".bmp", ".webp", ".exr", ".hdr" };
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -286,6 +289,20 @@ public sealed class ProjectService
         });
         SaveJson(catalogPath, catalog);
         return target;
+    }
+
+    public string ImportTexture(string file)
+    {
+        RequireProject();
+        var ext = Path.GetExtension(file);
+        if (!TextureExtensions.Contains(ext))
+            throw new InvalidDataException($"Formato de textura ainda não aceito: {ext}");
+
+        var textureDir = Path.Combine(CurrentProjectPath!, "assets", "textures");
+        Directory.CreateDirectory(textureDir);
+        var target = Path.Combine(textureDir, Path.GetFileName(file));
+        File.Copy(file, target, true);
+        return Path.GetRelativePath(CurrentProjectPath!, target).Replace('\\', '/');
     }
 
     public static T LoadJson<T>(string file) =>
