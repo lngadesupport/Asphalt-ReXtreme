@@ -116,6 +116,12 @@ int __cdecl CampaignFinishRaceFromGui(void* game_mode_gui);
 */
 int __cdecl CampaignReplayFrameFromGui(void* game_mode_gui);
 
+/*
+  Per-frame Photo Mode ABI. Remains fail-closed until the original camera/HUD
+  chain is verified for 1.7.3.8.
+*/
+int __cdecl CampaignPhotoFrameFromGui(void* game_mode_gui);
+
 #ifdef __cplusplus
 }
 #endif
