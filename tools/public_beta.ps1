@@ -261,9 +261,9 @@ function Build-Beta {
     try {
         $env:PATH = $RuntimeRoot + ";" + $env:PATH
         $env:REXTREME_NO_PAUSE = "1"
-        Step "Aplicando Campaign finalizer / Career Adapter v3..."
+        Step "Aplicando Clean Campaign Runtime V1..."
         & cmd.exe /d /c ('"' + $finalizer + '"')
-        if ($LASTEXITCODE -ne 0) { throw "Campaign finalizer falhou: $LASTEXITCODE" }
+        if ($LASTEXITCODE -ne 0) { throw "Clean Campaign Runtime V1 falhou: $LASTEXITCODE" }
     } finally {
         $env:PATH = $oldPath
         $env:REXTREME_NO_PAUSE = $oldNoPause
@@ -278,7 +278,7 @@ function Build-Beta {
         package_root = $PackageRoot
         startup_mode = "uwp-loose-compatibility"
         portable_startup_ready = $false
-        campaign_final_status = (Join-Path $Root "_TRACE_MONTAR\CAMPAIGN-FINAL-STATUS.json")
+        campaign_final_status = (Join-Path $Root "_TRACE_MONTAR\CLEAN-RUNTIME-V1-APPLY.json")
     }
     $state | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $StatePath -Encoding UTF8
 
@@ -371,6 +371,10 @@ function Update-Beta {
         "TEST-FRONTEND-ONLY-V1.cmd",
         "TEST-FRONTEND-ONLY-GARAGE-V1.cmd",
         "FINALIZE-CAMPAIGN-EDITION.cmd",
+        "RUN-CLEAN-RUNTIME-V1.ps1",
+        "tools/apply_clean_runtime_v1.ps1",
+        "tools/test_clean_runtime_v1.ps1",
+        "tools/campaign_frontend_shell_v1.py",
         "beta/VERSION.json",
         "docs/PUBLIC_BETA_0.1.0.md",
         "docs/CAMPAIGN-PROFILE-ADAPTER.md",
