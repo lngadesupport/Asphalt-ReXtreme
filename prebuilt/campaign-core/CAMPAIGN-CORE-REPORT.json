@@ -74,6 +74,6 @@
     "RaceHudNewWidgetsAllowed":  false,
     "RaceHudLayout":  "UserData\\\\RaceHudLayout.dat",
     "RaceHudLayoutPortable":  true,
-    "Size":  87040,
-    "SHA256":  "fc64409f317f5aa713670c354362d83002a699e53352f43d03d5fefa57ef2133"
+    "Size":  86528,
+    "SHA256":  "2e73d39e621f4ce05abeedede488b1258c08ec67ae3da226f518ca1c9f7c95cb"
 }
