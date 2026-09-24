@@ -12,19 +12,24 @@ if([string]::IsNullOrWhiteSpace($ProjectRoot)){
 $pkg=Join-Path $ProjectRoot "_PACKAGE_PHASE5"
 $ams=Join-Path $pkg "AMS.exe"
 $igp=Join-Path $pkg "IGPLib_x86.dll"
-$phase2=Join-Path $ProjectRoot "_AMS_PHASE2\AMS.exe"
+$cleanBase=Join-Path $ProjectRoot "_AMS_CLEAN_BASE\AMS.exe"
+$cleanBaseBuilder=Join-Path $ProjectRoot "tools\build_clean_ams_base_v1.ps1"
 $runtime=Join-Path $ProjectRoot "prebuilt\campaign-runtime\IGPLib_x86.dll"
 $python=Join-Path $ProjectRoot "runtime\python312-x86\python.exe"
 $shell=Join-Path $ProjectRoot "tools\campaign_frontend_shell_v1.py"
 $catalog=Join-Path $pkg "CampaignCatalog.dat"
 
-foreach($p in @($ams,$igp,$phase2,$runtime,$python,$shell,$catalog)){
+foreach($p in @($ams,$igp,$runtime,$python,$shell,$catalog,$cleanBaseBuilder)){
   if(-not(Test-Path -LiteralPath $p -PathType Leaf)){throw "Missing: $p"}
 }
 
 Get-Process AMS -ErrorAction SilentlyContinue|Stop-Process -Force -ErrorAction SilentlyContinue
 
-Copy-Item $phase2 $ams -Force
+& powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $cleanBaseBuilder -ProjectRoot $ProjectRoot
+if($LASTEXITCODE-ne0){throw "Clean AMS Base V1 build failed: $LASTEXITCODE"}
+if(-not(Test-Path -LiteralPath $cleanBase -PathType Leaf)){throw "Missing: $cleanBase"}
+
+Copy-Item $cleanBase $ams -Force
 Copy-Item $runtime $igp -Force
 
 & $python $shell --project-root $ProjectRoot
@@ -41,6 +46,8 @@ New-Item -ItemType Directory -Force -Path (Split-Path $out -Parent)|Out-Null
   frontend_only_original_code=$true
   original_gameplay_structures=$false
   legacy_adapters_used=$false
+  phase2_used=$false
+  clean_base="_AMS_CLEAN_BASE\\AMS.exe"
   runtime_sha256=$runtimeHash
   ams_sha256=$amsHash
   state="CampaignRuntimeV1.dat"
