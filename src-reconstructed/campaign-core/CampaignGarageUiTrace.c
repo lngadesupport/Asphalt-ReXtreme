@@ -3,11 +3,6 @@
 #include <stdint.h>
 #include "CampaignGarageUiTrace.h"
 
-typedef LONG (WINAPI *CampaignGetCurrentPackageFamilyNameFn)(
-    UINT32* packageFamilyNameLength,
-    PWSTR packageFamilyName
-);
-
 #define CAMPAIGN_GARAGE_UI_TRACE_MAGIC 0x49555847u /* GXUI */
 #define CAMPAIGN_GS_BASE 0x340u
 #define CAMPAIGN_GS_WORDS 32u
@@ -33,40 +28,39 @@ static WCHAR g_family[256];
 static WCHAR g_path[1400];
 
 static int BuildTracePath(void) {
-    HMODULE kernel32;
-    CampaignGetCurrentPackageFamilyNameFn get_family;
-    UINT32 family_len = 256;
     DWORD i = 0;
-    const WCHAR packages[] = L"\\Packages\\";
     const WCHAR suffix[] =
+        L"\\Packages\\A278AB0D.AsphaltXtreme_h6adky7gbf63m"
         L"\\LocalState\\CampaignEdition\\GarageUiTrace.bin";
-
-    kernel32 = GetModuleHandleW(L"kernel32.dll");
-    if (!kernel32) return 0;
-
-    get_family = (CampaignGetCurrentPackageFamilyNameFn)
-        GetProcAddress(kernel32, "GetCurrentPackageFamilyName");
-    if (!get_family) return 0;
+    const WCHAR dir_suffix[] =
+        L"\\Packages\\A278AB0D.AsphaltXtreme_h6adky7gbf63m"
+        L"\\LocalState\\CampaignEdition";
+    WCHAR dir[1400];
 
     if (!GetEnvironmentVariableW(
             L"LOCALAPPDATA", g_local_app_data, 1024)) return 0;
-    if (get_family(&family_len, g_family) != ERROR_SUCCESS) return 0;
 
     while (g_local_app_data[i] && i < 1399) {
         g_path[i] = g_local_app_data[i];
+        dir[i] = g_local_app_data[i];
         ++i;
     }
     if (i >= 1399) return 0;
 
     {
         DWORD j = 0;
-        while (packages[j] && i < 1399) g_path[i++] = packages[j++];
-        j = 0;
-        while (g_family[j] && i < 1399) g_path[i++] = g_family[j++];
-        j = 0;
+        DWORD di = i;
+
         while (suffix[j] && i < 1399) g_path[i++] = suffix[j++];
         g_path[i] = 0;
+
+        j = 0;
+        while (dir_suffix[j] && di < 1399) dir[di++] = dir_suffix[j++];
+        dir[di] = 0;
+
+        CreateDirectoryW(dir, 0);
     }
+
     return 1;
 }
 
