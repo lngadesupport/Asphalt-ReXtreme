@@ -11,6 +11,8 @@ int __cdecl CampaignFrontendDispatch(
     CampaignViewModel* out
 );
 int __cdecl CampaignFrontendRead(CampaignViewModel* out);
+int __cdecl CampaignFrontendBoot(void);
+int __cdecl CampaignFrontendEnterLobby(void);
 int __cdecl CampaignFrontendBuildSelected(void);
 int __cdecl CampaignFrontendSelectCar(int32_t car_id);
 
