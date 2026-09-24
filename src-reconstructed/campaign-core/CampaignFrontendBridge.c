@@ -220,6 +220,15 @@ static void CampaignFrontendCompleteGarageBuild(void* gs_garage, int32_t status)
 }
 
 
+static WCHAR g_trace_local_app_data[1024];
+static WCHAR g_trace_family[256];
+static WCHAR g_trace_path[1400];
+
+typedef LONG (WINAPI *CampaignGetCurrentPackageFamilyNameFn)(
+    UINT32* packageFamilyNameLength,
+    PWSTR packageFamilyName
+);
+
 typedef struct CampaignGarageTraceRecord {
     uint32_t magic;
     uint32_t version;
@@ -247,30 +256,56 @@ static void CampaignGarageTraceWrite(
     int32_t callback_status,
     uint32_t revision
 ) {
-    WCHAR localAppData[1024];
-    WCHAR family[256];
-    WCHAR path[1400];
     HANDLE f;
     DWORD n;
     CampaignGarageTraceRecord r;
     DWORD i;
     UINT32 family_len = 256;
+    HMODULE kernel32;
+    CampaignGetCurrentPackageFamilyNameFn get_family;
     const WCHAR packages[] = L"\\Packages\\";
     const WCHAR suffix[] = L"\\LocalState\\CampaignEdition\\GarageTrace.bin";
 
-    if (!GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData, 1024)) return;
-    if (GetCurrentPackageFamilyName(&family_len, family) != ERROR_SUCCESS) return;
+    kernel32 = GetModuleHandleW(L"kernel32.dll");
+    if (!kernel32) return;
 
-    for (i = 0; localAppData[i] && i < 1399; ++i) path[i] = localAppData[i];
+    get_family = (CampaignGetCurrentPackageFamilyNameFn)
+        GetProcAddress(kernel32, "GetCurrentPackageFamilyName");
+    if (!get_family) return;
+
+    if (!GetEnvironmentVariableW(
+            L"LOCALAPPDATA",
+            g_trace_local_app_data,
+            1024)) return;
+
+    if (get_family(&family_len, g_trace_family) != ERROR_SUCCESS) return;
+
+    for (
+        i = 0;
+        g_trace_local_app_data[i] && i < 1399;
+        ++i
+    ) {
+        g_trace_path[i] = g_trace_local_app_data[i];
+    }
     if (i >= 1399) return;
+
     {
         DWORD j = 0;
-        while (packages[j] && i < 1399) path[i++] = packages[j++];
+        while (packages[j] && i < 1399) {
+            g_trace_path[i++] = packages[j++];
+        }
+
         j = 0;
-        while (family[j] && i < 1399) path[i++] = family[j++];
+        while (g_trace_family[j] && i < 1399) {
+            g_trace_path[i++] = g_trace_family[j++];
+        }
+
         j = 0;
-        while (suffix[j] && i < 1399) path[i++] = suffix[j++];
-        path[i] = 0;
+        while (suffix[j] && i < 1399) {
+            g_trace_path[i++] = suffix[j++];
+        }
+
+        g_trace_path[i] = 0;
     }
 
     r.magic = CAMPAIGN_GARAGE_TRACE_MAGIC;
@@ -286,7 +321,7 @@ static void CampaignGarageTraceWrite(
     r.revision = revision;
 
     f = CreateFileW(
-        path,
+        g_trace_path,
         GENERIC_WRITE,
         FILE_SHARE_READ | FILE_SHARE_WRITE,
         0,
