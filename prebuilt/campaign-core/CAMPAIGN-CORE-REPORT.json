@@ -58,6 +58,8 @@
     "RaceHudBindingCatalog":  "CampaignRaceHudBindings.dat",
     "RaceHudOriginalElementsOnly":  true,
     "RaceHudNewWidgetsAllowed":  false,
-    "Size":  62976,
-    "SHA256":  "41e1358b052ead6bd51ada1ba6fbb429e9f35b9f4b296740812b792aef8ed4f0"
+    "RaceHudLayout":  "UserData\\\\RaceHudLayout.dat",
+    "RaceHudLayoutPortable":  true,
+    "Size":  66560,
+    "SHA256":  "ab332504e624074b3b20b3cdf75ba70c580330563834a58e6ffba3477c6d916a"
 }
