@@ -1,0 +1,8 @@
+{
+  "format": "rextreme-replay-bindings",
+  "version": 1,
+  "build": "1.7.3.8-x86",
+  "rule": "Every Replay sample semantic must come from exact 1.7.3.8 runtime/disassembly evidence. Empty bindings keep per-frame recording disabled.",
+  "pe": null,
+  "bindings": []
+}
