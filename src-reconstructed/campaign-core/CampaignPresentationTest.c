@@ -782,7 +782,8 @@ int main(void) {
         !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_REPLAY) ||
         !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_PHOTO_MODE) ||
         !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_RACE_HUD) ||
-        !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_CHALLENGES)) return Fail(121);
+        !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_CHALLENGES) ||
+        !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_ACHIEVEMENTS)) return Fail(121);
     if (CampaignOriginalUiBindingsResolve("ui.button") != (void*)&g_test_ui_targets[4]) return Fail(122);
 
     if (CampaignRaceHudBindingsCount() != 0) return Fail(123);
@@ -901,7 +902,7 @@ int main(void) {
     if (diagnostics.verified_capability_count != 1 ||
         diagnostics.verified_binding_count != 1 ||
         diagnostics.original_ui_binding_count != 13 ||
-        diagnostics.original_ui_feature_mask != 0x3Fu ||
+        diagnostics.original_ui_feature_mask != 0x7Fu ||
         diagnostics.race_hud_binding_count != 6 ||
         diagnostics.race_hud_original_ui_ready != 1 ||
         diagnostics.race_hud_layout_count != 1) return Fail(100);
