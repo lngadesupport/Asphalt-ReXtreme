@@ -115,7 +115,8 @@ def main() -> int:
         "data": {},
         "patches": {},
         "runtime_hygiene": {},
-        "ready": False,
+        "playable_ready": False,
+        "complete_rebuild": False,
         "blocking": [],
     }
 
@@ -218,10 +219,31 @@ def main() -> int:
         ),
     }
 
-    report["ready"] = len(report["blocking"]) == 0
+    report["playable_ready"] = len(report["blocking"]) == 0
+
+    complete_states = report.get("subsystems", {})
+    report["complete_rebuild"] = (
+        report["playable_ready"]
+        and complete_states.get("garage") == "READY"
+        and complete_states.get("career") == "READY"
+        and complete_states.get("upgrade") == "READY"
+        and complete_states.get("store") == "READY"
+    )
+
+    if not report["complete_rebuild"]:
+        report["completion_gaps"] = [
+            name for name, state in complete_states.items()
+            if state != "READY"
+        ]
+    else:
+        report["completion_gaps"] = []
+
     output.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
     print(json.dumps(report, indent=2, ensure_ascii=False))
-    return 0 if report["ready"] else 2
+
+    # Return success for a stable playable Campaign build. The JSON separately
+    # states whether the literal full rebuild is complete.
+    return 0 if report["playable_ready"] else 2
 
 
 if __name__ == "__main__":
