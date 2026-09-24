@@ -13,6 +13,7 @@ EXTERN _CampaignBeginRaceFromGui:PROC
 EXTERN _CampaignFinishRaceFromGui:PROC
 EXTERN _CampaignReplayFrameFromGui:PROC
 EXTERN _CampaignPhotoFrameFromGui:PROC
+EXTERN _CampaignPhotoToggleFromGui:PROC
 EXTERN _CampaignBeginRaceAdapter:PROC
 EXTERN _CampaignPresentationInvoke:PROC
 
@@ -23,6 +24,7 @@ CAMPAIGN_RACE_BEGIN_MAGIC  EQU 0C0DEB001h
 CAMPAIGN_RACE_FINISH_MAGIC EQU 0C0DEF001h
 CAMPAIGN_REPLAY_FRAME_MAGIC EQU 0C0DEB002h
 CAMPAIGN_PHOTO_FRAME_MAGIC  EQU 0C0DEB003h
+CAMPAIGN_PHOTO_TOGGLE_MAGIC EQU 0C0DEB004h
 CAMPAIGN_CAREER_BEGIN_MAGIC EQU 0C0DEB072h
 CAMPAIGN_UPGRADE_BATCH_MAGIC EQU 0C0DE4401h
 CAMPAIGN_UPGRADE_LEGACY_MAGIC EQU 0C0DE4402h
@@ -82,6 +84,9 @@ campaign_gateway PROC
     cmp eax, CAMPAIGN_PHOTO_FRAME_MAGIC
     je campaign_photo_frame
 
+    cmp eax, CAMPAIGN_PHOTO_TOGGLE_MAGIC
+    je campaign_photo_toggle
+
     cmp eax, CAMPAIGN_CAREER_BEGIN_MAGIC
     je campaign_career_begin
 
@@ -139,6 +144,12 @@ campaign_replay_frame:
 campaign_photo_frame:
     push ecx
     call _CampaignPhotoFrameFromGui
+    add esp, 4
+    ret 4
+
+campaign_photo_toggle:
+    push ecx
+    call _CampaignPhotoToggleFromGui
     add esp, 4
     ret 4
 
