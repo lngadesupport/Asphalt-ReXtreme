@@ -166,6 +166,12 @@ const CampaignVehicleRecipe* CampaignCatalogFind(int32_t car_id) {
     return 0;
 }
 
+const CampaignVehicleRecipe* CampaignCatalogGet(uint32_t index) {
+    CampaignCatalogEnsureLoaded();
+    if (index >= g_catalog.count) return 0;
+    return &g_catalog.vehicles[index];
+}
+
 uint32_t CampaignCatalogCount(void) {
     CampaignCatalogEnsureLoaded();
     return g_catalog.count;
