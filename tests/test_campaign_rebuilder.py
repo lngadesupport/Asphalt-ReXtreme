@@ -67,7 +67,13 @@ class CampaignRebuilderTests(unittest.TestCase):
     def test_status_never_claims_portable_ready(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            status_path = write_status(root, [], ["AppxManifest.xml"], [])
+            status_path = write_status(
+                root,
+                [],
+                ["AppxManifest.xml"],
+                [],
+                {"catalog": "CampaignPresentationOptions.dat", "report": "CampaignPresentationOptions.report.json", "count": 0, "safe_empty_catalog": True},
+            )
             data = json.loads(status_path.read_text(encoding="utf-8"))
             self.assertEqual(data["edition"], "Campaign")
             self.assertFalse(data["portable_startup_ready"])
