@@ -14,6 +14,7 @@ ONLINE_FALSE = bytes.fromhex("31 C0 C3 90 90 90 90")
 POPUP_OFF = 0x009168B0
 POPUP_ORIG = bytes.fromhex("55 8B EC 6A FF")
 FILTER_LEN = 47
+LEGACY_FILTER_CAVE_OFF = 0x004693C1
 
 PROFILE_PATCHES = (
     ("local profile validation path 1", 0x0069B8C6,
@@ -110,7 +111,7 @@ def rel32(src_va: int, instr_len: int, dst_va: int) -> bytes:
 def overlaps_protected(start: int, end: int) -> bool:
     return any(start < b and end > a for a, b in PROTECTED_CAVES)
 
-def find_exec_cave(data: bytes, sections, length: int = FILTER_LEN) -> int:
+def find_exec_cave(data: bytes, sections, length: int = FILTER_LEN, allow_legacy_cave: bool = False) -> int:
     candidates = []
     for s in sections:
         if not (s["chars"] & 0x20000000):  # IMAGE_SCN_MEM_EXECUTE
@@ -132,11 +133,24 @@ def find_exec_cave(data: bytes, sections, length: int = FILTER_LEN) -> int:
             if not overlaps_protected(p, p + length):
                 candidates.append((right - left, p))
             i = max(p + 1, right)
-    if not candidates:
-        raise RuntimeError("no safe executable 0xCC cave found for popup filter")
-    # Pick the largest available island, then the highest file offset.
-    candidates.sort(key=lambda x: (x[0], x[1]), reverse=True)
-    return candidates[0][1]
+    if candidates:
+        # Pick the largest available island, then the highest file offset.
+        candidates.sort(key=lambda x: (x[0], x[1]), reverse=True)
+        return candidates[0][1]
+
+    if allow_legacy_cave:
+        legacy = LEGACY_FILTER_CAVE_OFF
+        if bytes(data[legacy:legacy+length]) != b"\xCC" * length:
+            raise RuntimeError(
+                "isolated legacy popup-filter cave is not pristine at "
+                f"0x{legacy:08X}: {fmt(bytes(data[legacy:legacy+length]))}"
+            )
+        return legacy
+
+    raise RuntimeError(
+        "no safe executable 0xCC cave found for popup filter; "
+        "legacy 0x004693C1 cave is reserved for Garage in integrated builds"
+    )
 
 def build_popup_filter(cave_va: int, popup_va: int) -> bytes:
     code = bytearray()
@@ -184,7 +198,7 @@ def detect_existing_filter(data: bytes, image_base: int, sections):
                 return target_off, target_va
     return None
 
-def apply_bytes(data: bytearray):
+def apply_bytes(data: bytearray, allow_legacy_cave: bool = False):
     if bytes(data[ONLINE_OFF:ONLINE_OFF+len(ONLINE_FALSE)]) != ONLINE_FALSE:
         raise RuntimeError("Global IsOnline must remain FALSE")
 
@@ -214,7 +228,7 @@ def apply_bytes(data: bytearray):
             + fmt(bytes(data[POPUP_OFF:POPUP_OFF+5]))
         )
 
-    cave_off = find_exec_cave(bytes(data), sections)
+    cave_off = find_exec_cave(bytes(data), sections, allow_legacy_cave=allow_legacy_cave)
     cave_va = file_to_va(cave_off, image_base, sections)
     filter_code = build_popup_filter(cave_va, popup_va)
     if bytes(data[cave_off:cave_off+FILTER_LEN]) != b"\xCC" * FILTER_LEN:
@@ -248,7 +262,7 @@ def marker_inventory(data: bytes):
             out.append({"marker": marker.decode("ascii", "replace"), "occurrences": len(hits), "offsets": hits[:64]})
     return out
 
-def apply(root: Path):
+def apply(root: Path, allow_legacy_cave: bool = False):
     ams = root / "_PACKAGE_PHASE5" / "AMS.exe"
     if not ams.is_file():
         raise FileNotFoundError(ams)
@@ -256,7 +270,7 @@ def apply(root: Path):
     raw = ams.read_bytes()
     before = sha(raw)
     data = bytearray(raw)
-    changes, cave_off, cave_va = apply_bytes(data)
+    changes, cave_off, cave_va = apply_bytes(data, allow_legacy_cave=allow_legacy_cave)
 
     bdir = root / "_BACKUPS" / "CAMPAIGN-PROFILE-V5"
     bdir.mkdir(parents=True, exist_ok=True)
@@ -301,6 +315,7 @@ def apply(root: Path):
         "sha256_before": before,
         "sha256_after": after,
         "backup": str(bak),
+        "isolated_legacy_cave_allowed": bool(allow_legacy_cave),
         "changes": changes,
     }
     report_path = trace / "CAMPAIGN-OFFLINE-SURFACE-V5.json"
@@ -319,9 +334,17 @@ def apply(root: Path):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--project-root", required=True)
+    ap.add_argument(
+        "--allow-legacy-cave",
+        action="store_true",
+        help="isolated profile/offline test only; allows historical 0x004693C1 cave",
+    )
     ns = ap.parse_args()
     try:
-        return apply(Path(ns.project_root).resolve())
+        return apply(
+            Path(ns.project_root).resolve(),
+            allow_legacy_cave=ns.allow_legacy_cave,
+        )
     except Exception as exc:
         print(f"[ERRO] {exc}")
         return 1
