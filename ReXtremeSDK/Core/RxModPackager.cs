@@ -52,4 +52,80 @@ public sealed class RxModPackager
 
         return outputFile;
     }
+
+    public IReadOnlyList<ValidationMessage> Verify(string packageFile)
+    {
+        var result = new List<ValidationMessage>();
+        if (!File.Exists(packageFile))
+            return [new ValidationMessage("ERROR", "package.missing", "Arquivo .rxmod não encontrado.", packageFile)];
+
+        try
+        {
+            using var zip = ZipFile.OpenRead(packageFile);
+
+            var duplicate = zip.Entries
+                .GroupBy(e => e.FullName, StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault(g => g.Count() > 1);
+            if (duplicate is not null)
+                result.Add(new("ERROR", "package.duplicate_entry", $"Entrada duplicada no ZIP: {duplicate.Key}", packageFile));
+
+            var indexEntry = zip.GetEntry("_rextreme/package-index.json");
+            if (indexEntry is null)
+            {
+                result.Add(new("ERROR", "package.index_missing", "Índice _rextreme/package-index.json não encontrado.", packageFile));
+                return result;
+            }
+
+            using var indexStream = indexEntry.Open();
+            using var doc = JsonDocument.Parse(indexStream);
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("format", out var format) || format.GetString() != "rxmod")
+                result.Add(new("ERROR", "package.format", "Formato de pacote inválido.", packageFile));
+
+            if (!root.TryGetProperty("files", out var files) || files.ValueKind != JsonValueKind.Array)
+            {
+                result.Add(new("ERROR", "package.index_invalid", "Índice não possui lista de arquivos.", packageFile));
+                return result;
+            }
+
+            var indexed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var item in files.EnumerateArray())
+            {
+                var path = item.GetProperty("path").GetString() ?? "";
+                var expectedSize = item.GetProperty("size").GetInt64();
+                var expectedHash = item.GetProperty("sha256").GetString() ?? "";
+                indexed.Add(path);
+
+                var entry = zip.GetEntry(path);
+                if (entry is null)
+                {
+                    result.Add(new("ERROR", "package.file_missing", $"Arquivo ausente: {path}", packageFile));
+                    continue;
+                }
+                if (entry.Length != expectedSize)
+                    result.Add(new("ERROR", "package.size", $"Tamanho divergente: {path}", packageFile));
+
+                using var stream = entry.Open();
+                using var sha = SHA256.Create();
+                var actual = Convert.ToHexString(sha.ComputeHash(stream)).ToLowerInvariant();
+                if (!actual.Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
+                    result.Add(new("ERROR", "package.sha256", $"SHA-256 divergente: {path}", packageFile));
+            }
+
+            foreach (var entry in zip.Entries)
+            {
+                if (entry.FullName == "_rextreme/package-index.json") continue;
+                if (!indexed.Contains(entry.FullName))
+                    result.Add(new("WARNING", "package.unindexed", $"Entrada não indexada: {entry.FullName}", packageFile));
+            }
+
+            if (!result.Any(x => x.Level == "ERROR"))
+                result.Add(new("INFO", "package.valid", "Pacote .rxmod íntegro.", packageFile));
+        }
+        catch (Exception ex)
+        {
+            result.Add(new("ERROR", "package.invalid", ex.Message, packageFile));
+        }
+        return result;
+    }
 }
