@@ -29,7 +29,9 @@ $files=@(
   @{Commit="4cd77ca30e43796c925eff48df961d166ad63457"; Path="tools/campaign_career_adapter_v3.py"},
   @{Commit="e20ac2b853e71220e4eb2ef66bd3c77872cc0ff6"; Path="tools/campaign_career_adapter_v2.py"},
   @{Commit="e9b74d4acfb10b61031032603b441d3348a00618"; Path="tools/read_garage_trace.ps1"},
-  @{Commit="15a1578cfe036a4bf09c4afdf817549b69f70b80"; Path="prebuilt/campaign-core/IGPLib_x86.dll"}
+  @{Commit="cd509d42293b249a8654c5a6c5467d6cf6857a47"; Path="prebuilt/campaign-core/IGPLib_x86.dll"},
+  @{Commit="9a912f2335ed1eb6cc61f568916862a602865fa8"; Path="config/OFFLINE-AUTHORITY.json"},
+  @{Commit="bdeaea35e04faf7ffb8a141df35fe0a2b75707e0"; Path="tools/audit_offline_authority.py"}
 )
 
 foreach($f in $files){
@@ -46,7 +48,7 @@ foreach($f in $files){
 }
 
 $core=Join-Path $ProjectRoot "prebuilt\campaign-core\IGPLib_x86.dll"
-$expected="8f6149631b1956efed4133a7601b9ef84f4785580e364467aa39505b792407ca"
+$expected="39ba4be14f1cc7a95ff268f1599f077459d0dfb4f9f74dff9e4f3c9a96954ed4"
 $got=(Get-FileHash -LiteralPath $core -Algorithm SHA256).Hash.ToLowerInvariant()
 if($got-ne$expected){
   throw "Campaign Core SHA256 mismatch. Expected $expected got $got"
@@ -61,7 +63,15 @@ Write-Host "Generic ownership primitive: untouched"
 Write-Host "Startup authority: CampaignStartupService"
 Write-Host "Garage authority: CampaignGarageService"
 Write-Host "Career authority: Campaign Career v3"
+Write-Host "Network authority: hard denied"
+Write-Host "Multiplayer: not allowed in Campaign Edition"
 Write-Host ""
+
+$python=Join-Path $ProjectRoot "runtime\python312-x86\python.exe"
+if(Test-Path -LiteralPath $python -PathType Leaf){
+  & $python (Join-Path $ProjectRoot "tools\audit_offline_authority.py") --project-root $ProjectRoot
+  if($LASTEXITCODE-ne0){throw "Offline authority audit failed: $LASTEXITCODE"}
+}
 
 & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ProjectRoot "tools\test_frontend_only_v2.ps1") -ProjectRoot $ProjectRoot
 exit $LASTEXITCODE
