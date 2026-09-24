@@ -336,6 +336,40 @@ public partial class MainWindow : Window
         catch (Exception ex) { Fail(ex); }
     }
 
+    private void CreateReplayPreset_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var file = ContentTemplateService.CreateReplayPreset(ProjectRoot, "local.replay.default", "ReXtreme Replay");
+            Log($"Preset de Replay criado: {file}");
+            RefreshProjectTree();
+        }
+        catch (Exception ex) { Fail(ex); }
+    }
+
+    private void CreatePhotoPreset_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var file = ContentTemplateService.CreatePhotoPreset(ProjectRoot, "local.photo.default", "ReXtreme Photo Mode");
+            Log($"Preset de Photo Mode criado: {file}");
+            RefreshProjectTree();
+        }
+        catch (Exception ex) { Fail(ex); }
+    }
+
+    private void CreateGraphicsPreset_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var file = ContentTemplateService.CreateGraphicsCapabilityPreset(
+                ProjectRoot, "local.graphics.original-capabilities", "Original Renderer Capabilities");
+            Log($"Preset gráfico auditável criado: {file}");
+            RefreshProjectTree();
+        }
+        catch (Exception ex) { Fail(ex); }
+    }
+
     private void CreateHud_Click(object sender, RoutedEventArgs e)
     {
         try
