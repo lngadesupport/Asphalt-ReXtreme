@@ -14,19 +14,22 @@ spec.loader.exec_module(mod)
 def write_caps(path: Path, caps: list[dict]) -> None:
     path.write_text(json.dumps({
         "format": "rextreme-presentation-capabilities",
-        "version": mod.VERSION,
+        "version": 1,
         "build": "1.7.3.8-x86",
         "capabilities": caps,
     }), encoding="utf-8")
 
 
-def write_bindings(path: Path, bindings: list[dict]) -> None:
-    path.write_text(json.dumps({
+def write_bindings(path: Path, bindings: list[dict], target_pe: dict | None = None) -> None:
+    payload = {
         "format": "rextreme-presentation-bindings",
-        "version": 1,
+        "version": mod.VERSION,
         "build": "1.7.3.8-x86",
         "bindings": bindings,
-    }), encoding="utf-8")
+    }
+    if target_pe is not None:
+        payload["target_pe"] = target_pe
+    path.write_text(json.dumps(payload), encoding="utf-8")
 
 
 def verified_fov_cap() -> dict:
