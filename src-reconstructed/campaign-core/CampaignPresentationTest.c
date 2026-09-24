@@ -27,7 +27,27 @@ typedef struct TestBindingHeader {
     uint32_t count;
     uint32_t entry_size;
     uint32_t entries_hash;
+    uint32_t pe_time_date_stamp;
+    uint32_t pe_size_of_image;
 } TestBindingHeader;
+
+static int CurrentTestPeFingerprint(uint32_t* stamp, uint32_t* size_of_image) {
+    unsigned char* module;
+    uint32_t pe_off;
+    unsigned char* pe;
+
+    if (!stamp || !size_of_image) return 0;
+    module = (unsigned char*)GetModuleHandleW(0);
+    if (!module || module[0] != 'M' || module[1] != 'Z') return 0;
+    pe_off = *(uint32_t*)(module + 0x3C);
+    pe = module + pe_off;
+    if (pe[0] != 'P' || pe[1] != 'E' || pe[2] != 0 || pe[3] != 0) return 0;
+    if (*(uint16_t*)(pe + 24) != 0x010B) return 0;
+
+    *stamp = *(uint32_t*)(pe + 8);
+    *size_of_image = *(uint32_t*)(pe + 24 + 56);
+    return 1;
+}
 
 static uint32_t TestFnv1a(const unsigned char* data, uint32_t count) {
     uint32_t h = 2166136261u;
@@ -201,9 +221,12 @@ static int WriteTestBindingCatalog(void) {
     binding.flags = CAMPAIGN_PRESENTATION_BINDING_VERIFIED;
 
     header.magic = 0x42505852u;
-    header.version = 1;
+    header.version = 2;
     header.count = 1;
     header.entry_size = sizeof(CampaignPresentationBinding);
+    if (!CurrentTestPeFingerprint(
+            &header.pe_time_date_stamp,
+            &header.pe_size_of_image)) return 0;
     header.entries_hash = TestFnv1a(
         (const unsigned char*)&binding,
         (uint32_t)sizeof(binding)
