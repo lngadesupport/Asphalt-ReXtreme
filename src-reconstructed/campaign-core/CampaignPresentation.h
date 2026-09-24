@@ -202,7 +202,11 @@ enum CampaignPresentationOp {
     CAMPAIGN_PRESENTATION_OP_REPLAY_LIBRARY_LOAD = 53,
     CAMPAIGN_PRESENTATION_OP_REPLAY_LIBRARY_DELETE = 54,
 
-    CAMPAIGN_PRESENTATION_OP_DIAGNOSTICS = 60
+    CAMPAIGN_PRESENTATION_OP_DIAGNOSTICS = 60,
+
+    CAMPAIGN_PRESENTATION_OP_ORIGINAL_UI_RELOAD = 70,
+    CAMPAIGN_PRESENTATION_OP_ORIGINAL_UI_COUNT = 71,
+    CAMPAIGN_PRESENTATION_OP_ORIGINAL_UI_FEATURE_READY = 72
 };
 
 typedef struct CampaignPresentationDiagnostics {
@@ -222,6 +226,8 @@ typedef struct CampaignPresentationDiagnostics {
     uint32_t photo_free_camera_ready;
     uint32_t replay_binding_count;
     uint32_t replay_recording_ready;
+    uint32_t original_ui_binding_count;
+    uint32_t original_ui_feature_mask;
 } CampaignPresentationDiagnostics;
 
 typedef struct CampaignPresentationCommand {
