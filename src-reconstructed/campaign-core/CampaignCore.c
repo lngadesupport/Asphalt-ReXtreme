@@ -1893,6 +1893,29 @@ int __cdecl CampaignReplayFrameFromGui(void* game_mode_gui) {
     return 0;
 }
 
+int __cdecl CampaignPhotoFrameFromGui(void* game_mode_gui) {
+    CampaignPresentationSettings settings;
+    CampaignPhotoState photo;
+
+    if (!game_mode_gui) return 0;
+
+    ZeroBytes(&settings, (uint32_t)sizeof(settings));
+    settings.size = (uint32_t)sizeof(settings);
+    if (!CampaignPresentationGetSettings(&settings)) return 0;
+    if (!(settings.flags & CAMPAIGN_PRESENTATION_PHOTO_ENABLED)) return 0;
+
+    ZeroBytes(&photo, (uint32_t)sizeof(photo));
+    photo.size = (uint32_t)sizeof(photo);
+    if (!CampaignPhotoGet(&photo) || !photo.active) return 0;
+
+    /*
+      Do not guess camera/HUD offsets. A verified Photo binding adapter will
+      apply this state to the preserved Asphalt Xtreme camera only after the
+      exact original chain is proven.
+    */
+    return 0;
+}
+
 int __cdecl CampaignFinishRaceFromGui(void* game_mode_gui) {
     CampaignRaceMetrics metrics;
     int finish_status;
