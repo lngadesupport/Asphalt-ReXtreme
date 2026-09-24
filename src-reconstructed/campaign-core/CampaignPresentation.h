@@ -167,6 +167,7 @@ enum CampaignPresentationOp {
     CAMPAIGN_PRESENTATION_OP_FOV_SIMPLE_GET = 6,
     CAMPAIGN_PRESENTATION_OP_FOV_SIMPLE_SET = 7,
     CAMPAIGN_PRESENTATION_OP_FOV_SIMPLE_RESET = 8,
+    CAMPAIGN_PRESENTATION_OP_CAPABILITY_READY = 9,
 
     CAMPAIGN_PRESENTATION_OP_CAPABILITY_RELOAD = 10,
     CAMPAIGN_PRESENTATION_OP_CAPABILITY_COUNT = 11,
@@ -239,6 +240,7 @@ typedef struct CampaignPresentationDiagnostics {
     uint32_t size;
     uint32_t settings_revision;
     uint32_t verified_capability_count;
+    uint32_t runtime_ready_capability_count;
     uint32_t verified_binding_count;
     uint32_t replay_recording;
     uint32_t replay_sample_count;
