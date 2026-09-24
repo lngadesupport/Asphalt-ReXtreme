@@ -9,6 +9,7 @@
 #include "CampaignRaceHudLayout.h"
 
 static volatile int32_t g_test_bound_fov;
+static volatile int32_t g_test_bound_shadow_quality;
 static volatile float g_test_photo_x;
 static volatile float g_test_photo_y;
 static volatile float g_test_photo_z;
@@ -266,27 +267,39 @@ static int WriteTestRaceHudCatalog(void) {
 static int WriteTestCapabilityCatalog(void) {
     const WCHAR* path = L"prebuilt\\campaign-core\\CampaignPresentationOptions.dat";
     TestCatalogHeader header;
-    CampaignPresentationCapability capability;
+    CampaignPresentationCapability capabilities[2];
     HANDLE h;
     DWORD written = 0;
-    const char id[] = "fov";
-    uint32_t i;
+    static const char* ids[2] = {"fov", "shadow_quality"};
+    uint32_t i, j;
 
     ZeroMemory(&header, sizeof(header));
-    ZeroMemory(&capability, sizeof(capability));
+    ZeroMemory(capabilities, sizeof(capabilities));
 
     header.magic = 0x43505852u;
     header.version = 1;
-    header.count = 1;
+    header.count = 2;
     header.entry_size = sizeof(CampaignPresentationCapability);
 
-    for (i = 0; i < sizeof(id); ++i) capability.id[i] = id[i];
-    capability.kind = CAMPAIGN_PRESENTATION_CAPABILITY_SLIDER;
-    capability.minimum = 5000;
-    capability.maximum = 10000;
-    capability.step = 100;
-    capability.original_value = 7000;
-    capability.flags = CAMPAIGN_PRESENTATION_CAPABILITY_VERIFIED;
+    for (i = 0; i < 2; ++i) {
+        for (j = 0; ids[i][j] && j + 1 < CAMPAIGN_PRESENTATION_CAPABILITY_ID_MAX; ++j) {
+            capabilities[i].id[j] = ids[i][j];
+        }
+        capabilities[i].id[j] = 0;
+        capabilities[i].flags = CAMPAIGN_PRESENTATION_CAPABILITY_VERIFIED;
+    }
+
+    capabilities[0].kind = CAMPAIGN_PRESENTATION_CAPABILITY_SLIDER;
+    capabilities[0].minimum = 5000;
+    capabilities[0].maximum = 10000;
+    capabilities[0].step = 100;
+    capabilities[0].original_value = 7000;
+
+    capabilities[1].kind = CAMPAIGN_PRESENTATION_CAPABILITY_CHOICE;
+    capabilities[1].minimum = 0;
+    capabilities[1].maximum = 3;
+    capabilities[1].step = 1;
+    capabilities[1].original_value = 2;
 
     h = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
     if (h == INVALID_HANDLE_VALUE) return 0;
@@ -297,7 +310,8 @@ static int WriteTestCapabilityCatalog(void) {
     }
 
     written = 0;
-    if (!WriteFile(h, &capability, sizeof(capability), &written, 0) || written != sizeof(capability)) {
+    if (!WriteFile(h, capabilities, sizeof(capabilities), &written, 0) ||
+        written != sizeof(capabilities)) {
         CloseHandle(h);
         return 0;
     }
@@ -389,42 +403,48 @@ static int WriteTestPhotoBindingCatalog(void) {
 static int WriteTestBindingCatalog(void) {
     const WCHAR* path = L"prebuilt\\campaign-core\\CampaignPresentationBindings.dat";
     TestBindingHeader header;
-    CampaignPresentationBinding binding;
+    CampaignPresentationBinding bindings[2];
     HANDLE h;
     DWORD written = 0;
     HMODULE module;
     uintptr_t base;
-    uintptr_t target;
-    const char id[] = "fov";
-    uint32_t i;
+    uintptr_t targets[2];
+    static const char* ids[2] = {"fov", "shadow_quality"};
+    uint32_t i, j;
 
     ZeroMemory(&header, sizeof(header));
-    ZeroMemory(&binding, sizeof(binding));
+    ZeroMemory(bindings, sizeof(bindings));
 
     module = GetModuleHandleW(0);
     if (!module) return 0;
     base = (uintptr_t)module;
-    target = (uintptr_t)&g_test_bound_fov;
-    if (target <= base || target - base > 0xFFFFFFFFu) return 0;
+    targets[0] = (uintptr_t)&g_test_bound_fov;
+    targets[1] = (uintptr_t)&g_test_bound_shadow_quality;
 
-    for (i = 0; i < sizeof(id); ++i) binding.id[i] = id[i];
-    binding.base_kind = CAMPAIGN_PRESENTATION_BASE_MODULE_RVA;
-    binding.target_rva = (uint32_t)(target - base);
-    binding.field_offset = 0;
-    binding.value_kind = CAMPAIGN_PRESENTATION_VALUE_I32;
-    binding.scale_divisor = 1;
-    binding.flags = CAMPAIGN_PRESENTATION_BINDING_VERIFIED;
+    for (i = 0; i < 2; ++i) {
+        if (targets[i] <= base || targets[i] - base > 0xFFFFFFFFu) return 0;
+        for (j = 0; ids[i][j] && j + 1 < CAMPAIGN_PRESENTATION_BINDING_ID_MAX; ++j) {
+            bindings[i].id[j] = ids[i][j];
+        }
+        bindings[i].id[j] = 0;
+        bindings[i].base_kind = CAMPAIGN_PRESENTATION_BASE_MODULE_RVA;
+        bindings[i].target_rva = (uint32_t)(targets[i] - base);
+        bindings[i].field_offset = 0;
+        bindings[i].value_kind = CAMPAIGN_PRESENTATION_VALUE_I32;
+        bindings[i].scale_divisor = 1;
+        bindings[i].flags = CAMPAIGN_PRESENTATION_BINDING_VERIFIED;
+    }
 
     header.magic = 0x42505852u;
     header.version = 2;
-    header.count = 1;
+    header.count = 2;
     header.entry_size = sizeof(CampaignPresentationBinding);
     if (!CurrentTestPeFingerprint(
             &header.pe_time_date_stamp,
             &header.pe_size_of_image)) return 0;
     header.entries_hash = TestFnv1a(
-        (const unsigned char*)&binding,
-        (uint32_t)sizeof(binding)
+        (const unsigned char*)bindings,
+        (uint32_t)sizeof(bindings)
     );
 
     h = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
@@ -436,7 +456,8 @@ static int WriteTestBindingCatalog(void) {
     }
 
     written = 0;
-    if (!WriteFile(h, &binding, sizeof(binding), &written, 0) || written != sizeof(binding)) {
+    if (!WriteFile(h, bindings, sizeof(bindings), &written, 0) ||
+        written != sizeof(bindings)) {
         CloseHandle(h);
         return 0;
     }
@@ -534,6 +555,13 @@ int main(void) {
     if (!CampaignPresentationSaveSettings()) return Fail(15);
     if (!CampaignPresentationResetSettings()) return Fail(16);
     if (!CampaignPresentationLoadSettings()) return Fail(17);
+
+    g_test_bound_shadow_quality = 2;
+    if (!CampaignPresentationCatalogSetValue(1, 3)) return Fail(163);
+    if (g_test_bound_shadow_quality != 3) return Fail(164);
+    g_test_bound_shadow_quality = -1;
+    if (!CampaignPresentationCatalogApplyStoredValues()) return Fail(165);
+    if (g_test_bound_shadow_quality != 3) return Fail(166);
 
     ZeroMemory(&loaded, sizeof(loaded));
     loaded.size = sizeof(loaded);
@@ -876,7 +904,7 @@ int main(void) {
     if (CampaignPresentationCatalogCount() != 0) return Fail(50);
     if (!WriteTestCapabilityCatalog()) return Fail(51);
     if (!CampaignPresentationCatalogLoad()) return Fail(52);
-    if (CampaignPresentationCatalogCount() != 1) return Fail(83);
+    if (CampaignPresentationCatalogCount() != 2) return Fail(83);
     if (CampaignPresentationCatalogRuntimeReadyCount() != 0) return Fail(155);
     if (CampaignPresentationCapabilityRuntimeReady(0)) return Fail(156);
 
@@ -887,9 +915,10 @@ int main(void) {
 
     if (!WriteTestBindingCatalog()) return Fail(84);
     if (!CampaignPresentationBindingsLoad()) return Fail(85);
-    if (CampaignPresentationBindingsCount() != 1) return Fail(86);
-    if (CampaignPresentationCatalogRuntimeReadyCount() != 1) return Fail(159);
-    if (!CampaignPresentationCapabilityRuntimeReady(0)) return Fail(160);
+    if (CampaignPresentationBindingsCount() != 2) return Fail(86);
+    if (CampaignPresentationCatalogRuntimeReadyCount() != 2) return Fail(159);
+    if (!CampaignPresentationCapabilityRuntimeReady(0) ||
+        !CampaignPresentationCapabilityRuntimeReady(1)) return Fail(160);
 
     g_test_bound_fov = 7000;
     ZeroMemory(&simple_fov, sizeof(simple_fov));
@@ -942,9 +971,9 @@ int main(void) {
     ZeroMemory(&diagnostics, sizeof(diagnostics));
     diagnostics.size = sizeof(diagnostics);
     if (!CampaignPresentationGetDiagnostics(&diagnostics)) return Fail(99);
-    if (diagnostics.verified_capability_count != 1 ||
-        diagnostics.runtime_ready_capability_count != 1 ||
-        diagnostics.verified_binding_count != 1 ||
+    if (diagnostics.verified_capability_count != 2 ||
+        diagnostics.runtime_ready_capability_count != 2 ||
+        diagnostics.verified_binding_count != 2 ||
         diagnostics.original_ui_binding_count != 13 ||
         diagnostics.original_ui_feature_mask != 0x7Fu ||
         diagnostics.race_hud_binding_count != 6 ||
