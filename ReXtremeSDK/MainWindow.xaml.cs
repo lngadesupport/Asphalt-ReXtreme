@@ -450,6 +450,27 @@ public partial class MainWindow : Window
         catch (Exception ex) { Fail(ex); }
     }
 
+    private void SaveTrack_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var geometry = TrackGeometryBox.Text.Trim();
+            if (string.IsNullOrWhiteSpace(geometry))
+                throw new InvalidDataException("A pista precisa de uma geometria.");
+
+            var file = ContentTemplateService.CreateTrack(
+                ProjectRoot,
+                TrackIdBox.Text.Trim(),
+                TrackNameBox.Text.Trim(),
+                geometry,
+                TrackCollisionBox.Text,
+                TrackEnvironmentBox.Text);
+            Log($"Pista salva: {file}");
+            RefreshProjectTree();
+        }
+        catch (Exception ex) { Fail(ex); }
+    }
+
     private void ImportLiveryTexture_Click(object sender, RoutedEventArgs e)
     {
         try
