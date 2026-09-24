@@ -26,6 +26,9 @@
     "CareerPreSelector":  "0xC0DECA72",
     "CareerPostSelector":  "0xC0DECA73",
     "PresentationSelector":  "0xC0DECA90",
+    "ReplayFrameSelector":  "0xC0DEB002",
+    "ReplayFrameBindingRegistry":  "config/replay-frame-binding.verified.json",
+    "ReplayFrameBindingVerified":  false,
     "PresentationSettings":  "ReXtremePresentation.dat",
     "ReplayFormat":  ".rexreplay",
     "ReplayRuntimeFoundation":  true,
@@ -34,5 +37,5 @@
     "PresentationCapabilityCatalog":  "CampaignPresentationOptions.dat",
     "UnverifiedPresentationOptionsVisible":  false,
     "Size":  46080,
-    "SHA256":  "ac32b60807faee661519e068593bab8ccd51fa99de19f39c9f197fc6fb739395"
+    "SHA256":  "ac40c50dbca6d73c3f2eb94a7bd1649ea372cb75ff6ad5227bb2df40d201b88e"
 }
