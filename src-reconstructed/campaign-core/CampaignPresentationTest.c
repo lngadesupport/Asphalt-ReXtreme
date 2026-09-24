@@ -2,6 +2,9 @@
 #include <windows.h>
 #include <stdint.h>
 #include "CampaignPresentation.h"
+#include "CampaignPresentationBindings.h"
+
+static volatile int32_t g_test_bound_fov;
 
 typedef struct TestCatalogHeader {
     uint32_t magic;
@@ -9,6 +12,24 @@ typedef struct TestCatalogHeader {
     uint32_t count;
     uint32_t entry_size;
 } TestCatalogHeader;
+
+typedef struct TestBindingHeader {
+    uint32_t magic;
+    uint32_t version;
+    uint32_t count;
+    uint32_t entry_size;
+    uint32_t entries_hash;
+} TestBindingHeader;
+
+static uint32_t TestFnv1a(const unsigned char* data, uint32_t count) {
+    uint32_t h = 2166136261u;
+    uint32_t i;
+    for (i = 0; i < count; ++i) {
+        h ^= data[i];
+        h *= 16777619u;
+    }
+    return h;
+}
 
 static int Fail(int code) {
     return code;
@@ -49,6 +70,62 @@ static int WriteTestCapabilityCatalog(void) {
 
     written = 0;
     if (!WriteFile(h, &capability, sizeof(capability), &written, 0) || written != sizeof(capability)) {
+        CloseHandle(h);
+        return 0;
+    }
+
+    CloseHandle(h);
+    return 1;
+}
+
+static int WriteTestBindingCatalog(void) {
+    const WCHAR* path = L"prebuilt\\campaign-core\\CampaignPresentationBindings.dat";
+    TestBindingHeader header;
+    CampaignPresentationBinding binding;
+    HANDLE h;
+    DWORD written = 0;
+    HMODULE module;
+    uintptr_t base;
+    uintptr_t target;
+    const char id[] = "fov";
+    uint32_t i;
+
+    ZeroMemory(&header, sizeof(header));
+    ZeroMemory(&binding, sizeof(binding));
+
+    module = GetModuleHandleW(0);
+    if (!module) return 0;
+    base = (uintptr_t)module;
+    target = (uintptr_t)&g_test_bound_fov;
+    if (target <= base || target - base > 0xFFFFFFFFu) return 0;
+
+    for (i = 0; i < sizeof(id); ++i) binding.id[i] = id[i];
+    binding.base_kind = CAMPAIGN_PRESENTATION_BASE_MODULE_RVA;
+    binding.target_rva = (uint32_t)(target - base);
+    binding.field_offset = 0;
+    binding.value_kind = CAMPAIGN_PRESENTATION_VALUE_I32;
+    binding.scale_divisor = 1;
+    binding.flags = CAMPAIGN_PRESENTATION_BINDING_VERIFIED;
+
+    header.magic = 0x42505852u;
+    header.version = 1;
+    header.count = 1;
+    header.entry_size = sizeof(CampaignPresentationBinding);
+    header.entries_hash = TestFnv1a(
+        (const unsigned char*)&binding,
+        (uint32_t)sizeof(binding)
+    );
+
+    h = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+    if (h == INVALID_HANDLE_VALUE) return 0;
+
+    if (!WriteFile(h, &header, sizeof(header), &written, 0) || written != sizeof(header)) {
+        CloseHandle(h);
+        return 0;
+    }
+
+    written = 0;
+    if (!WriteFile(h, &binding, sizeof(binding), &written, 0) || written != sizeof(binding)) {
         CloseHandle(h);
         return 0;
     }
@@ -314,16 +391,24 @@ int main(void) {
     if (!WriteTestCapabilityCatalog()) return Fail(51);
     if (!CampaignPresentationCatalogLoad()) return Fail(52);
     if (CampaignPresentationCatalogCount() != 1) return Fail(83);
+    if (!WriteTestBindingCatalog()) return Fail(84);
+    if (!CampaignPresentationBindingsLoad()) return Fail(85);
+    if (CampaignPresentationBindingsCount() != 1) return Fail(86);
 
+    g_test_bound_fov = 7000;
     {
         int32_t value = 0;
-        if (!CampaignPresentationCatalogGetValue(0, &value)) return Fail(84);
-        if (value != 7000) return Fail(85);
-        if (!CampaignPresentationCatalogSetValue(0, 7500)) return Fail(86);
-        if (CampaignPresentationCatalogSetValue(0, 7555)) return Fail(87);
-        if (!CampaignPresentationCatalogGetValue(0, &value) || value != 7500) return Fail(88);
-        if (!CampaignPresentationCatalogResetValue(0)) return Fail(89);
-        if (!CampaignPresentationCatalogGetValue(0, &value) || value != 7000) return Fail(90);
+        int32_t bound = 0;
+        if (!CampaignPresentationCatalogGetValue(0, &value)) return Fail(87);
+        if (value != 7000) return Fail(88);
+        if (!CampaignPresentationCatalogSetValue(0, 7500)) return Fail(89);
+        if (g_test_bound_fov != 7500) return Fail(90);
+        if (!CampaignPresentationBindingsRead("fov", &bound) || bound != 7500) return Fail(91);
+        if (CampaignPresentationCatalogSetValue(0, 7555)) return Fail(92);
+        if (!CampaignPresentationCatalogGetValue(0, &value) || value != 7500) return Fail(93);
+        if (!CampaignPresentationCatalogResetValue(0)) return Fail(94);
+        if (g_test_bound_fov != 7000) return Fail(95);
+        if (!CampaignPresentationCatalogGetValue(0, &value) || value != 7000) return Fail(96);
     }
 
     ZeroMemory(&loaded, sizeof(loaded));
@@ -339,6 +424,7 @@ int main(void) {
     DeleteFileW(L"prebuilt\\campaign-core\\ReXtremePresentation.bak");
     DeleteFileW(auto_path);
     DeleteFileW(L"prebuilt\\campaign-core\\CampaignPresentationOptions.dat");
+    DeleteFileW(L"prebuilt\\campaign-core\\CampaignPresentationBindings.dat");
     DeleteFileW(L"prebuilt\\campaign-core\\ReXtreme.ini");
 
     return 0;
