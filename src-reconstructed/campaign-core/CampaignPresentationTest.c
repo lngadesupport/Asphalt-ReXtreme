@@ -509,6 +509,8 @@ int main(void) {
     diagnostics.size = sizeof(diagnostics);
     if (!CampaignPresentationGetDiagnostics(&diagnostics)) return Fail(45);
     if (diagnostics.photo_active != 0) return Fail(46);
+    if (diagnostics.photo_binding_count != 7 ||
+        !diagnostics.photo_free_camera_ready) return Fail(55);
 
     if (CampaignPresentationCatalogCount() != 0) return Fail(50);
     if (!WriteTestCapabilityCatalog()) return Fail(51);
