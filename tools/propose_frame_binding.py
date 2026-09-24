@@ -91,7 +91,12 @@ def build_proposal(
         raise ProposalError("candidate method VA is not file-backed")
 
     cave_off, cave_va, cave_run = find_cc_cave(pe, cave_length, site_off, len(expected))
-    fmt = "rextreme-replay-frame-binding" if kind == "replay" else "rextreme-photo-frame-binding"
+    if kind == "replay":
+        fmt = "rextreme-replay-frame-binding"
+    elif kind == "photo":
+        fmt = "rextreme-photo-frame-binding"
+    else:
+        fmt = "rextreme-photo-toggle-binding"
 
     return {
         "format": fmt,
@@ -133,7 +138,7 @@ def main() -> int:
     ap.add_argument("audit", type=Path)
     ap.add_argument("ams", type=Path)
     ap.add_argument("--method-va", required=True, type=parse_int)
-    ap.add_argument("--kind", required=True, choices=["replay", "photo"])
+    ap.add_argument("--kind", required=True, choices=["replay", "photo", "photo-toggle"])
     ap.add_argument("--cave-length", type=int, default=64)
     ap.add_argument("--out", required=True, type=Path)
     ns = ap.parse_args()
