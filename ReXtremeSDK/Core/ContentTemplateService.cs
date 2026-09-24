@@ -115,10 +115,25 @@ public static class ContentTemplateService
         });
 
     public static string CreateLivery(string projectRoot, string id, string name, string vehicle) =>
+        CreateLivery(projectRoot, id, name, vehicle, "#FFFFFF", null);
+
+    public static string CreateLivery(string projectRoot, string id, string name, string vehicle, string baseColor, string? textureSource) =>
         Write(projectRoot, "content/liveries", id, new
         {
-            schema_version = 1, id, name, vehicle,
-            layers = new object[] { new { type = "paint", source = (string?)null, opacity = 1.0, transform = (object?)null } }
+            schema_version = 1,
+            id,
+            name,
+            vehicle,
+            layers = string.IsNullOrWhiteSpace(textureSource)
+                ? new object[]
+                {
+                    new { type = "paint", color = baseColor, source = (string?)null, opacity = 1.0, transform = (object?)null }
+                }
+                : new object[]
+                {
+                    new { type = "paint", color = baseColor, source = (string?)null, opacity = 1.0, transform = (object?)null },
+                    new { type = "texture", color = (string?)null, source = textureSource, opacity = 1.0, transform = (object?)null }
+                }
         });
 
     public static string SaveHudLayout(string projectRoot, string id, IEnumerable<RxHudComponent> components)
