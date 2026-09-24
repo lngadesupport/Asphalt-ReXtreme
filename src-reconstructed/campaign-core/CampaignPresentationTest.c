@@ -106,6 +106,7 @@ int main(void) {
     CampaignReplayMarker marker_readback;
     CampaignReplayInfo info;
     CampaignReplayPlaybackState playback;
+    CampaignReplayLibraryEntry library_entry;
     CampaignPhotoState photo;
     CampaignPhotoState photo_readback;
     CampaignPresentationDiagnostics diagnostics;
@@ -122,6 +123,7 @@ int main(void) {
     ZeroMemory(&marker_readback, sizeof(marker_readback));
     ZeroMemory(&info, sizeof(info));
     ZeroMemory(&playback, sizeof(playback));
+    ZeroMemory(&library_entry, sizeof(library_entry));
     ZeroMemory(&photo, sizeof(photo));
     ZeroMemory(&photo_readback, sizeof(photo_readback));
     ZeroMemory(&diagnostics, sizeof(diagnostics));
@@ -193,6 +195,21 @@ int main(void) {
     DeleteFileW(auto_path);
     if (!CampaignReplaySaveAuto()) return Fail(28);
     if (GetFileAttributesW(auto_path) == INVALID_FILE_ATTRIBUTES) return Fail(28);
+
+    if (!CampaignReplayLibraryRefresh()) return Fail(28);
+    if (CampaignReplayLibraryCount() != 1) return Fail(28);
+
+    library_entry.size = sizeof(library_entry);
+    if (!CampaignReplayLibraryGet(0, &library_entry)) return Fail(28);
+    if (library_entry.metadata.event_id != 101 ||
+        library_entry.metadata.session_id != 0x12345678u ||
+        library_entry.sample_count != 2 ||
+        library_entry.marker_count != 1 ||
+        library_entry.duration_ms != 100) return Fail(28);
+
+    if (!CampaignReplayLibraryLoad(0)) return Fail(28);
+    if (!CampaignReplayLibraryDelete(0)) return Fail(28);
+    if (CampaignReplayLibraryCount() != 0) return Fail(28);
 
     if (!CampaignReplayClear()) return Fail(29);
     if (!CampaignReplayLoad(replay_path)) return Fail(30);
