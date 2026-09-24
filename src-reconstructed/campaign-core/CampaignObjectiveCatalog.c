@@ -163,7 +163,7 @@ uint32_t CampaignObjectiveCatalogCount(void) {
     return g_objectives.count;
 }
 
-static int MetricValue(
+int CampaignObjectiveMetricValue(
     const CampaignRaceMetrics* m,
     int32_t metric,
     int32_t* value
@@ -227,7 +227,7 @@ int CampaignObjectiveEvaluate(
         if (e->event_id > event_id) break;
 
         found = 1;
-        if (!MetricValue(metrics, e->metric, &value)) return 0;
+        if (!CampaignObjectiveMetricValue(metrics, e->metric, &value)) return 0;
 
         if (Passes(value, e->compare, e->threshold)) {
             stars += e->stars;
