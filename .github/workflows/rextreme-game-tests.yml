@@ -17,6 +17,7 @@ on:
       - "tools/build_campaign_achievement_catalog.py"
       - "tools/build_campaign_special_event_catalog.py"
       - "tools/build_campaign_championship_catalog.py"
+      - "tools/build_campaign_season_catalog.py"
       - "config/presentation-capabilities.verified.json"
       - "config/presentation-bindings.verified.json"
       - "config/photo-bindings.verified.json"
@@ -27,6 +28,7 @@ on:
       - "config/campaign_achievements.json"
       - "config/campaign_special_events.json"
       - "config/campaign_championships.json"
+      - "config/campaign_seasons.json"
       - "config/replay-frame-binding.verified.json"
       - "config/photo-frame-binding.verified.json"
       - "config/photo-toggle-binding.verified.json"
@@ -42,6 +44,7 @@ on:
       - "tests/test_build_campaign_achievement_catalog.py"
       - "tests/test_build_campaign_special_event_catalog.py"
       - "tests/test_build_campaign_championship_catalog.py"
+      - "tests/test_build_campaign_season_catalog.py"
       - "tools/audit_original_settings_ui.py"
       - "tools/rank_original_ui_candidates.py"
       - "tools/audit_original_ui_rtti.py"
@@ -92,6 +95,7 @@ jobs:
           tests/test_build_campaign_achievement_catalog.py
           tests/test_build_campaign_special_event_catalog.py
           tests/test_build_campaign_championship_catalog.py
+          tests/test_build_campaign_season_catalog.py
           tests/test_audit_original_settings_ui.py
           tests/test_rank_original_ui_candidates.py
           tests/test_audit_original_ui_rtti.py
@@ -246,3 +250,18 @@ jobs:
           if (-not $r.uses_existing_campaign_events_only) { throw "Championships must reuse Campaign events" }
           if ($r.online_backend_required) { throw "Championships must remain offline-capable" }
           if ((Get-Item CampaignChampionships.dat).Length -ne 6932) { throw "Unexpected Championship catalog size" }
+
+      - name: Build safe empty Career Season catalog
+        run: >
+          python tools/build_campaign_season_catalog.py
+          config/campaign_seasons.json
+          CampaignSeasons.dat
+          --report CampaignSeasons.report.json
+      - name: Verify default Career Seasons are data-empty and offline
+        shell: pwsh
+        run: |
+          $r = Get-Content CampaignSeasons.report.json -Raw | ConvertFrom-Json
+          if ($r.count -ne 0) { throw "Default Career Season catalog must stay empty until season data is approved" }
+          if (-not $r.uses_existing_campaign_events_only) { throw "Career Seasons must reuse Campaign events" }
+          if ($r.online_backend_required) { throw "Career Seasons must remain offline-capable" }
+          if ((Get-Item CampaignSeasons.dat).Length -ne 9236) { throw "Unexpected Career Season catalog size" }
