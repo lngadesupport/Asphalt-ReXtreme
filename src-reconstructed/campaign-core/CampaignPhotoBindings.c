@@ -4,7 +4,7 @@
 #include "CampaignPhotoBindings.h"
 
 #define RXPH_MAGIC 0x48505852u /* RXPH */
-#define RXPH_VERSION 1u
+#define RXPH_VERSION 2u
 #define CAMPAIGN_PHOTO_BINDING_VERIFIED 1u
 
 typedef struct CampaignPhotoBindingFileHeader {
@@ -13,6 +13,8 @@ typedef struct CampaignPhotoBindingFileHeader {
     uint32_t count;
     uint32_t entry_size;
     uint32_t entries_hash;
+    uint32_t pe_time_date_stamp;
+    uint32_t pe_size_of_image;
 } CampaignPhotoBindingFileHeader;
 
 static CampaignPhotoBinding g_bindings[CAMPAIGN_PHOTO_BINDING_MAX];
@@ -55,6 +57,25 @@ static int BuildPath(void) {
     }
     g_path[pos] = 0;
     return 1;
+}
+
+static int CurrentExecutableMatches(
+    uint32_t expected_time_date_stamp,
+    uint32_t expected_size_of_image
+) {
+    unsigned char* module;
+    uint32_t pe_off;
+    unsigned char* pe;
+
+    module = (unsigned char*)GetModuleHandleW(0);
+    if (!module || module[0] != 'M' || module[1] != 'Z') return 0;
+    pe_off = *(uint32_t*)(module + 0x3C);
+    pe = module + pe_off;
+    if (pe[0] != 'P' || pe[1] != 'E' || pe[2] != 0 || pe[3] != 0) return 0;
+    if (*(uint16_t*)(pe + 24) != 0x010B) return 0;
+
+    return *(uint32_t*)(pe + 8) == expected_time_date_stamp &&
+           *(uint32_t*)(pe + 24 + 56) == expected_size_of_image;
 }
 
 static int SemanticValid(uint32_t semantic) {
@@ -106,6 +127,14 @@ int CampaignPhotoBindingsLoad(void) {
         header.version != RXPH_VERSION ||
         header.entry_size != (uint32_t)sizeof(CampaignPhotoBinding) ||
         header.count > CAMPAIGN_PHOTO_BINDING_MAX) {
+        CloseHandle(h);
+        return 0;
+    }
+
+    if (header.count > 0 &&
+        !CurrentExecutableMatches(
+            header.pe_time_date_stamp,
+            header.pe_size_of_image)) {
         CloseHandle(h);
         return 0;
     }
