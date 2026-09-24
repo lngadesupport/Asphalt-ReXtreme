@@ -112,11 +112,14 @@ jobs:
           dumpbin.exe /headers /imports "prebuilt\campaign-core\IGPLib_x86.dll" > "prebuilt\campaign-core\DUMPBIN.txt"
           if errorlevel 1 exit /b 15
 
-          cl.exe /nologo /TC /O2 /MT /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /I"src-reconstructed\campaign-core" /Fe"prebuilt\campaign-core\CampaignPresentationTest.exe" "src-reconstructed\campaign-core\CampaignPresentationTest.c" "prebuilt\campaign-core\CampaignPresentation.obj" "prebuilt\campaign-core\CampaignPresentationCatalog.obj" /link /machine:x86 kernel32.lib
+          cl.exe /nologo /c /TC /O2 /MT /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /I"src-reconstructed\campaign-core" /Fo"prebuilt\campaign-core\CampaignPresentationTest.obj" "src-reconstructed\campaign-core\CampaignPresentationTest.c"
           if errorlevel 1 exit /b 25
 
-          "prebuilt\campaign-core\CampaignPresentationTest.exe"
+          link.exe /nologo /machine:x86 /out:"prebuilt\campaign-core\CampaignPresentationTest.exe" "prebuilt\campaign-core\CampaignPresentationTest.obj" "prebuilt\campaign-core\CampaignPresentation.obj" "prebuilt\campaign-core\CampaignPresentationCatalog.obj" kernel32.lib
           if errorlevel 1 exit /b 26
+
+          "prebuilt\campaign-core\CampaignPresentationTest.exe"
+          if errorlevel 1 exit /b 27
 
           exit /b 0
           "@
@@ -139,6 +142,7 @@ jobs:
           Remove-Item ".\prebuilt\campaign-core\CampaignPresentation.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignPresentationCatalog.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\campaign_gateway.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignPresentationTest.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignPresentationTest.exe" -ErrorAction SilentlyContinue
           Remove-Item $batPath -ErrorAction SilentlyContinue
 
