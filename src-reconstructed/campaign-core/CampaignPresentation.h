@@ -151,6 +151,8 @@ enum CampaignPresentationOp {
     CAMPAIGN_PRESENTATION_OP_REPLAY_SAMPLE_AT_TIME = 35,
     CAMPAIGN_PRESENTATION_OP_REPLAY_NEXT_MARKER = 36,
     CAMPAIGN_PRESENTATION_OP_REPLAY_PREVIOUS_MARKER = 37,
+    CAMPAIGN_PRESENTATION_OP_REPLAY_ADVANCE = 38,
+    CAMPAIGN_PRESENTATION_OP_REPLAY_STEP = 39,
 
     CAMPAIGN_PRESENTATION_OP_PHOTO_ENTER = 40,
     CAMPAIGN_PRESENTATION_OP_PHOTO_EXIT = 41,
@@ -202,6 +204,8 @@ int __cdecl CampaignReplayGetPlaybackState(CampaignReplayPlaybackState* out);
 int __cdecl CampaignReplayGetSampleAtTime(uint32_t time_ms, int32_t entity_id, CampaignReplaySample* out);
 int __cdecl CampaignReplayNextMarker(uint32_t from_time_ms, CampaignReplayMarker* out);
 int __cdecl CampaignReplayPreviousMarker(uint32_t from_time_ms, CampaignReplayMarker* out);
+int __cdecl CampaignReplayAdvance(uint32_t real_delta_ms);
+int __cdecl CampaignReplayStep(int32_t direction, int32_t entity_id);
 
 int __cdecl CampaignPhotoEnter(const CampaignPhotoState* initial);
 int __cdecl CampaignPhotoExit(void);
