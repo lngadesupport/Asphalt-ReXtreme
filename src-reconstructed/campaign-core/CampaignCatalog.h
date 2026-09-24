@@ -30,6 +30,7 @@ typedef struct CampaignVehicleRecipe {
 
 int CampaignCatalogEnsureLoaded(void);
 const CampaignVehicleRecipe* CampaignCatalogFind(int32_t car_id);
+const CampaignVehicleRecipe* CampaignCatalogGet(uint32_t index);
 uint32_t CampaignCatalogCount(void);
 
 #ifdef __cplusplus
