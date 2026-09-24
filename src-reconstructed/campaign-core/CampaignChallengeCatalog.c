@@ -5,6 +5,8 @@
 
 #define RXCS_MAGIC 0x53435852u /* RXCS */
 #define RXCS_VERSION 1u
+#define RXCC_MAGIC 0x43435852u /* RXCC */
+#define RXCC_VERSION 1u
 
 typedef struct CampaignChallengeCatalogFile {
     uint32_t magic;
@@ -35,6 +37,13 @@ typedef struct CampaignChallengeStateFile {
     uint32_t checksum;
 } CampaignChallengeStateFile;
 
+typedef struct CampaignChallengeClaimFile {
+    uint32_t magic;
+    uint32_t version;
+    CampaignChallengeClaim claim;
+    uint32_t checksum;
+} CampaignChallengeClaimFile;
+
 static CampaignChallengeCatalogFile g_catalog;
 static CampaignChallengeStateFile g_state;
 static CampaignChallengeStateFile g_state_load;
@@ -45,6 +54,9 @@ static WCHAR g_catalog_path[1024];
 static WCHAR g_state_dir[1024];
 static WCHAR g_state_path[1024];
 static WCHAR g_state_tmp[1024];
+static WCHAR g_claim_path[1024];
+static WCHAR g_claim_tmp[1024];
+static CampaignChallengeClaimFile g_claim_file;
 
 static void ChallengeZero(void* p, uint32_t n) {
     volatile unsigned char* q = (volatile unsigned char*)p;
@@ -120,6 +132,8 @@ static int BuildPaths(void) {
     ChallengeZero(g_state_dir, (uint32_t)sizeof(g_state_dir));
     ChallengeZero(g_state_path, (uint32_t)sizeof(g_state_path));
     ChallengeZero(g_state_tmp, (uint32_t)sizeof(g_state_tmp));
+    ChallengeZero(g_claim_path, (uint32_t)sizeof(g_claim_path));
+    ChallengeZero(g_claim_tmp, (uint32_t)sizeof(g_claim_tmp));
 
     if (!WideAppend(g_catalog_path, 1024, exe) ||
         !WideAppend(g_catalog_path, 1024, L"CampaignChallenges.dat")) return 0;
@@ -134,6 +148,10 @@ static int BuildPaths(void) {
         !WideAppend(g_state_path, 1024, L"\\ChallengeState.dat")) return 0;
     if (!WideAppend(g_state_tmp, 1024, g_state_dir) ||
         !WideAppend(g_state_tmp, 1024, L"\\ChallengeState.tmp")) return 0;
+    if (!WideAppend(g_claim_path, 1024, g_state_dir) ||
+        !WideAppend(g_claim_path, 1024, L"\\ChallengeClaimPending.dat")) return 0;
+    if (!WideAppend(g_claim_tmp, 1024, g_state_dir) ||
+        !WideAppend(g_claim_tmp, 1024, L"\\ChallengeClaimPending.tmp")) return 0;
     return 1;
 }
 
@@ -143,6 +161,19 @@ static uint32_t CatalogChecksum(const CampaignChallengeCatalogFile* f) {
 
 static uint32_t StateChecksum(const CampaignChallengeStateFile* f) {
     return ChallengeHash(f, (uint32_t)sizeof(*f) - (uint32_t)sizeof(uint32_t));
+}
+
+static uint32_t ClaimChecksum(const CampaignChallengeClaimFile* f) {
+    return ChallengeHash(f, (uint32_t)sizeof(*f) - (uint32_t)sizeof(uint32_t));
+}
+
+static int ClaimPayloadValid(const CampaignChallengeClaim* claim) {
+    if (!claim || claim->size != (uint32_t)sizeof(*claim) ||
+        claim->challenge_id <= 0) return 0;
+    if (claim->reward_credits < 0 || claim->reward_premium < 0 ||
+        claim->reward_item_id < 0 || claim->reward_item_amount < 0) return 0;
+    if ((claim->reward_item_id == 0) != (claim->reward_item_amount == 0)) return 0;
+    return 1;
 }
 
 static int DefinitionValid(const CampaignChallengeDefinition* d) {
@@ -586,6 +617,249 @@ int CampaignChallengesCanClaim(int32_t challenge_id, CampaignChallengeStatus* ou
     return target->completed && !target->claimed ? 1 : 0;
 }
 
+static int ClaimReadUnlocked(CampaignChallengeClaim* out) {
+    HANDLE h;
+    DWORD got = 0;
+
+    if (!out || !BuildPaths()) return 0;
+    ChallengeZero(&g_claim_file, (uint32_t)sizeof(g_claim_file));
+
+    h = CreateFileW(
+        g_claim_path,
+        GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        0,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        0
+    );
+    if (h == INVALID_HANDLE_VALUE) return 0;
+
+    if (!ReadFile(h, &g_claim_file, (DWORD)sizeof(g_claim_file), &got, 0) ||
+        got != (DWORD)sizeof(g_claim_file)) {
+        CloseHandle(h);
+        return 0;
+    }
+    CloseHandle(h);
+
+    if (g_claim_file.magic != RXCC_MAGIC ||
+        g_claim_file.version != RXCC_VERSION ||
+        g_claim_file.checksum != ClaimChecksum(&g_claim_file) ||
+        !ClaimPayloadValid(&g_claim_file.claim)) {
+        return 0;
+    }
+
+    ChallengeCopy(out, &g_claim_file.claim, (uint32_t)sizeof(*out));
+    return 1;
+}
+
+static int ClaimWriteUnlocked(const CampaignChallengeClaim* claim) {
+    HANDLE h;
+    DWORD written = 0;
+
+    if (!ClaimPayloadValid(claim) || !BuildPaths()) return 0;
+    ChallengeZero(&g_claim_file, (uint32_t)sizeof(g_claim_file));
+    g_claim_file.magic = RXCC_MAGIC;
+    g_claim_file.version = RXCC_VERSION;
+    ChallengeCopy(&g_claim_file.claim, claim, (uint32_t)sizeof(*claim));
+    g_claim_file.checksum = ClaimChecksum(&g_claim_file);
+
+    DeleteFileW(g_claim_tmp);
+    h = CreateFileW(
+        g_claim_tmp,
+        GENERIC_WRITE,
+        FILE_SHARE_READ,
+        0,
+        CREATE_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL,
+        0
+    );
+    if (h == INVALID_HANDLE_VALUE) return 0;
+
+    if (!WriteFile(h, &g_claim_file, (DWORD)sizeof(g_claim_file), &written, 0) ||
+        written != (DWORD)sizeof(g_claim_file)) {
+        CloseHandle(h);
+        DeleteFileW(g_claim_tmp);
+        return 0;
+    }
+
+    FlushFileBuffers(h);
+    CloseHandle(h);
+    if (!MoveFileExW(
+            g_claim_tmp,
+            g_claim_path,
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        DeleteFileW(g_claim_tmp);
+        return 0;
+    }
+    return 1;
+}
+
+static int ClaimRewardsEmpty(const CampaignChallengeClaim* claim) {
+    return claim &&
+           claim->reward_credits == 0 &&
+           claim->reward_premium == 0 &&
+           claim->reward_item_id == 0 &&
+           claim->reward_item_amount == 0;
+}
+
+int CampaignChallengesBeginClaim(
+    int32_t challenge_id,
+    uint32_t campaign_revision,
+    CampaignChallengeClaim* out
+) {
+    const CampaignChallengeDefinition* d;
+    CampaignChallengeStateEntry* e;
+    CampaignChallengeClaim pending;
+
+    if (!out || out->size < (uint32_t)sizeof(*out)) return 0;
+    if (!CampaignChallengesEnsureLoaded() || !CampaignChallengesRefreshPeriods()) return 0;
+
+    ChallengeLock();
+    ChallengeZero(&pending, (uint32_t)sizeof(pending));
+    pending.size = (uint32_t)sizeof(pending);
+
+    if (ClaimReadUnlocked(&pending)) {
+        if (pending.challenge_id != challenge_id) {
+            ChallengeUnlock();
+            return 0;
+        }
+        e = StateFind(challenge_id);
+        if (!e || e->period_key != pending.period_key || e->claimed) {
+            DeleteFileW(g_claim_path);
+            ChallengeUnlock();
+            return 0;
+        }
+        ChallengeCopy(out, &pending, (uint32_t)sizeof(*out));
+        ChallengeUnlock();
+        return 1;
+    }
+
+    d = CampaignChallengeCatalogFind(challenge_id);
+    e = StateFind(challenge_id);
+    if (!d || !e || !e->completed || e->claimed) {
+        ChallengeUnlock();
+        return 0;
+    }
+
+    ChallengeZero(&pending, (uint32_t)sizeof(pending));
+    pending.size = (uint32_t)sizeof(pending);
+    pending.challenge_id = challenge_id;
+    pending.period_key = e->period_key;
+    pending.start_campaign_revision = campaign_revision;
+    pending.reward_credits = d->reward_credits;
+    pending.reward_premium = d->reward_premium;
+    pending.reward_item_id = d->reward_item_id;
+    pending.reward_item_amount = d->reward_item_amount;
+
+    if (!ClaimWriteUnlocked(&pending)) {
+        ChallengeUnlock();
+        return 0;
+    }
+
+    ChallengeCopy(out, &pending, (uint32_t)sizeof(*out));
+    ChallengeUnlock();
+    return 1;
+}
+
+int CampaignChallengesGetPendingClaim(CampaignChallengeClaim* out) {
+    int result;
+    if (!out || out->size < (uint32_t)sizeof(*out)) return 0;
+    ChallengeLock();
+    result = ClaimReadUnlocked(out);
+    ChallengeUnlock();
+    return result;
+}
+
+int CampaignChallengesFinalizeClaim(int32_t challenge_id, uint32_t campaign_revision) {
+    CampaignChallengeClaim pending;
+    CampaignChallengeStateEntry* e;
+    int result;
+
+    if (!CampaignChallengesEnsureLoaded() || !CampaignChallengesRefreshPeriods()) return 0;
+
+    ChallengeLock();
+    ChallengeZero(&pending, (uint32_t)sizeof(pending));
+    pending.size = (uint32_t)sizeof(pending);
+    if (!ClaimReadUnlocked(&pending) || pending.challenge_id != challenge_id) {
+        ChallengeUnlock();
+        return 0;
+    }
+
+    e = StateFind(challenge_id);
+    if (!e) {
+        ChallengeUnlock();
+        return 0;
+    }
+
+    if (e->period_key != pending.period_key) {
+        DeleteFileW(g_claim_path);
+        ChallengeUnlock();
+        return 1;
+    }
+
+    if (e->claimed) {
+        DeleteFileW(g_claim_path);
+        ChallengeUnlock();
+        return 1;
+    }
+
+    if (campaign_revision <= pending.start_campaign_revision &&
+        !ClaimRewardsEmpty(&pending)) {
+        ChallengeUnlock();
+        return 0;
+    }
+
+    if (!e->completed) {
+        ChallengeUnlock();
+        return 0;
+    }
+
+    e->claimed = 1;
+    result = StateWriteUnlocked();
+    if (!result) {
+        e->claimed = 0;
+        ChallengeUnlock();
+        return 0;
+    }
+
+    DeleteFileW(g_claim_path);
+    DeleteFileW(g_claim_tmp);
+    ChallengeUnlock();
+    return 1;
+}
+
+int CampaignChallengesRecoverClaim(uint32_t campaign_revision) {
+    CampaignChallengeClaim pending;
+    CampaignChallengeStatus status;
+
+    ChallengeZero(&pending, (uint32_t)sizeof(pending));
+    pending.size = (uint32_t)sizeof(pending);
+
+    if (!CampaignChallengesGetPendingClaim(&pending)) return 1;
+
+    ChallengeZero(&status, (uint32_t)sizeof(status));
+    status.size = (uint32_t)sizeof(status);
+    if (!CampaignChallengesGetStatus(pending.challenge_id, &status)) return 0;
+
+    if (status.period_key != pending.period_key) {
+        ChallengeLock();
+        DeleteFileW(g_claim_path);
+        DeleteFileW(g_claim_tmp);
+        ChallengeUnlock();
+        return 1;
+    }
+
+    if (status.claimed ||
+        campaign_revision > pending.start_campaign_revision ||
+        ClaimRewardsEmpty(&pending)) {
+        return CampaignChallengesFinalizeClaim(pending.challenge_id, campaign_revision);
+    }
+
+    /* Journal remains pending: reward was not committed yet and can be retried. */
+    return 1;
+}
+
 int CampaignChallengesMarkClaimed(int32_t challenge_id) {
     CampaignChallengeStateEntry* e;
     int result = 0;
@@ -613,6 +887,8 @@ int CampaignChallengesResetState(void) {
     }
     result = DeleteFileW(g_state_path) || GetLastError() == ERROR_FILE_NOT_FOUND;
     DeleteFileW(g_state_tmp);
+    DeleteFileW(g_claim_path);
+    DeleteFileW(g_claim_tmp);
     ChallengeUnlock();
     return result ? 1 : 0;
 }
