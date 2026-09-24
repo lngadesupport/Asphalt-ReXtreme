@@ -43,7 +43,7 @@ if ($devMode -ne 1) {
     Write-Host ""
     throw "Package Phase 5 requires Windows Developer Mode for Add-AppxPackage -Register."
 }
-$ExpectedAMS = "56e9dbde7f7f3a75b3542a691fb45ad5bf46b86e87cb9fa11854ec1862e62ae3"
+$ExpectedOriginalAMS = "3d48800d37cb799e424abe5e33e07bab3235d11dbfbe2fbf50214cecab3e75c8"
 
 function Get-PeDllCharacteristics([string]$Path) {
     [byte[]]$d = [IO.File]::ReadAllBytes($Path)
@@ -60,15 +60,22 @@ $cleanAms = @(Get-ChildItem -LiteralPath $cleanBase -Recurse -File -Filter "AMS.
 if ($cleanAms.Count -ne 1) { throw "Expected exactly one clean AMS.exe under $cleanBase; found $($cleanAms.Count)." }
 $cleanGameRoot = $cleanAms[0].Directory.FullName
 
-$phase2 = Join-Path $SourceDir "_AMS_PHASE2\AMS.exe"
-if (-not (Test-Path -LiteralPath $phase2 -PathType Leaf)) { throw "Missing Phase 2 AMS.exe: $phase2" }
+$cleanBaseBuilder = Join-Path $SourceDir "tools\build_clean_ams_base_v1.ps1"
+if (-not (Test-Path -LiteralPath $cleanBaseBuilder -PathType Leaf)) {
+    throw "Missing Clean Base builder: $cleanBaseBuilder"
+}
 
-$phase2Hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $phase2).Hash.ToLowerInvariant()
-if ($phase2Hash -ne $ExpectedAMS) { throw "Unexpected Phase 2 AMS hash: $phase2Hash" }
+& powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $cleanBaseBuilder -ProjectRoot $SourceDir
+if ($LASTEXITCODE -ne 0) { throw "Clean AMS Base V1 build failed: $LASTEXITCODE" }
 
-$dllChars = Get-PeDllCharacteristics $phase2
+$cleanBaseAms = Join-Path $SourceDir "_AMS_CLEAN_BASE\AMS.exe"
+if (-not (Test-Path -LiteralPath $cleanBaseAms -PathType Leaf)) {
+    throw "Missing Clean AMS Base V1: $cleanBaseAms"
+}
+
+$dllChars = Get-PeDllCharacteristics $cleanBaseAms
 if (($dllChars -band 0x1000) -eq 0) {
-    throw ("Phase 2 AMS no longer has AppContainer set (DllCharacteristics=0x{0:X4})." -f $dllChars)
+    throw ("Clean AMS Base V1 no longer has AppContainer set (DllCharacteristics=0x{0:X4})." -f $dllChars)
 }
 
 $out = Join-Path $SourceDir "_PACKAGE_PHASE5"
@@ -78,8 +85,8 @@ if (Test-Path -LiteralPath $out) {
 Write-Host "Copying pristine packaged tree..." -ForegroundColor Cyan
 Copy-Item -LiteralPath $cleanGameRoot -Destination $out -Recurse -Force
 
-Write-Host "Overlaying verified Phase 2 AMS (AppContainer preserved)..." -ForegroundColor Cyan
-Copy-Item -LiteralPath $phase2 -Destination (Join-Path $out "AMS.exe") -Force
+Write-Host "Overlaying Clean AMS Base V1 (pristine-derived; AppContainer preserved)..." -ForegroundColor Cyan
+Copy-Item -LiteralPath $cleanBaseAms -Destination (Join-Path $out "AMS.exe") -Force
 
 # This is now a loose development layout, not the original signed Store package.
 # Remove stale package-integrity metadata because AMS.exe has been modified.
@@ -183,11 +190,14 @@ $report = [ordered]@{
     AMS_SHA256 = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $out "AMS.exe")).Hash.ToLowerInvariant()
     AMS_DllCharacteristics = ("0x{0:X4}" -f (Get-PeDllCharacteristics (Join-Path $out "AMS.exe")))
     AMS_AppContainer = $true
+    AMSBase = "Clean AMS Base V1"
+    Phase2Used = $false
+    OriginalGameplayPatchesApplied = $false
     UsedOriginalWCPToolkit = $true
     UsedOriginalIGPLib = $true
     UsedOriginalIAP = $true
-    StorePurchasePathBlockedInAMS = $true
-    BaselineUntouched = $true
+    StorePurchasePathBlockedInAMS = $false
+    BaselineUntouched = $false
     PreviousRegistration = if ($before) { $before.PackageFullName } else { $null }
 }
 $report | ConvertTo-Json -Depth 5 |
