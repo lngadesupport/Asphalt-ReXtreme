@@ -19,6 +19,7 @@
 #include "CampaignLastResult.h"
 #include "CampaignSpecialEventCatalog.h"
 #include "CampaignSpecialEventState.h"
+#include "CampaignChampionshipCatalog.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
 #define CAMPAIGN_VERSION 3u
@@ -1243,6 +1244,25 @@ static uint32_t SpecialEventCompletedStagesUnlocked(
     return completed;
 }
 
+static void ChampionshipsOnCommittedRaceUnlocked(
+    int32_t event_id,
+    const CampaignRaceMetrics* metrics
+) {
+    uint32_t i,j;
+    if(event_id<=0||!metrics)return;
+    for(i=0;i<CampaignChampionshipCatalogCount();++i){
+        const CampaignChampionshipDefinition* def=CampaignChampionshipCatalogGet(i);
+        if(!def||!ProgressGateUnlocked(def->required_node_id))continue;
+        for(j=0;j<def->round_count;++j){
+            if(def->round_event_ids[j]==event_id){
+                /* Sidecar failure is intentionally non-fatal to the race commit. */
+                CampaignChampionshipsRecordRound(def->championship_id,event_id,metrics);
+                break;
+            }
+        }
+    }
+}
+
 static int32_t RepeatMultiplierPermille(uint32_t completion_count) {
     uint32_t after_grace;
     int32_t value;
@@ -2100,6 +2120,7 @@ int __cdecl CampaignFinishRaceFromGui(void* game_mode_gui) {
             DeleteFileW(g_race_session_consuming_path);
             /* Challenge sidecar is secondary: a failure never invalidates the race commit. */
             CampaignChallengesOnRace(g_race_session_buffer.event_id, &metrics);
+            ChampionshipsOnCommittedRaceUnlocked(g_race_session_buffer.event_id, &metrics);
             CampaignLastResultRecord(
                 g_race_session_buffer.event_id,
                 g_race_session_buffer.car_id > 0 ? g_race_session_buffer.car_id : 0,
@@ -2488,6 +2509,7 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             DeleteFileW(g_race_session_consuming_path);
             /* Only full metric finishes contribute to Challenges. */
             CampaignChallengesOnRace(g_race_session_buffer.event_id, metrics);
+            ChampionshipsOnCommittedRaceUnlocked(g_race_session_buffer.event_id, metrics);
             CampaignLastResultRecord(
                 g_race_session_buffer.event_id,
                 g_race_session_buffer.car_id > 0 ? g_race_session_buffer.car_id : 0,
@@ -2940,6 +2962,56 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             c->status = 1;
             c->revision = g_state.revision;
             return 1;
+        }
+
+    case CAMPAIGN_OP_CHAMPIONSHIP_COUNT:
+        c->out0=(int32_t)CampaignChampionshipCatalogCount();
+        c->status=1;c->revision=g_state.revision;return 1;
+
+    case CAMPAIGN_OP_CHAMPIONSHIP_ID_AT:
+        {
+            const CampaignChampionshipDefinition* def=
+                CampaignChampionshipCatalogGet((uint32_t)c->a);
+            if(!def)return 0;
+            c->out0=def->championship_id;
+            c->status=1;c->revision=g_state.revision;return 1;
+        }
+
+    case CAMPAIGN_OP_CHAMPIONSHIP_STATUS:
+        {
+            const CampaignChampionshipDefinition* def=
+                CampaignChampionshipCatalogFind(c->a);
+            CampaignChampionshipStatus status;
+            int unlocked;
+            if(!def)return 0;
+            ZeroBytes(&status,(uint32_t)sizeof(status));status.size=(uint32_t)sizeof(status);
+            if(!CampaignChampionshipsGetStatus(c->a,&status))return 0;
+            unlocked=ProgressGateUnlocked(def->required_node_id);
+            c->out0=status.total_points;
+            c->out1=(int32_t)status.completed_rounds;
+            c->out2=(int32_t)(status.round_count&0xFFu)|
+                (status.completed?0x10000:0)|
+                (unlocked?0x20000:0);
+            c->status=1;c->revision=g_state.revision;return 1;
+        }
+
+    case CAMPAIGN_OP_CHAMPIONSHIP_ROUND:
+        {
+            CampaignChampionshipRoundStatus round;
+            ZeroBytes(&round,(uint32_t)sizeof(round));round.size=(uint32_t)sizeof(round);
+            if(c->b<0||!CampaignChampionshipsGetRoundStatus(c->a,(uint32_t)c->b,&round))return 0;
+            c->out0=round.event_id;
+            c->out1=round.points;
+            c->out2=round.best_placement|(round.completed?0x10000:0);
+            c->status=1;c->revision=g_state.revision;return 1;
+        }
+
+    case CAMPAIGN_OP_CHAMPIONSHIP_POINTS:
+        {
+            const CampaignChampionshipDefinition* def=CampaignChampionshipCatalogFind(c->a);
+            if(!def||c->b<1||c->b>(int32_t)CAMPAIGN_CHAMPIONSHIP_POSITION_MAX)return 0;
+            c->out0=def->points_by_position[c->b-1];
+            c->status=1;c->revision=g_state.revision;return 1;
         }
 
     case CAMPAIGN_OP_GET_PROFILE_SUMMARY:
