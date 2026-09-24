@@ -29,7 +29,10 @@ jobs:
         run: |
           foreach ($script in @(
             "RUN-CLEAN-RUNTIME-V1.ps1",
-            "tools/test_clean_runtime_v1.ps1"
+            "tools/test_clean_runtime_v1.ps1",
+            "tools/apply_clean_runtime_v1.ps1",
+            "tools/build_clean_ams_base_v1.ps1",
+            "tools/build_package_phase5.ps1"
           )) {
             $tokens = $null
             $errors = $null
