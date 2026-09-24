@@ -317,16 +317,20 @@ int CampaignRaceHudLayoutSet(const CampaignRaceHudElementState* state) {
     return 1;
 }
 
-int CampaignRaceHudLayoutApply(void) {
+int CampaignRaceHudLayoutApplyFromGui(void* game_mode_gui) {
     uint32_t i;
     LayoutEnsureLoaded();
     LayoutLock();
     for (i = 0; i < g_layout_count; ++i) {
-        if (!CampaignRaceHudApplyElement(&g_layout[i])) {
+        if (!CampaignRaceHudApplyElementFromGui(game_mode_gui, &g_layout[i])) {
             LayoutUnlock();
             return 0;
         }
     }
     LayoutUnlock();
     return 1;
+}
+
+int CampaignRaceHudLayoutApply(void) {
+    return CampaignRaceHudLayoutApplyFromGui(0);
 }
