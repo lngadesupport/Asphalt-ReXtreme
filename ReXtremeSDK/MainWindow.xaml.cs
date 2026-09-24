@@ -235,9 +235,21 @@ public partial class MainWindow : Window
             var stem = Path.GetFileNameWithoutExtension(dialog.FileName);
             var clean = Regex.Replace(stem.ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
             if (string.IsNullOrWhiteSpace(clean)) clean = "track";
-            var id = "local.music." + clean;
-            var target = _projects.ImportMusic(dialog.FileName, id, stem, "", "race");
-            Log($"Música importada: {target}");
+
+            var id = string.IsNullOrWhiteSpace(MusicIdBox.Text) || MusicIdBox.Text == "local.music.new-track"
+                ? "local.music." + clean
+                : MusicIdBox.Text.Trim();
+            var title = string.IsNullOrWhiteSpace(MusicTitleBox.Text) || MusicTitleBox.Text == "New Track"
+                ? stem
+                : MusicTitleBox.Text.Trim();
+            var artist = MusicArtistBox.Text.Trim();
+            var scope = ((ComboBoxItem)MusicScopeBox.SelectedItem).Content?.ToString() ?? "race";
+
+            var target = _projects.ImportMusic(dialog.FileName, id, title, artist, scope);
+            Log($"Música importada: {target} [{scope}]");
+            MusicIdBox.Text = "local.music.new-track";
+            MusicTitleBox.Text = "New Track";
+            MusicArtistBox.Clear();
             RefreshMusicList();
             RefreshProjectTree();
         }
