@@ -86,6 +86,7 @@ def main() -> int:
             "version": 1,
             "game_dir": str(game),
             "ams": str(ams),
+            "target_pe": h.get("target_pe"),
             "known_hook_anchors": {
                 "matched": anchor_matches,
                 "total": len(anchors),
