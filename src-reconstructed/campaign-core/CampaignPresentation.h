@@ -80,6 +80,17 @@ typedef struct CampaignReplayInfo {
     uint32_t last_time_ms;
 } CampaignReplayInfo;
 
+typedef struct CampaignReplayPlaybackState {
+    uint32_t size;
+    uint32_t loaded;
+    uint32_t playing;
+    uint32_t current_time_ms;
+    uint32_t first_time_ms;
+    uint32_t last_time_ms;
+    uint32_t speed_permille; /* 1000 = 1.0x */
+    uint32_t selected_marker;
+} CampaignReplayPlaybackState;
+
 enum CampaignPhotoCameraMode {
     CAMPAIGN_PHOTO_CAMERA_ORIGINAL = 0,
     CAMPAIGN_PHOTO_CAMERA_FREE = 1,
@@ -125,6 +136,14 @@ enum CampaignPresentationOp {
     CAMPAIGN_PRESENTATION_OP_REPLAY_LOAD = 27,
     CAMPAIGN_PRESENTATION_OP_REPLAY_ADD_MARKER = 28,
     CAMPAIGN_PRESENTATION_OP_REPLAY_GET_MARKER = 29,
+    CAMPAIGN_PRESENTATION_OP_REPLAY_PLAY = 30,
+    CAMPAIGN_PRESENTATION_OP_REPLAY_PAUSE = 31,
+    CAMPAIGN_PRESENTATION_OP_REPLAY_SEEK = 32,
+    CAMPAIGN_PRESENTATION_OP_REPLAY_SET_SPEED = 33,
+    CAMPAIGN_PRESENTATION_OP_REPLAY_PLAYBACK_STATE = 34,
+    CAMPAIGN_PRESENTATION_OP_REPLAY_SAMPLE_AT_TIME = 35,
+    CAMPAIGN_PRESENTATION_OP_REPLAY_NEXT_MARKER = 36,
+    CAMPAIGN_PRESENTATION_OP_REPLAY_PREVIOUS_MARKER = 37,
 
     CAMPAIGN_PRESENTATION_OP_PHOTO_ENTER = 40,
     CAMPAIGN_PRESENTATION_OP_PHOTO_EXIT = 41,
@@ -168,6 +187,14 @@ int __cdecl CampaignReplaySave(const wchar_t* path);
 int __cdecl CampaignReplayLoad(const wchar_t* path);
 int __cdecl CampaignReplayAddMarker(const CampaignReplayMarker* marker);
 int __cdecl CampaignReplayGetMarker(uint32_t index, CampaignReplayMarker* out);
+int __cdecl CampaignReplayPlay(void);
+int __cdecl CampaignReplayPause(void);
+int __cdecl CampaignReplaySeek(uint32_t time_ms);
+int __cdecl CampaignReplaySetSpeed(uint32_t speed_permille);
+int __cdecl CampaignReplayGetPlaybackState(CampaignReplayPlaybackState* out);
+int __cdecl CampaignReplayGetSampleAtTime(uint32_t time_ms, int32_t entity_id, CampaignReplaySample* out);
+int __cdecl CampaignReplayNextMarker(uint32_t from_time_ms, CampaignReplayMarker* out);
+int __cdecl CampaignReplayPreviousMarker(uint32_t from_time_ms, CampaignReplayMarker* out);
 
 int __cdecl CampaignPhotoEnter(const CampaignPhotoState* initial);
 int __cdecl CampaignPhotoExit(void);
