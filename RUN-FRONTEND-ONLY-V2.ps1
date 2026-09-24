@@ -29,7 +29,7 @@ $files=@(
   @{Commit="4cd77ca30e43796c925eff48df961d166ad63457"; Path="tools/campaign_career_adapter_v3.py"},
   @{Commit="e20ac2b853e71220e4eb2ef66bd3c77872cc0ff6"; Path="tools/campaign_career_adapter_v2.py"},
   @{Commit="e9b74d4acfb10b61031032603b441d3348a00618"; Path="tools/read_garage_trace.ps1"},
-  @{Commit="f6e19872390977cbae62b4acb0d6e0acfc664566"; Path="tools/read_garage_ui_trace.ps1"},
+  @{Commit="308d737496c13d768c1e83a5f4982e7d6993df73"; Path="tools/read_garage_ui_trace.ps1"},
   @{Commit="573595ec0346701e960ef4b2d7971268940723a8"; Path="READ-MONTAR-TRACE.cmd"},
   @{Commit="262b87ae9d6f36d905acb5986d1a024708381513"; Path="prebuilt/campaign-core/IGPLib_x86.dll"},
   @{Commit="9a912f2335ed1eb6cc61f568916862a602865fa8"; Path="config/OFFLINE-AUTHORITY.json"},
