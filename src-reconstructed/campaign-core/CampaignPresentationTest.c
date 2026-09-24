@@ -37,15 +37,20 @@ int main(void) {
 
     settings = loaded;
     settings.fov_x100 = 7500;
-    if (!CampaignPresentationSetSettings(&settings)) return Fail(13);
-    if (!CampaignPresentationSaveSettings()) return Fail(14);
-    if (!CampaignPresentationResetSettings()) return Fail(15);
-    if (!CampaignPresentationLoadSettings()) return Fail(16);
+    if (CampaignPresentationSetSettings(&settings)) return Fail(13);
+
+    settings = loaded;
+    settings.flags = CAMPAIGN_PRESENTATION_REPLAY_ENABLED;
+    if (!CampaignPresentationSetSettings(&settings)) return Fail(14);
+    if (!CampaignPresentationSaveSettings()) return Fail(15);
+    if (!CampaignPresentationResetSettings()) return Fail(16);
+    if (!CampaignPresentationLoadSettings()) return Fail(17);
 
     ZeroMemory(&loaded, sizeof(loaded));
     loaded.size = sizeof(loaded);
-    if (!CampaignPresentationGetSettings(&loaded)) return Fail(17);
-    if (loaded.fov_x100 != 7500) return Fail(18);
+    if (!CampaignPresentationGetSettings(&loaded)) return Fail(18);
+    if (loaded.fov_x100 != 0) return Fail(19);
+    if (loaded.flags != CAMPAIGN_PRESENTATION_REPLAY_ENABLED) return Fail(20);
 
     if (!CampaignReplayStart(8)) return Fail(20);
 
