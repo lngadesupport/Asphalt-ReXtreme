@@ -78,6 +78,11 @@ typedef struct CampaignRaceMetrics {
 
 int CampaignObjectiveCatalogEnsureLoaded(void);
 uint32_t CampaignObjectiveCatalogCount(void);
+int CampaignObjectiveMetricValue(
+    const CampaignRaceMetrics* metrics,
+    int32_t metric,
+    int32_t* value
+);
 int CampaignObjectiveEvaluate(
     int32_t event_id,
     const CampaignRaceMetrics* metrics,
