@@ -7,11 +7,17 @@
   "release_branch": "public-beta-0.1",
   "startup_mode": "uwp-loose-compatibility",
   "portable_startup_ready": false,
-  "release_state": "candidate-awaiting-clean-machine-smoke",
+  "release_state": "ci-passed-awaiting-clean-machine-smoke",
   "notes": [
     "Public beta compatibility startup still uses Windows package registration.",
     "Original proprietary game files are never distributed by this repository.",
     "The installer imports a user-provided compatible 1.7.3.8 x86 source locally.",
     "Git and a system-wide Python installation are not required."
-  ]
+  ],
+  "ci": {
+    "workflow": "Public Beta CI",
+    "run_id": 36032583754,
+    "conclusion": "success",
+    "validated_commit": "df6b049fc2e653e57f774781bf39146ab8518767"
+  }
 }
