@@ -141,6 +141,47 @@ function Ensure-PortablePython {
     return $python
 }
 
+function Repair-GhostRegistration {
+    $backup = $null
+    $current = @(Get-AppxPackage -Name $PackageName -ErrorAction SilentlyContinue)
+
+    foreach ($pkg in $current) {
+        $location = [string]$pkg.InstallLocation
+        $isGhost = [string]::IsNullOrWhiteSpace($location)
+
+        if (-not $isGhost) {
+            $isGhost = -not (Test-Path -LiteralPath $location -PathType Container)
+        }
+
+        if (-not $isGhost) {
+            continue
+        }
+
+        Step ("Registro AppX orfao detectado: " + $pkg.PackageFullName)
+        Step "InstallLocation esta vazio ou aponta para uma pasta que nao existe."
+
+        if (-not $backup) {
+            $backup = Backup-LocalState
+        }
+
+        Step "Removendo somente o registro AppX quebrado do usuario atual..."
+        Remove-AppxPackage -Package $pkg.PackageFullName -ErrorAction Stop
+
+        $remaining = @(Get-AppxPackage -Name $PackageName -ErrorAction SilentlyContinue)
+        $bad = @($remaining | Where-Object {
+            [string]::IsNullOrWhiteSpace([string]$_.InstallLocation) -or
+            -not (Test-Path -LiteralPath ([string]$_.InstallLocation) -PathType Container)
+        })
+        if ($bad.Count -gt 0) {
+            throw "O registro AppX orfao continuou presente apos Remove-AppxPackage."
+        }
+
+        Step "Registro AppX orfao removido com sucesso."
+    }
+
+    return $backup
+}
+
 function Assert-NoConflictingRegistration {
     $existing = @(Get-AppxPackage -Name $PackageName -ErrorAction SilentlyContinue)
     foreach ($pkg in $existing) {
@@ -194,6 +235,7 @@ function Restore-LocalState([string]$Backup) {
 }
 
 function Build-Beta {
+    $ghostBackup = Repair-GhostRegistration
     Assert-NoConflictingRegistration
 
     $phase2 = Join-Path $Root "tools\build_ams_phase2.ps1"
@@ -239,6 +281,11 @@ function Build-Beta {
         campaign_final_status = (Join-Path $Root "_TRACE_MONTAR\CAMPAIGN-FINAL-STATUS.json")
     }
     $state | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $StatePath -Encoding UTF8
+
+    if ($ghostBackup) {
+        Restore-LocalState $ghostBackup
+    }
+
     Step "Build do beta concluido."
 }
 
