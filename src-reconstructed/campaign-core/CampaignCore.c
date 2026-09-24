@@ -2225,6 +2225,15 @@ static int ExecuteUnlocked(CampaignCommand* c) {
         result = 1;
         break;
 
+    case CAMPAIGN_OP_DIAGNOSTICS:
+        c->out0 = InterlockedCompareExchange(&g_portable_save, 0, 0) ? 1 : 0;
+        c->out1 = (int32_t)CAMPAIGN_VERSION;
+        c->out2 =
+            GetFileAttributesW(g_race_session_path) != INVALID_FILE_ATTRIBUTES ? 1 : 0;
+        c->status = 1;
+        c->revision = g_state.revision;
+        return 1;
+
     default:
         return 0;
     }
