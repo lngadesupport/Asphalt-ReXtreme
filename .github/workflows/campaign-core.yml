@@ -178,8 +178,11 @@ jobs:
             CommandSelector = "0xC0DECA11"
             CraftSelector = "0xC0DEC0DE"
             OwnershipSelector = "0xC0DE0A11"
-            State = "LocalState\\CampaignEdition\\CampaignSave.dat"
-            Backup = "LocalState\\CampaignEdition\\CampaignSave.bak"
+            State = "UserData\\CampaignEdition\\CampaignSave.dat"
+            Backup = "UserData\\CampaignEdition\\CampaignSave.bak"
+            PortableSavePreferred = $true
+            LegacyPackageSaveFallback = $true
+            LegacyPackageSaveMigration = $true
             V1Migration = $true
             V2Migration = $true
             VehicleCatalog = "CampaignCatalog.dat"
