@@ -6,6 +6,7 @@
 #include "CampaignPhotoBindings.h"
 #include "CampaignOriginalUiBindings.h"
 #include "CampaignRaceHudBindings.h"
+#include "CampaignRaceHudLayout.h"
 
 static volatile int32_t g_test_bound_fov;
 static volatile float g_test_photo_x;
@@ -801,6 +802,35 @@ int main(void) {
             g_test_hud_scale != 1.25f ||
             g_test_hud_opacity != 0.75f ||
             g_test_hud_visible != 1) return Fail(130);
+
+        if (!CampaignRaceHudLayoutReset()) return Fail(131);
+        if (!CampaignRaceHudLayoutSet(&hud)) return Fail(132);
+        if (CampaignRaceHudLayoutCount() != 1) return Fail(133);
+        if (!CampaignRaceHudLayoutSave()) return Fail(134);
+
+        g_test_hud_x = 0.0f;
+        g_test_hud_y = 0.0f;
+        g_test_hud_scale = 0.0f;
+        g_test_hud_opacity = 0.0f;
+        g_test_hud_visible = 0;
+
+        if (!CampaignRaceHudLayoutLoad()) return Fail(135);
+        if (CampaignRaceHudLayoutCount() != 1) return Fail(136);
+        ZeroMemory(&hud, sizeof(hud));
+        hud.size = sizeof(hud);
+        if (!CampaignRaceHudLayoutGet(0, &hud)) return Fail(137);
+        if (hud.element != CAMPAIGN_RACE_HUD_SPEED ||
+            hud.x_x1000 != 12500 ||
+            hud.y_x1000 != 42000 ||
+            hud.scale_x1000 != 1250 ||
+            hud.opacity_x1000 != 750 ||
+            hud.visible != 1) return Fail(138);
+        if (!CampaignRaceHudLayoutApply()) return Fail(139);
+        if (g_test_hud_x != 12.5f ||
+            g_test_hud_y != 42.0f ||
+            g_test_hud_scale != 1.25f ||
+            g_test_hud_opacity != 0.75f ||
+            g_test_hud_visible != 1) return Fail(140);
     }
 
     if (CampaignPresentationCatalogCount() != 0) return Fail(50);
@@ -843,7 +873,8 @@ int main(void) {
         diagnostics.original_ui_binding_count != 12 ||
         diagnostics.original_ui_feature_mask != 0x1Fu ||
         diagnostics.race_hud_binding_count != 5 ||
-        diagnostics.race_hud_original_ui_ready != 1) return Fail(100);
+        diagnostics.race_hud_original_ui_ready != 1 ||
+        diagnostics.race_hud_layout_count != 1) return Fail(100);
 
     if (!CampaignReplayStart(256)) return Fail(101);
     ZeroMemory(&sample, sizeof(sample));
@@ -874,6 +905,8 @@ int main(void) {
     DeleteFileW(L"prebuilt\\campaign-core\\CampaignPhotoBindings.dat");
     DeleteFileW(L"prebuilt\\campaign-core\\CampaignOriginalUiBindings.dat");
     DeleteFileW(L"prebuilt\\campaign-core\\CampaignRaceHudBindings.dat");
+    DeleteFileW(L"prebuilt\\campaign-core\\UserData\\RaceHudLayout.dat");
+    DeleteFileW(L"prebuilt\\campaign-core\\UserData\\RaceHudLayout.tmp");
     DeleteFileW(L"prebuilt\\campaign-core\\ReXtreme.ini");
 
     return 0;
