@@ -1510,6 +1510,143 @@ int __cdecl CampaignPhotoSet(const CampaignPhotoState* state) {
     return 1;
 }
 
+static int PhotoApplyAndCommit(const CampaignPhotoState* candidate) {
+    if (!candidate || !candidate->active ||
+        candidate->camera_mode != CAMPAIGN_PHOTO_CAMERA_FREE) {
+        return 0;
+    }
+
+    if (!CampaignPhotoBindingsReady(candidate->camera_mode) ||
+        !CampaignPhotoBindingsApply(candidate)) {
+        return 0;
+    }
+
+    PresentationLock();
+    CopyBytes(&g_photo, candidate, (uint32_t)sizeof(g_photo));
+    g_photo.size = (uint32_t)sizeof(g_photo);
+    PresentationUnlock();
+    return 1;
+}
+
+static int AddI32Checked(int32_t value, int32_t delta, int32_t* out) {
+    int64_t sum;
+    if (!out) return 0;
+    sum = (int64_t)value + (int64_t)delta;
+    if (sum < -2147483647LL - 1LL || sum > 2147483647LL) return 0;
+    *out = (int32_t)sum;
+    return 1;
+}
+
+int __cdecl CampaignPhotoMove(
+    int32_t dx_x1000,
+    int32_t dy_x1000,
+    int32_t dz_x1000
+) {
+    CampaignPhotoState candidate;
+
+    ZeroBytes(&candidate, (uint32_t)sizeof(candidate));
+
+    PresentationLock();
+    if (!g_photo.active) {
+        PresentationUnlock();
+        return 0;
+    }
+    CopyBytes(&candidate, &g_photo, (uint32_t)sizeof(candidate));
+    PresentationUnlock();
+
+    candidate.position_x += (float)dx_x1000 / 1000.0f;
+    candidate.position_y += (float)dy_x1000 / 1000.0f;
+    candidate.position_z += (float)dz_x1000 / 1000.0f;
+    return PhotoApplyAndCommit(&candidate);
+}
+
+int __cdecl CampaignPhotoRotate(
+    int32_t pitch_delta_x100,
+    int32_t yaw_delta_x100,
+    int32_t roll_delta_x100
+) {
+    CampaignPhotoState candidate;
+    int32_t pitch, yaw, roll;
+
+    ZeroBytes(&candidate, (uint32_t)sizeof(candidate));
+
+    PresentationLock();
+    if (!g_photo.active) {
+        PresentationUnlock();
+        return 0;
+    }
+    CopyBytes(&candidate, &g_photo, (uint32_t)sizeof(candidate));
+    PresentationUnlock();
+
+    if (!AddI32Checked(candidate.pitch_x100, pitch_delta_x100, &pitch) ||
+        !AddI32Checked(candidate.yaw_x100, yaw_delta_x100, &yaw) ||
+        !AddI32Checked(candidate.roll_x100, roll_delta_x100, &roll)) {
+        return 0;
+    }
+
+    candidate.pitch_x100 = pitch;
+    candidate.yaw_x100 = yaw;
+    candidate.roll_x100 = roll;
+    return PhotoApplyAndCommit(&candidate);
+}
+
+int __cdecl CampaignPhotoSetFov(int32_t fov_x100) {
+    CampaignPhotoState candidate;
+
+    if (fov_x100 <= 0) return 0;
+    ZeroBytes(&candidate, (uint32_t)sizeof(candidate));
+
+    PresentationLock();
+    if (!g_photo.active) {
+        PresentationUnlock();
+        return 0;
+    }
+    CopyBytes(&candidate, &g_photo, (uint32_t)sizeof(candidate));
+    PresentationUnlock();
+
+    candidate.fov_x100 = fov_x100;
+    return PhotoApplyAndCommit(&candidate);
+}
+
+int __cdecl CampaignPhotoSetMoveSpeed(int32_t speed_x1000) {
+    if (speed_x1000 <= 0) return 0;
+
+    PresentationLock();
+    if (!g_photo.active) {
+        PresentationUnlock();
+        return 0;
+    }
+    g_photo.move_speed_x1000 = speed_x1000;
+    PresentationUnlock();
+    return 1;
+}
+
+int __cdecl CampaignPhotoResetView(void) {
+    CampaignPhotoState candidate;
+    uint32_t hide_hud;
+    int32_t move_speed;
+
+    ZeroBytes(&candidate, (uint32_t)sizeof(candidate));
+
+    PresentationLock();
+    if (!g_photo.active || !g_photo_restore_valid) {
+        PresentationUnlock();
+        return 0;
+    }
+
+    hide_hud = g_photo.hide_hud;
+    move_speed = g_photo.move_speed_x1000;
+    CopyBytes(&candidate, &g_photo_restore, (uint32_t)sizeof(candidate));
+    PresentationUnlock();
+
+    candidate.size = (uint32_t)sizeof(candidate);
+    candidate.active = 1;
+    candidate.camera_mode = CAMPAIGN_PHOTO_CAMERA_FREE;
+    candidate.hide_hud = hide_hud;
+    candidate.move_speed_x1000 = move_speed;
+    return PhotoApplyAndCommit(&candidate);
+}
+
 int __cdecl CampaignPresentationGetDiagnostics(CampaignPresentationDiagnostics* out) {
     if (!out || out->size < (uint32_t)sizeof(*out)) return 0;
 
@@ -1736,6 +1873,22 @@ int __cdecl CampaignPresentationInvoke(CampaignPresentationCommand* command) {
         command->status = CampaignPhotoSet(
             (const CampaignPhotoState*)(uintptr_t)command->ptr0
         );
+        break;
+
+    case CAMPAIGN_PRESENTATION_OP_PHOTO_MOVE:
+        command->status = CampaignPhotoMove(command->a, command->b, command->c);
+        break;
+    case CAMPAIGN_PRESENTATION_OP_PHOTO_ROTATE:
+        command->status = CampaignPhotoRotate(command->a, command->b, command->c);
+        break;
+    case CAMPAIGN_PRESENTATION_OP_PHOTO_SET_FOV:
+        command->status = CampaignPhotoSetFov(command->a);
+        break;
+    case CAMPAIGN_PRESENTATION_OP_PHOTO_SET_SPEED:
+        command->status = CampaignPhotoSetMoveSpeed(command->a);
+        break;
+    case CAMPAIGN_PRESENTATION_OP_PHOTO_RESET_VIEW:
+        command->status = CampaignPhotoResetView();
         break;
 
     case CAMPAIGN_PRESENTATION_OP_REPLAY_LIBRARY_REFRESH:
