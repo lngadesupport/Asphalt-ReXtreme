@@ -272,9 +272,10 @@ int CampaignChampionshipsRecordRound(
     new_points=d->points_by_position[metrics->placement-1];
 
     if(old_placement==0||new_points>old_points){
+        int delta=new_points-old_points;
+        if(delta<0||e->total_points>0x7FFFFFFF-delta){ChUnlock();return 0;}
         e->best_placements[index]=metrics->placement;
-        if(e->total_points>0x7FFFFFFF-new_points+old_points){ChUnlock();return 0;}
-        e->total_points=e->total_points-old_points+new_points;
+        e->total_points+=delta;
     }
     e->completed=CompletedRounds(d,e)==(int)d->round_count?1u:0u;
     if(!WriteStateUnlocked()){ChUnlock();return 0;}
