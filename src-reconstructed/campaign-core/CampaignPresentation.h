@@ -190,6 +190,11 @@ enum CampaignPresentationOp {
     CAMPAIGN_PRESENTATION_OP_PHOTO_EXIT = 41,
     CAMPAIGN_PRESENTATION_OP_PHOTO_GET = 42,
     CAMPAIGN_PRESENTATION_OP_PHOTO_SET = 43,
+    CAMPAIGN_PRESENTATION_OP_PHOTO_MOVE = 44,
+    CAMPAIGN_PRESENTATION_OP_PHOTO_ROTATE = 45,
+    CAMPAIGN_PRESENTATION_OP_PHOTO_SET_FOV = 46,
+    CAMPAIGN_PRESENTATION_OP_PHOTO_SET_SPEED = 47,
+    CAMPAIGN_PRESENTATION_OP_PHOTO_RESET_VIEW = 48,
 
     CAMPAIGN_PRESENTATION_OP_REPLAY_LIBRARY_REFRESH = 50,
     CAMPAIGN_PRESENTATION_OP_REPLAY_LIBRARY_COUNT = 51,
@@ -280,6 +285,11 @@ int __cdecl CampaignPhotoEnter(const CampaignPhotoState* initial);
 int __cdecl CampaignPhotoExit(void);
 int __cdecl CampaignPhotoGet(CampaignPhotoState* out);
 int __cdecl CampaignPhotoSet(const CampaignPhotoState* state);
+int __cdecl CampaignPhotoMove(int32_t dx_x1000, int32_t dy_x1000, int32_t dz_x1000);
+int __cdecl CampaignPhotoRotate(int32_t pitch_delta_x100, int32_t yaw_delta_x100, int32_t roll_delta_x100);
+int __cdecl CampaignPhotoSetFov(int32_t fov_x100);
+int __cdecl CampaignPhotoSetMoveSpeed(int32_t speed_x1000);
+int __cdecl CampaignPhotoResetView(void);
 int __cdecl CampaignPresentationGetDiagnostics(CampaignPresentationDiagnostics* out);
 
 #ifdef __cplusplus
