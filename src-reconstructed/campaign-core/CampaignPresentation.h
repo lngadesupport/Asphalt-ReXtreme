@@ -215,6 +215,8 @@ typedef struct CampaignPresentationDiagnostics {
     uint32_t photo_camera_mode;
     uint32_t photo_binding_count;
     uint32_t photo_free_camera_ready;
+    uint32_t replay_binding_count;
+    uint32_t replay_recording_ready;
 } CampaignPresentationDiagnostics;
 
 typedef struct CampaignPresentationCommand {
