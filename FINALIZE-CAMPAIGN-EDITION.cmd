@@ -53,6 +53,7 @@ call :get tools/build_campaign_auxiliary_data.py tools\build_campaign_auxiliary_
 call :get tools/build_campaign_store_catalog.py tools\build_campaign_store_catalog.py || goto :download_fail
 call :get tools/build_campaign_store_from_shop.py tools\build_campaign_store_from_shop.py || goto :download_fail
 call :get tools/audit_campaign_store_keys_from_package.py tools\audit_campaign_store_keys_from_package.py || goto :download_fail
+call :get tools/campaign_profile_adapter_v1.py tools\campaign_profile_adapter_v1.py || goto :download_fail
 call :get tools/campaign_garage_v2.py tools\campaign_garage_v2.py || goto :download_fail
 call :get tools/campaign_career_adapter_v2.py tools\campaign_career_adapter_v2.py || goto :download_fail
 call :get tools/campaign_career_adapter_v3.py tools\campaign_career_adapter_v3.py || goto :download_fail
@@ -131,17 +132,22 @@ if errorlevel 1 (
 )
 
 echo.
-echo [PATCH 1/4] Garagem / ownership / MONTAR...
+echo [PATCH 0/5] Perfil local / GlobalSync offline...
+python.exe "%TOOLS%\campaign_profile_adapter_v1.py" --project-root "%ROOT%"
+if errorlevel 1 goto :patch_fail
+
+echo.
+echo [PATCH 1/5] Garagem / ownership / MONTAR...
 python.exe "%TOOLS%\campaign_garage_v2.py" --project-root "%ROOT%"
 if errorlevel 1 goto :patch_fail
 
 echo.
-echo [PATCH 2/4] Carreira / corrida / recompensas...
+echo [PATCH 2/5] Carreira / corrida / recompensas...
 python.exe "%TOOLS%\campaign_career_adapter_v3.py" --project-root "%ROOT%"
 if errorlevel 1 goto :patch_fail
 
 echo.
-echo [PATCH 3/4] Upgrades / Pro-Kits...
+echo [PATCH 3/5] Upgrades / Pro-Kits...
 if exist "%PKG%\CampaignUpgradeUiMap.dat" (
   python.exe "%TOOLS%\campaign_upgrade_adapter_v1.py" --project-root "%ROOT%"
   if errorlevel 1 goto :patch_fail
@@ -151,7 +157,7 @@ if exist "%PKG%\CampaignUpgradeUiMap.dat" (
 )
 
 echo.
-echo [PATCH 4/4] Loja online -> CampaignStore local...
+echo [PATCH 4/5] Loja online -> CampaignStore local...
 python.exe "%TOOLS%\campaign_store_adapter_v1.py" --project-root "%ROOT%"
 if errorlevel 1 goto :patch_fail
 
