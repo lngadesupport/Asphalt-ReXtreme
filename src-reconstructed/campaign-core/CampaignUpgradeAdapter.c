@@ -2,6 +2,7 @@
 
 #include "CampaignCore.h"
 #include "CampaignUpgradeAdapter.h"
+#include "CampaignUpgradeUiMap.h"
 
 /*
   Read-only legacy presentation metadata.
@@ -11,8 +12,12 @@
     +0x10 selected_entries_begin
     +0x14 selected_entries_end
 
-  Each entry is 8 bytes and the first dword is the stable raw visual/content id
-  historically serialized as up_id / bp_id / tu_id.
+  Each entry is 8 bytes and the first dword is legacy content metadata. The
+  vector can contain up_id, bp_id and tu_id together.
+
+  Only ids explicitly mapped by CampaignUpgradeUiMap.dat are accepted as
+  upgrade targets. Blueprint/tool ids remain read-only supporting metadata and
+  are ignored by this adapter.
 
   Campaign prices, balances, levels and ownership are NOT read here.
 */
@@ -30,6 +35,7 @@ int __cdecl CampaignApplyLegacyUpgradeSelection(
     const unsigned char* end;
     uint32_t bytes;
     uint32_t count;
+    uint32_t mapped_count;
     uint32_t i;
     volatile unsigned char* q;
 
@@ -57,13 +63,27 @@ int __cdecl CampaignApplyLegacyUpgradeSelection(
 
     batch.size = (uint32_t)sizeof(batch);
     batch.car_id = args->car_id;
-    batch.count = count;
+    mapped_count = 0;
 
+    /*
+      The legacy vector mixes target upgrade ids with supporting blueprint/tool
+      ids. Only ids explicitly present in CampaignUpgradeUiMap.dat are target
+      actions. Unknown ids are supporting legacy metadata and are ignored.
+    */
     for (i = 0; i < count; ++i) {
         int32_t raw_id = *(const int32_t*)(begin + i * 8u);
+        const CampaignUpgradeUiEntry* mapped;
+
         if (raw_id <= 0) return 0;
-        batch.ui_action_ids[i] = raw_id;
+        mapped = CampaignUpgradeUiMapFind(raw_id);
+        if (!mapped) continue;
+
+        if (mapped_count >= CAMPAIGN_UPGRADE_BATCH_MAX) return 0;
+        batch.ui_action_ids[mapped_count++] = raw_id;
     }
+
+    if (mapped_count == 0) return 0;
+    batch.count = mapped_count;
 
     if (!CampaignApplyUpgradeBatch(&batch) || !batch.status) {
         args->revision = batch.revision;
