@@ -15,6 +15,7 @@
 #include "CampaignRaceHudLayout.h"
 #include "CampaignChallengeCatalog.h"
 #include "CampaignStatistics.h"
+#include "CampaignAchievementCatalog.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
 #define CAMPAIGN_VERSION 3u
@@ -2019,7 +2020,9 @@ int __cdecl CampaignFinishRaceFromGui(void* game_mode_gui) {
             DeleteFileW(g_race_session_consuming_path);
             /* Challenge sidecar is secondary: a failure never invalidates the race commit. */
             CampaignChallengesOnRace(g_race_session_buffer.event_id, &metrics);
-            CampaignStatisticsRecordRace(&metrics);
+            if (CampaignStatisticsRecordRace(&metrics)) {
+                CampaignAchievementsRefresh();
+            }
         } else {
             CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
             MoveFileExW(
@@ -2399,7 +2402,9 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             DeleteFileW(g_race_session_consuming_path);
             /* Only full metric finishes contribute to Challenges. */
             CampaignChallengesOnRace(g_race_session_buffer.event_id, metrics);
-            CampaignStatisticsRecordRace(metrics);
+            if (CampaignStatisticsRecordRace(metrics)) {
+                CampaignAchievementsRefresh();
+            }
 
             c->out0 = metrics->credits_awarded;
             c->out1 = metrics->premium_awarded;
@@ -2641,6 +2646,59 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             c->revision = g_state.revision;
             return 1;
         }
+
+    case CAMPAIGN_OP_ACHIEVEMENT_COUNT:
+        c->out0 = (int32_t)CampaignAchievementCatalogCount();
+        c->status = 1;
+        c->revision = g_state.revision;
+        return 1;
+
+    case CAMPAIGN_OP_ACHIEVEMENT_ID_AT:
+        {
+            const CampaignAchievementDefinition* def =
+                CampaignAchievementCatalogGet((uint32_t)c->a);
+            if (!def) return 0;
+            c->out0 = def->achievement_id;
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_ACHIEVEMENT_STATUS:
+        {
+            CampaignAchievementStatus status;
+            ZeroBytes(&status, (uint32_t)sizeof(status));
+            status.size = (uint32_t)sizeof(status);
+            if (!CampaignAchievementsGetStatus(c->a, &status)) return 0;
+            c->out0 = (int32_t)status.current_value;
+            c->out1 = (int32_t)status.threshold;
+            c->out2 =
+                (status.completed ? 1 : 0) |
+                ((int32_t)(status.metric & 0xFFu) << 8) |
+                ((int32_t)(status.compare & 0xFFu) << 16);
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_ACHIEVEMENT_UNLOCK_DAY:
+        {
+            CampaignAchievementStatus status;
+            ZeroBytes(&status, (uint32_t)sizeof(status));
+            status.size = (uint32_t)sizeof(status);
+            if (!CampaignAchievementsGetStatus(c->a, &status)) return 0;
+            c->out0 = (int32_t)status.unlocked_day_key;
+            c->out1 = status.completed ? 1 : 0;
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_ACHIEVEMENT_REFRESH:
+        c->out0 = CampaignAchievementsRefresh() ? 1 : 0;
+        c->status = 1;
+        c->revision = g_state.revision;
+        return 1;
 
     case CAMPAIGN_OP_GET_PROFILE_SUMMARY:
         switch (c->a) {
