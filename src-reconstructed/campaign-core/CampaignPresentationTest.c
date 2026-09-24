@@ -556,13 +556,6 @@ int main(void) {
     if (!CampaignPresentationResetSettings()) return Fail(16);
     if (!CampaignPresentationLoadSettings()) return Fail(17);
 
-    g_test_bound_shadow_quality = 2;
-    if (!CampaignPresentationCatalogSetValue(1, 3)) return Fail(163);
-    if (g_test_bound_shadow_quality != 3) return Fail(164);
-    g_test_bound_shadow_quality = -1;
-    if (!CampaignPresentationCatalogApplyStoredValues()) return Fail(165);
-    if (g_test_bound_shadow_quality != 3) return Fail(166);
-
     ZeroMemory(&loaded, sizeof(loaded));
     loaded.size = sizeof(loaded);
     if (!CampaignPresentationGetSettings(&loaded)) return Fail(18);
@@ -959,6 +952,13 @@ int main(void) {
         if (g_test_bound_fov != 7000) return Fail(95);
         if (!CampaignPresentationCatalogGetValue(0, &value) || value != 7000) return Fail(96);
     }
+
+    g_test_bound_shadow_quality = 2;
+    if (!CampaignPresentationCatalogSetValue(1, 3)) return Fail(163);
+    if (g_test_bound_shadow_quality != 3) return Fail(164);
+    g_test_bound_shadow_quality = -1;
+    if (!CampaignPresentationLoadSettings()) return Fail(165);
+    if (g_test_bound_shadow_quality != 3) return Fail(166);
 
     ZeroMemory(&loaded, sizeof(loaded));
     loaded.size = sizeof(loaded);
