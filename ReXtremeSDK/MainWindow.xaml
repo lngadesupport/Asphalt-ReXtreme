@@ -103,18 +103,94 @@
                 </TabItem>
 
                 <TabItem Header="Evento / Carreira">
-                    <StackPanel Margin="20" Background="{StaticResource EditorBackground}">
-                        <TextBlock Text="EVENT / CAREER CONTENT" FontSize="22" FontWeight="Bold"/>
-                        <WrapPanel Margin="0,16,0,0">
-                            <Button Content="Criar evento" Click="CreateEvent_Click"/>
-                            <Button Content="Criar Evento Especial" Click="CreateSpecialEvent_Click"/>
-                            <Button Content="Criar temporada" Click="CreateSeason_Click"/>
-                            <Button Content="Criar pista" Click="CreateTrack_Click"/>
-                            <Button Content="Criar pintura/livery" Click="CreateLivery_Click"/>
-                        </WrapPanel>
-                        <TextBlock Margin="0,16,0,0" Foreground="{StaticResource EditorMuted}" TextWrapping="Wrap"
-                                   Text="Eventos podem usar pistas originais ou customizadas. Temporadas são data-driven e poderão adicionar corridas e branches."/>
-                    </StackPanel>
+                    <ScrollViewer Background="{StaticResource EditorBackground}">
+                        <StackPanel Margin="20" MaxWidth="900" HorizontalAlignment="Left">
+                            <TextBlock Text="EVENT / CAREER EDITOR" FontSize="22" FontWeight="Bold" Margin="0,0,0,14"/>
+
+                            <GroupBox Header="Corrida / Evento" Padding="12" Margin="0,0,0,14">
+                                <StackPanel>
+                                    <TextBlock Text="ID"/>
+                                    <TextBox x:Name="EventIdBox" Text="local.event.new-event" Padding="6" Margin="0,3,0,8"/>
+                                    <TextBlock Text="Nome"/>
+                                    <TextBox x:Name="EventNameBox" Text="New Event" Padding="6" Margin="0,3,0,8"/>
+                                    <TextBlock Text="Pista (ID original ou customizado)"/>
+                                    <TextBox x:Name="EventTrackBox" Text="original.track.pending" Padding="6" Margin="0,3,0,8"/>
+                                    <WrapPanel>
+                                        <StackPanel Width="220" Margin="0,0,12,0">
+                                            <TextBlock Text="Modo"/>
+                                            <ComboBox x:Name="EventModeBox" SelectedIndex="0" Margin="0,3,0,8">
+                                                <ComboBoxItem Content="classic"/>
+                                                <ComboBoxItem Content="elimination"/>
+                                                <ComboBoxItem Content="infected"/>
+                                                <ComboBoxItem Content="knockdown"/>
+                                                <ComboBoxItem Content="time-attack"/>
+                                                <ComboBoxItem Content="checkpoint"/>
+                                                <ComboBoxItem Content="survival"/>
+                                                <ComboBoxItem Content="custom"/>
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <StackPanel Width="120">
+                                            <TextBlock Text="Voltas"/>
+                                            <TextBox x:Name="EventLapsBox" Text="1" Padding="6" Margin="0,3,0,8"/>
+                                        </StackPanel>
+                                    </WrapPanel>
+                                    <TextBlock Text="Música (ID opcional)"/>
+                                    <TextBox x:Name="EventMusicBox" Padding="6" Margin="0,3,0,8"/>
+                                    <TextBlock Text="HUD layout (ID opcional)"/>
+                                    <TextBox x:Name="EventHudBox" Padding="6" Margin="0,3,0,10"/>
+                                    <Button Content="Salvar evento" Width="150" HorizontalAlignment="Left" Click="CreateEvent_Click"/>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <GroupBox Header="Evento Especial" Padding="12" Margin="0,0,0,14">
+                                <StackPanel>
+                                    <TextBlock Text="ID"/>
+                                    <TextBox x:Name="SpecialEventIdBox" Text="local.special-event.new" Padding="6" Margin="0,3,0,8"/>
+                                    <TextBlock Text="Nome"/>
+                                    <TextBox x:Name="SpecialEventNameBox" Text="New Special Event" Padding="6" Margin="0,3,0,8"/>
+                                    <TextBlock Text="Disponibilidade"/>
+                                    <ComboBox x:Name="SpecialAvailabilityBox" SelectedIndex="0" Margin="0,3,0,8">
+                                        <ComboBoxItem Content="permanent"/>
+                                        <ComboBoxItem Content="daily-rotation"/>
+                                        <ComboBoxItem Content="weekly-rotation"/>
+                                        <ComboBoxItem Content="monthly-rotation"/>
+                                        <ComboBoxItem Content="manual"/>
+                                        <ComboBoxItem Content="unlock-based"/>
+                                    </ComboBox>
+                                    <TextBlock Text="Estágios — um Event ID por linha"/>
+                                    <TextBox x:Name="SpecialStagesBox" AcceptsReturn="True" Height="90" VerticalScrollBarVisibility="Auto" Padding="6" Margin="0,3,0,10"/>
+                                    <Button Content="Salvar Evento Especial" Width="190" HorizontalAlignment="Left" Click="CreateSpecialEvent_Click"/>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <GroupBox Header="Temporada da Carreira" Padding="12" Margin="0,0,0,14">
+                                <StackPanel>
+                                    <TextBlock Text="ID"/>
+                                    <TextBox x:Name="SeasonIdBox" Text="local.career.new-season" Padding="6" Margin="0,3,0,8"/>
+                                    <TextBlock Text="Nome"/>
+                                    <TextBox x:Name="SeasonNameBox" Text="New Season" Padding="6" Margin="0,3,0,8"/>
+                                    <TextBlock Text="Modo de inserção"/>
+                                    <ComboBox x:Name="SeasonInsertModeBox" SelectedIndex="0" Margin="0,3,0,8">
+                                        <ComboBoxItem Content="new-season"/>
+                                        <ComboBoxItem Content="append-to-season"/>
+                                        <ComboBoxItem Content="branch"/>
+                                    </ComboBox>
+                                    <TextBlock Text="Temporada original alvo (opcional)"/>
+                                    <TextBox x:Name="SeasonTargetBox" Padding="6" Margin="0,3,0,8"/>
+                                    <TextBlock Text="Corridas — um Event ID por linha"/>
+                                    <TextBox x:Name="SeasonEventsBox" AcceptsReturn="True" Height="100" VerticalScrollBarVisibility="Auto" Padding="6" Margin="0,3,0,10"/>
+                                    <Button Content="Salvar temporada" Width="160" HorizontalAlignment="Left" Click="CreateSeason_Click"/>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <GroupBox Header="Conteúdo rápido" Padding="12">
+                                <WrapPanel>
+                                    <Button Content="Criar template de pista" Click="CreateTrack_Click"/>
+                                    <Button Content="Criar template de pintura/livery" Click="CreateLivery_Click"/>
+                                </WrapPanel>
+                            </GroupBox>
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
 
                 <TabItem Header="Race HUD">
