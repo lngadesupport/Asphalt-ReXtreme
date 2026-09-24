@@ -501,6 +501,14 @@ int main(void) {
     if (CampaignPhotoBindingsCount() != 7) return Fail(45);
     if (!CampaignPhotoBindingsReady(CAMPAIGN_PHOTO_CAMERA_FREE)) return Fail(46);
 
+    g_test_photo_x = 1.25f;
+    g_test_photo_y = 2.5f;
+    g_test_photo_z = -3.75f;
+    g_test_photo_pitch = 100;
+    g_test_photo_yaw = 200;
+    g_test_photo_roll = 300;
+    g_test_photo_hud = 1;
+
     if (!CampaignPhotoEnter(&photo)) return Fail(47);
 
     ZeroMemory(&photo_readback, sizeof(photo_readback));
@@ -527,6 +535,13 @@ int main(void) {
         g_test_photo_hud != 0) return Fail(51);
 
     if (!CampaignPhotoExit()) return Fail(52);
+    if (g_test_photo_x != 1.25f ||
+        g_test_photo_y != 2.5f ||
+        g_test_photo_z != -3.75f ||
+        g_test_photo_pitch != 100 ||
+        g_test_photo_yaw != 200 ||
+        g_test_photo_roll != 300 ||
+        g_test_photo_hud != 1) return Fail(56);
 
     ZeroMemory(&diagnostics, sizeof(diagnostics));
     diagnostics.size = sizeof(diagnostics);
