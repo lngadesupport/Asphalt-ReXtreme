@@ -124,6 +124,7 @@ def main() -> int:
             "readiness": {
                 "replay_frame_binding_verified": False,
                 "photo_frame_binding_verified": False,
+                "photo_toggle_binding_verified": False,
                 "photo_camera_bindings_verified": False,
                 "presentation_memory_bindings_verified": False,
             },
