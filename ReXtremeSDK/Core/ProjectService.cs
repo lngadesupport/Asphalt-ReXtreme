@@ -286,7 +286,7 @@ public sealed class ProjectService
         catalog.Tracks.Add(new RxMusicTrack
         {
             Id = id, Title = title, Artist = artist,
-            Source = Path.GetRelativePath(CurrentProjectPath!, target).Replace('\', '/'),
+            Source = Path.GetRelativePath(CurrentProjectPath!, target).Replace(Path.DirectorySeparatorChar, '/'),
             Scope = scope
         });
         SaveJson(catalogPath, catalog);
