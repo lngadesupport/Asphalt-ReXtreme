@@ -219,6 +219,103 @@ static void CampaignFrontendCompleteGarageBuild(void* gs_garage, int32_t status)
     CampaignCallCraftUiCompletion(target, observer, status);
 }
 
+
+typedef struct CampaignGarageTraceRecord {
+    uint32_t magic;
+    uint32_t version;
+    uint32_t step;
+    uint32_t gs_garage;
+    uint32_t holder;
+    uint32_t selected;
+    int32_t car_id;
+    int32_t acquire_ok;
+    int32_t owned;
+    int32_t callback_status;
+    uint32_t revision;
+} CampaignGarageTraceRecord;
+
+#define CAMPAIGN_GARAGE_TRACE_MAGIC 0x47545852u /* RXTG */
+
+static void CampaignGarageTraceWrite(
+    uint32_t step,
+    void* gs_garage,
+    void* holder,
+    void* selected,
+    int32_t car_id,
+    int32_t acquire_ok,
+    int32_t owned,
+    int32_t callback_status,
+    uint32_t revision
+) {
+    WCHAR localAppData[1024];
+    WCHAR path[1200];
+    HANDLE f;
+    DWORD n;
+    CampaignGarageTraceRecord r;
+    DWORD i;
+    const WCHAR suffix[] = L"\\Packages\\GAMELOFTSA.AsphaltXtreme_0pp20fcewvvtj\\LocalState\\CampaignEdition\\GarageTrace.bin";
+
+    if (!GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData, 1024)) return;
+
+    for (i = 0; localAppData[i] && i < 1023; ++i) path[i] = localAppData[i];
+    if (i >= 1023) return;
+    {
+        DWORD j = 0;
+        while (suffix[j] && i < 1199) path[i++] = suffix[j++];
+        path[i] = 0;
+    }
+
+    r.magic = CAMPAIGN_GARAGE_TRACE_MAGIC;
+    r.version = 1;
+    r.step = step;
+    r.gs_garage = (uint32_t)(uintptr_t)gs_garage;
+    r.holder = (uint32_t)(uintptr_t)holder;
+    r.selected = (uint32_t)(uintptr_t)selected;
+    r.car_id = car_id;
+    r.acquire_ok = acquire_ok;
+    r.owned = owned;
+    r.callback_status = callback_status;
+    r.revision = revision;
+
+    f = CreateFileW(
+        path,
+        GENERIC_WRITE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        0,
+        OPEN_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL,
+        0
+    );
+    if (f == INVALID_HANDLE_VALUE) return;
+    SetFilePointer(f, 0, 0, FILE_END);
+    WriteFile(f, &r, (DWORD)sizeof(r), &n, 0);
+    CloseHandle(f);
+}
+
+static int32_t CampaignFrontendSelectedCarIdDetailed(
+    void* gs_garage,
+    void** holder_out,
+    void** selected_out
+) {
+    unsigned char* gs = (unsigned char*)gs_garage;
+    void* holder = 0;
+    void* selected = 0;
+
+    if (holder_out) *holder_out = 0;
+    if (selected_out) *selected_out = 0;
+    if (!gs) return 0;
+
+    holder = *(void**)(gs + 0x2D4);
+    if (holder_out) *holder_out = holder;
+    if (!holder) return 0;
+
+    selected = *(void**)holder;
+    if (selected_out) *selected_out = selected;
+    if (!selected) return 0;
+
+    return *(int32_t*)((unsigned char*)selected + 0xC0);
+}
+
 static int32_t CampaignFrontendSelectedCarId(void* gs_garage) {
     unsigned char* gs = (unsigned char*)gs_garage;
     void* holder;
@@ -235,35 +332,65 @@ static int32_t CampaignFrontendSelectedCarId(void* gs_garage) {
 int __cdecl CampaignFrontendGarageBuild(void* gs_garage) {
     CampaignGarageResult out;
     int32_t car_id;
+    int acquire_ok;
+    void* holder = 0;
+    void* selected = 0;
 
-    car_id = CampaignFrontendSelectedCarId(gs_garage);
-    if (car_id <= 0) return 0;
+    car_id = CampaignFrontendSelectedCarIdDetailed(
+        gs_garage,
+        &holder,
+        &selected
+    );
+
+    CampaignGarageTraceWrite(
+        1, gs_garage, holder, selected, car_id, 0, 0, -1, 0
+    );
+
+    /*
+      Critical invariant:
+      once the frontend entered MONTAR, every exit path must complete the
+      preserved frontend operation. Otherwise the tutorial spinner can stay
+      latched forever.
+    */
+    if (car_id <= 0) {
+        CampaignGarageFlowFail(car_id);
+        CampaignFrontendCompleteGarageBuild(gs_garage, 1);
+        CampaignGarageTraceWrite(
+            2, gs_garage, holder, selected, car_id, 0, 0, 1, 0
+        );
+        return 0;
+    }
 
     CampaignGarageFlowBegin(car_id);
 
     ZeroBytes(&out, (uint32_t)sizeof(out));
     out.size = (uint32_t)sizeof(out);
 
-    if (!CampaignServiceGarageAcquire(car_id, &out) || !out.owned) {
-        CampaignGarageFlowFail(car_id);
+    acquire_ok = CampaignServiceGarageAcquire(car_id, &out);
+    CampaignGarageTraceWrite(
+        3, gs_garage, holder, selected, car_id,
+        acquire_ok, out.owned, -1, out.revision
+    );
 
-        /*
-          Always release the preserved frontend pending/spinner state.
-          Nonzero status is a local failure; no network/retry path is entered.
-        */
+    if (!acquire_ok || !out.owned) {
+        CampaignGarageFlowFail(car_id);
         CampaignFrontendCompleteGarageBuild(gs_garage, 1);
+        CampaignGarageTraceWrite(
+            4, gs_garage, holder, selected, car_id,
+            acquire_ok, out.owned, 1, out.revision
+        );
         return 0;
     }
 
     CampaignGarageFlowCommit(car_id, out.revision);
 
-    /*
-      Local transaction is durable before the visual completion is emitted.
-      SUCCESS=0 matches the original frontend callback contract.
-    */
     CampaignFrontendCompleteGarageBuild(gs_garage, 0);
-    CampaignGarageFlowFrontendCompleted(car_id, out.revision);
+    CampaignGarageTraceWrite(
+        5, gs_garage, holder, selected, car_id,
+        1, 1, 0, out.revision
+    );
 
+    CampaignGarageFlowFrontendCompleted(car_id, out.revision);
     return 1;
 }
 
