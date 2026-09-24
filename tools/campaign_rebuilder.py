@@ -138,6 +138,20 @@ def apply_verified_patches(
         raise BuildError(f"Verified patcher failed with exit code {result.returncode}")
 
 
+def prepare_portable_user_data(output: Path) -> list[str]:
+    root = output / "UserData"
+    folders = [
+        root / "CampaignEdition",
+        root / "Replays",
+        root / "Screenshots",
+    ]
+    created: list[str] = []
+    for folder in folders:
+        folder.mkdir(parents=True, exist_ok=True)
+        created.append(folder.relative_to(output).as_posix() + "/")
+    return created
+
+
 def build_presentation_catalog(output: Path, source: Path, builder: Path) -> dict:
     if not source.is_file():
         raise BuildError(f"Presentation capability source not found: {source}")
@@ -195,6 +209,7 @@ def write_status(
     moved_metadata: list[str],
     overlay_files: list[str],
     presentation_catalog: dict,
+    portable_user_data: list[str],
 ) -> Path:
     status = {
         "edition": "Campaign",
@@ -203,6 +218,7 @@ def write_status(
         "verified_core_patches_applied": True,
         "offline_overlay_files": overlay_files,
         "presentation_capability_catalog": presentation_catalog,
+        "portable_user_data": portable_user_data,
         "package_metadata_moved_out_of_runtime_root": moved_metadata,
         "portable_startup_ready": False,
         "startup_decoupling_status": "pending-runtime-validation",
@@ -266,6 +282,8 @@ def main() -> int:
         print(f"[METADATA] moved from runtime root: {len(moved)}")
 
         copy_config(output, config_path)
+        portable_user_data = prepare_portable_user_data(output)
+        print(f"[USERDATA] portable directories: {len(portable_user_data)}")
 
         presentation_catalog = build_presentation_catalog(
             output,
@@ -289,6 +307,7 @@ def main() -> int:
             moved,
             overlay_files,
             presentation_catalog,
+            portable_user_data,
         )
         print(f"[STATUS] {status_path}")
         print("[DONE] Campaign staging tree created; portable startup validation still pending")
