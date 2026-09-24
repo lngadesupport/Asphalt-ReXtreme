@@ -20,6 +20,7 @@ public partial class MainWindow : Window
     private FrameworkElement? _hudDragElement;
     private Point _hudDragStart;
     private Point _hudElementStart;
+    private string? _liveryTextureSource;
 
     public MainWindow()
     {
@@ -424,6 +425,45 @@ public partial class MainWindow : Window
         {
             var file = ContentTemplateService.CreateLivery(ProjectRoot, "local.livery.new", "New Livery", "original.vehicle.pending");
             Log($"Template de pintura/livery criado: {file}");
+            RefreshProjectTree();
+        }
+        catch (Exception ex) { Fail(ex); }
+    }
+
+    private void ImportLiveryTexture_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Importar textura/decal da pintura",
+                Filter = "Texturas|*.png;*.jpg;*.jpeg;*.tga;*.dds;*.tif;*.tiff;*.bmp;*.webp;*.exr;*.hdr"
+            };
+            if (dialog.ShowDialog() != true) return;
+            _liveryTextureSource = _projects.ImportTexture(dialog.FileName);
+            LiveryTextureText.Text = _liveryTextureSource;
+            Log($"Textura de livery importada: {_liveryTextureSource}");
+            RefreshProjectTree();
+        }
+        catch (Exception ex) { Fail(ex); }
+    }
+
+    private void SaveLivery_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var color = LiveryColorBox.Text.Trim();
+            if (!Regex.IsMatch(color, "^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$"))
+                throw new InvalidDataException("Cor base deve usar HEX, por exemplo #FFFFFF ou #FFFFFFFF.");
+
+            var file = ContentTemplateService.CreateLivery(
+                ProjectRoot,
+                LiveryIdBox.Text.Trim(),
+                LiveryNameBox.Text.Trim(),
+                LiveryVehicleBox.Text.Trim(),
+                color,
+                _liveryTextureSource);
+            Log($"Pintura/livery salva: {file}");
             RefreshProjectTree();
         }
         catch (Exception ex) { Fail(ex); }
