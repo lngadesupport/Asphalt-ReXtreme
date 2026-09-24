@@ -32,6 +32,7 @@ on:
       - "src-reconstructed/campaign-core/CampaignEventCatalog.h"
       - "src-reconstructed/campaign-core/CampaignSpecialEventCatalog.c"
       - "src-reconstructed/campaign-core/CampaignSpecialEventCatalog.h"
+      - "src-reconstructed/campaign-core/CampaignSpecialEventTest.c"
       - "src-reconstructed/campaign-core/CampaignObjectiveCatalog.c"
       - "src-reconstructed/campaign-core/CampaignObjectiveCatalog.h"
       - "src-reconstructed/campaign-core/CampaignChallengeCatalog.c"
@@ -216,6 +217,15 @@ jobs:
           "prebuilt\campaign-core\CampaignLastResultTest.exe"
           if errorlevel 1 exit /b 47
 
+          cl.exe /nologo /c /TC /O2 /MT /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /I"src-reconstructed\campaign-core" /Fo"prebuilt\campaign-core\CampaignSpecialEventTest.obj" "src-reconstructed\campaign-core\CampaignSpecialEventTest.c"
+          if errorlevel 1 exit /b 48
+
+          link.exe /nologo /machine:x86 /out:"prebuilt\campaign-core\CampaignSpecialEventTest.exe" "prebuilt\campaign-core\CampaignSpecialEventTest.obj" "prebuilt\campaign-core\CampaignSpecialEventCatalog.obj" "prebuilt\campaign-core\CampaignEventCatalog.obj" kernel32.lib
+          if errorlevel 1 exit /b 49
+
+          "prebuilt\campaign-core\CampaignSpecialEventTest.exe"
+          if errorlevel 1 exit /b 50
+
           exit /b 0
           "@
 
@@ -258,6 +268,8 @@ jobs:
           Remove-Item ".\prebuilt\campaign-core\CampaignAchievementTest.exe" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignLastResultTest.obj" -ErrorAction SilentlyContinue
           Remove-Item ".\prebuilt\campaign-core\CampaignLastResultTest.exe" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignSpecialEventTest.obj" -ErrorAction SilentlyContinue
+          Remove-Item ".\prebuilt\campaign-core\CampaignSpecialEventTest.exe" -ErrorAction SilentlyContinue
           Remove-Item $batPath -ErrorAction SilentlyContinue
 
       - name: Verify
