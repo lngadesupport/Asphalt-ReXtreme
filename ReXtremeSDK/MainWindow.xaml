@@ -217,6 +217,29 @@
                     </Grid>
                 </TabItem>
 
+                <TabItem Header="Pintura / Livery">
+                    <ScrollViewer Background="{StaticResource EditorBackground}">
+                        <StackPanel Margin="20" MaxWidth="850" HorizontalAlignment="Left">
+                            <TextBlock Text="LIVERY / PAINT EDITOR" FontSize="22" FontWeight="Bold" Margin="0,0,0,14"/>
+                            <TextBlock Text="ID"/>
+                            <TextBox x:Name="LiveryIdBox" Text="local.livery.new" Padding="6" Margin="0,3,0,8"/>
+                            <TextBlock Text="Nome"/>
+                            <TextBox x:Name="LiveryNameBox" Text="New Livery" Padding="6" Margin="0,3,0,8"/>
+                            <TextBlock Text="Veículo alvo (ID original ou mod)"/>
+                            <TextBox x:Name="LiveryVehicleBox" Text="original.vehicle.pending" Padding="6" Margin="0,3,0,8"/>
+                            <TextBlock Text="Cor base (HEX)"/>
+                            <TextBox x:Name="LiveryColorBox" Text="#FFFFFF" Padding="6" Margin="0,3,0,8"/>
+                            <WrapPanel Margin="0,6,0,8">
+                                <Button Content="Importar textura/decal" Width="180" Click="ImportLiveryTexture_Click"/>
+                                <TextBlock x:Name="LiveryTextureText" Text="Nenhuma textura selecionada" Foreground="{StaticResource EditorMuted}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                            </WrapPanel>
+                            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource EditorMuted}" Margin="0,0,0,12"
+                                       Text="A fundação salva camadas paint + texture no projeto. O preview UV/decals 3D será ligado ao viewport conforme o pipeline de materiais original for mapeado."/>
+                            <Button Content="Salvar pintura/livery" Width="180" HorizontalAlignment="Left" Click="SaveLivery_Click"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
                 <TabItem Header="Replay / Foto / Gráficos">
                     <ScrollViewer Background="{StaticResource EditorBackground}">
                         <StackPanel Margin="20" MaxWidth="850" HorizontalAlignment="Left">
