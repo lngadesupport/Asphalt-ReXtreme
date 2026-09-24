@@ -51,6 +51,7 @@ call :get tools/build_campaign_upgrade_ui_map.py tools\build_campaign_upgrade_ui
 call :get tools/build_campaign_production_data.py tools\build_campaign_production_data.py || goto :download_fail
 call :get tools/build_campaign_auxiliary_data.py tools\build_campaign_auxiliary_data.py || goto :download_fail
 call :get tools/build_campaign_store_catalog.py tools\build_campaign_store_catalog.py || goto :download_fail
+call :get tools/build_campaign_store_from_shop.py tools\build_campaign_store_from_shop.py || goto :download_fail
 call :get tools/audit_campaign_store_keys_from_package.py tools\audit_campaign_store_keys_from_package.py || goto :download_fail
 call :get tools/campaign_garage_v2.py tools\campaign_garage_v2.py || goto :download_fail
 call :get tools/campaign_career_adapter_v2.py tools\campaign_career_adapter_v2.py || goto :download_fail
@@ -91,13 +92,28 @@ python.exe "%TOOLS%\audit_campaign_store_keys_from_package.py" ^
 if errorlevel 1 echo [AVISO] Auditoria de chaves da loja falhou; monetizacao ainda sera aposentada.
 
 echo.
-echo [STORE] Criando catalogo offline vazio se nao houver catalogo verificado...
-if not exist "%PKG%\CampaignStore.dat" (
+echo [STORE] Gerando CampaignStore.dat do asphaltshop.xtea real...
+del /q "%PKG%\CampaignStore.dat" 2>nul
+python.exe "%TOOLS%\build_campaign_store_from_shop.py" ^
+  --xml-bin "%PKG%\data\xml.bin" ^
+  --output "%PKG%\CampaignStore.dat" ^
+  --report "%ROOT%\_CAMPAIGN_PRODUCTION_DATA\CampaignStore.report.json" ^
+  --multiplier 0.20
+set "STOREERR=%ERRORLEVEL%"
+if "%STOREERR%"=="3" (
+  echo [BLOQUEIO] Houve colisao entre chaves reais de ofertas.
+  goto :data_fail
+)
+if "%STOREERR%"=="4" (
+  echo [AVISO] Nenhuma oferta local verificavel foi encontrada.
+  echo [AVISO] A monetizacao antiga sera aposentada sem loja local ativa.
   >"%ROOT%\_CAMPAIGN_PRODUCTION_DATA\store-offline.json" echo {"schema":1,"offers":[]}
   python.exe "%TOOLS%\build_campaign_store_catalog.py" ^
     "%ROOT%\_CAMPAIGN_PRODUCTION_DATA\store-offline.json" ^
     -o "%PKG%\CampaignStore.dat"
   if errorlevel 1 goto :data_fail
+) else (
+  if not "%STOREERR%"=="0" goto :data_fail
 )
 
 echo.
