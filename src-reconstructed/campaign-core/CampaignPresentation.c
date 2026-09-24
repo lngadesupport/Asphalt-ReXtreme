@@ -18,6 +18,8 @@ typedef struct CampaignReplayFileHeader {
     uint32_t version;
     uint32_t sample_size;
     uint32_t sample_count;
+    uint32_t marker_size;
+    uint32_t marker_count;
     uint32_t first_time_ms;
     uint32_t last_time_ms;
 } CampaignReplayFileHeader;
@@ -32,6 +34,9 @@ static uint32_t g_replay_count;
 static uint32_t g_replay_write;
 static uint32_t g_replay_dropped;
 static uint32_t g_replay_active;
+static CampaignReplayMarker g_replay_markers[CAMPAIGN_REPLAY_MARKER_MAX];
+static uint32_t g_replay_marker_count;
+static uint32_t g_replay_dropped_markers;
 
 static CampaignPhotoState g_photo;
 
@@ -337,6 +342,8 @@ static void ReplayReleaseUnlocked(void) {
     g_replay_write = 0;
     g_replay_dropped = 0;
     g_replay_active = 0;
+    g_replay_marker_count = 0;
+    g_replay_dropped_markers = 0;
 }
 
 int __cdecl CampaignReplayStart(uint32_t capacity) {
@@ -375,6 +382,8 @@ int __cdecl CampaignReplayClear(void) {
     g_replay_count = 0;
     g_replay_write = 0;
     g_replay_dropped = 0;
+    g_replay_marker_count = 0;
+    g_replay_dropped_markers = 0;
     PresentationUnlock();
     return 1;
 }
@@ -424,6 +433,8 @@ int __cdecl CampaignReplayGetInfo(CampaignReplayInfo* out) {
     out->sample_count = g_replay_count;
     out->capacity = g_replay_capacity;
     out->dropped_samples = g_replay_dropped;
+    out->marker_count = g_replay_marker_count;
+    out->dropped_markers = g_replay_dropped_markers;
     out->first_time_ms = 0;
     out->last_time_ms = 0;
 
@@ -474,6 +485,8 @@ int __cdecl CampaignReplaySave(const WCHAR* path) {
     header.version = CAMPAIGN_REPLAY_FORMAT_VERSION;
     header.sample_size = (uint32_t)sizeof(CampaignReplaySample);
     header.sample_count = g_replay_count;
+    header.marker_size = (uint32_t)sizeof(CampaignReplayMarker);
+    header.marker_count = g_replay_marker_count;
     header.first_time_ms = g_replay_samples[ReplayPhysicalIndexUnlocked(0)].time_ms;
     header.last_time_ms = g_replay_samples[ReplayPhysicalIndexUnlocked(g_replay_count - 1u)].time_ms;
 
@@ -509,8 +522,140 @@ int __cdecl CampaignReplaySave(const WCHAR* path) {
         }
     }
 
+    for (i = 0; i < g_replay_marker_count; ++i) {
+        written = 0;
+        if (!WriteFile(
+                h,
+                &g_replay_markers[i],
+                (DWORD)sizeof(CampaignReplayMarker),
+                &written,
+                0) ||
+            written != (DWORD)sizeof(CampaignReplayMarker)) {
+            CloseHandle(h);
+            DeleteFileW(path);
+            PresentationUnlock();
+            return 0;
+        }
+    }
+
     FlushFileBuffers(h);
     CloseHandle(h);
+    PresentationUnlock();
+    return 1;
+}
+
+int __cdecl CampaignReplayLoad(const WCHAR* path) {
+    HANDLE h;
+    DWORD got;
+    CampaignReplayFileHeader header;
+    CampaignReplaySample* samples;
+    SIZE_T bytes;
+    uint32_t i;
+
+    if (!path || !path[0]) return 0;
+
+    h = CreateFileW(
+        path,
+        GENERIC_READ,
+        FILE_SHARE_READ,
+        0,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        0
+    );
+    if (h == INVALID_HANDLE_VALUE) return 0;
+
+    ZeroBytes(&header, (uint32_t)sizeof(header));
+    got = 0;
+    if (!ReadFile(h, &header, (DWORD)sizeof(header), &got, 0) ||
+        got != (DWORD)sizeof(header) ||
+        header.magic != RXRP_MAGIC ||
+        header.version != CAMPAIGN_REPLAY_FORMAT_VERSION ||
+        header.sample_size != (uint32_t)sizeof(CampaignReplaySample) ||
+        header.marker_size != (uint32_t)sizeof(CampaignReplayMarker) ||
+        header.sample_count == 0 ||
+        header.sample_count > RX_REPLAY_MAX_CAPACITY ||
+        header.marker_count > CAMPAIGN_REPLAY_MARKER_MAX) {
+        CloseHandle(h);
+        return 0;
+    }
+
+    bytes = (SIZE_T)header.sample_count * (SIZE_T)sizeof(CampaignReplaySample);
+    samples = (CampaignReplaySample*)VirtualAlloc(
+        0, bytes, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE
+    );
+    if (!samples) {
+        CloseHandle(h);
+        return 0;
+    }
+
+    got = 0;
+    if (!ReadFile(h, samples, (DWORD)bytes, &got, 0) || got != (DWORD)bytes) {
+        VirtualFree(samples, 0, MEM_RELEASE);
+        CloseHandle(h);
+        return 0;
+    }
+
+    PresentationLock();
+    ReplayReleaseUnlocked();
+    g_replay_samples = samples;
+    g_replay_capacity = header.sample_count;
+    g_replay_count = header.sample_count;
+    g_replay_write = 0;
+    g_replay_active = 0;
+
+    for (i = 0; i < header.marker_count; ++i) {
+        got = 0;
+        if (!ReadFile(
+                h,
+                &g_replay_markers[i],
+                (DWORD)sizeof(CampaignReplayMarker),
+                &got,
+                0) ||
+            got != (DWORD)sizeof(CampaignReplayMarker)) {
+            ReplayReleaseUnlocked();
+            PresentationUnlock();
+            CloseHandle(h);
+            return 0;
+        }
+        ++g_replay_marker_count;
+    }
+
+    PresentationUnlock();
+    CloseHandle(h);
+    return 1;
+}
+
+int __cdecl CampaignReplayAddMarker(const CampaignReplayMarker* marker) {
+    if (!marker || marker->type == 0) return 0;
+
+    PresentationLock();
+    if (g_replay_marker_count >= CAMPAIGN_REPLAY_MARKER_MAX) {
+        ++g_replay_dropped_markers;
+        PresentationUnlock();
+        return 0;
+    }
+
+    CopyBytes(
+        &g_replay_markers[g_replay_marker_count],
+        marker,
+        (uint32_t)sizeof(CampaignReplayMarker)
+    );
+    ++g_replay_marker_count;
+    PresentationUnlock();
+    return 1;
+}
+
+int __cdecl CampaignReplayGetMarker(uint32_t index, CampaignReplayMarker* out) {
+    if (!out) return 0;
+
+    PresentationLock();
+    if (index >= g_replay_marker_count) {
+        PresentationUnlock();
+        return 0;
+    }
+
+    CopyBytes(out, &g_replay_markers[index], (uint32_t)sizeof(*out));
     PresentationUnlock();
     return 1;
 }
@@ -618,6 +763,22 @@ int __cdecl CampaignPresentationInvoke(CampaignPresentationCommand* command) {
     case CAMPAIGN_PRESENTATION_OP_REPLAY_SAVE:
         command->status = CampaignReplaySave(
             (const WCHAR*)(uintptr_t)command->ptr0
+        );
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_LOAD:
+        command->status = CampaignReplayLoad(
+            (const WCHAR*)(uintptr_t)command->ptr0
+        );
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_ADD_MARKER:
+        command->status = CampaignReplayAddMarker(
+            (const CampaignReplayMarker*)(uintptr_t)command->ptr0
+        );
+        break;
+    case CAMPAIGN_PRESENTATION_OP_REPLAY_GET_MARKER:
+        command->status = CampaignReplayGetMarker(
+            (uint32_t)command->a,
+            (CampaignReplayMarker*)(uintptr_t)command->ptr0
         );
         break;
 
