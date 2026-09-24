@@ -35,3 +35,25 @@ def test_upgrade_catalog_rejects_bad_inventory_semantics():
         assert False
     except ValueError:
         pass
+
+
+def test_production_scale_upgrade_catalog():
+    rows = []
+    for car_id in range(1, 62):
+        for kind in ("upgrade", "prokit"):
+            for part_slot in range(4):
+                for target_level in range(1, 17):
+                    rows.append({
+                        "car_id": car_id,
+                        "kind": kind,
+                        "part_slot": part_slot,
+                        "target_level": target_level,
+                        "cost_type": "credits",
+                        "item_id": 0,
+                        "cost": 1000 + target_level,
+                    })
+    entries = m.normalize(rows)
+    assert len(entries) == 7808
+    assert len(entries) < m.MAX
+    data = m.build(entries)
+    assert len(data) == 16 + m.MAX * m.ENTRY.size + 4
