@@ -170,8 +170,24 @@ enum CampaignPresentationOp {
     CAMPAIGN_PRESENTATION_OP_PHOTO_ENTER = 40,
     CAMPAIGN_PRESENTATION_OP_PHOTO_EXIT = 41,
     CAMPAIGN_PRESENTATION_OP_PHOTO_GET = 42,
-    CAMPAIGN_PRESENTATION_OP_PHOTO_SET = 43
+    CAMPAIGN_PRESENTATION_OP_PHOTO_SET = 43,
+
+    CAMPAIGN_PRESENTATION_OP_DIAGNOSTICS = 60
 };
+
+typedef struct CampaignPresentationDiagnostics {
+    uint32_t size;
+    uint32_t settings_revision;
+    uint32_t verified_capability_count;
+    uint32_t replay_recording;
+    uint32_t replay_sample_count;
+    uint32_t replay_marker_count;
+    uint32_t replay_loaded;
+    uint32_t replay_playing;
+    uint32_t replay_time_ms;
+    uint32_t photo_active;
+    uint32_t photo_camera_mode;
+} CampaignPresentationDiagnostics;
 
 typedef struct CampaignPresentationCommand {
     uint32_t size;
@@ -226,6 +242,7 @@ int __cdecl CampaignPhotoEnter(const CampaignPhotoState* initial);
 int __cdecl CampaignPhotoExit(void);
 int __cdecl CampaignPhotoGet(CampaignPhotoState* out);
 int __cdecl CampaignPhotoSet(const CampaignPhotoState* state);
+int __cdecl CampaignPresentationGetDiagnostics(CampaignPresentationDiagnostics* out);
 
 #ifdef __cplusplus
 }
