@@ -128,6 +128,32 @@ public partial class MainWindow : Window
         catch (Exception ex) { Fail(ex); }
     }
 
+    private void AddDependency_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _projects.AddDependency(DependencyIdBox.Text, DependencyVersionBox.Text);
+            DependencyIdBox.Clear();
+            DependencyVersionBox.Text = "*";
+            RefreshDependencyList();
+            Log("Dependência adicionada ao manifest.");
+        }
+        catch (Exception ex) { Fail(ex); }
+    }
+
+    private void RemoveDependency_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (DependenciesList.SelectedItem is not ListBoxItem item || item.Tag is not string id)
+                return;
+            _projects.RemoveDependency(id);
+            RefreshDependencyList();
+            Log($"Dependência removida: {id}");
+        }
+        catch (Exception ex) { Fail(ex); }
+    }
+
     private void ImportModel_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -334,6 +360,7 @@ public partial class MainWindow : Window
         InspectorProjectType.Text = manifest.Type;
         RefreshProjectTree();
         RefreshMusicList();
+        RefreshDependencyList();
         StatusText.Text = "Projeto carregado.";
     }
 
@@ -357,6 +384,15 @@ public partial class MainWindow : Window
         }
         foreach (var file in Directory.EnumerateFiles(directory).OrderBy(Path.GetFileName))
             parent.Items.Add(new TreeViewItem { Header = Path.GetFileName(file) });
+    }
+
+    private void RefreshDependencyList()
+    {
+        DependenciesList.Items.Clear();
+        if (_projects.CurrentProjectPath is null) return;
+        var manifest = _projects.LoadManifest();
+        foreach (var dep in manifest.Dependencies.OrderBy(x => x.Id, StringComparer.OrdinalIgnoreCase))
+            DependenciesList.Items.Add(new ListBoxItem { Content = $"{dep.Id}  [{dep.Version}]", Tag = dep.Id });
     }
 
     private void RefreshMusicList()
