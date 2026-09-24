@@ -188,6 +188,7 @@ static WCHAR g_legacy_backup_path[1024];
 static WCHAR g_executable_dir[1024];
 static WCHAR g_user_dir[1024];
 static volatile LONG g_portable_save;
+static volatile LONG g_presentation_bootstrap_attempted;
 static CampaignRaceSession g_race_session_buffer;
 
 static void LockState(void) {
@@ -965,6 +966,17 @@ static int TryMigrateV1(void) {
     return 1;
 }
 
+static void BootstrapPresentationOnceUnlocked(void) {
+    /*
+      Presentation is optional to Campaign correctness. Apply persisted verified
+      graphics/camera values once at startup, but never block Campaign save
+      recovery if a Presentation binding/catalog is unavailable.
+    */
+    if (InterlockedCompareExchange(&g_presentation_bootstrap_attempted, 1, 0) == 0) {
+        CampaignPresentationLoadSettings();
+    }
+}
+
 static void EnsureLoadedUnlocked(void) {
     if (g_loaded) {
         /*
@@ -972,6 +984,7 @@ static void EnsureLoadedUnlocked(void) {
           uses the Campaign revision to decide whether its reward was committed.
         */
         CampaignChallengesRecoverClaim(g_state.revision);
+        BootstrapPresentationOnceUnlocked();
         return;
     }
 
@@ -979,12 +992,14 @@ static void EnsureLoadedUnlocked(void) {
     if (!BuildPaths()) {
         InterlockedExchange(&g_loaded, 1);
         CampaignChallengesRecoverClaim(g_state.revision);
+        BootstrapPresentationOnceUnlocked();
         return;
     }
 
     if (TryLoadV3(g_state_path, &g_state)) {
         InterlockedExchange(&g_loaded, 1);
         CampaignChallengesRecoverClaim(g_state.revision);
+        BootstrapPresentationOnceUnlocked();
         return;
     }
 
@@ -992,18 +1007,21 @@ static void EnsureLoadedUnlocked(void) {
         SaveStateUnlocked();
         InterlockedExchange(&g_loaded, 1);
         CampaignChallengesRecoverClaim(g_state.revision);
+        BootstrapPresentationOnceUnlocked();
         return;
     }
 
     if (TryMigrateV2()) {
         InterlockedExchange(&g_loaded, 1);
         CampaignChallengesRecoverClaim(g_state.revision);
+        BootstrapPresentationOnceUnlocked();
         return;
     }
 
     if (TryMigrateV1()) {
         InterlockedExchange(&g_loaded, 1);
         CampaignChallengesRecoverClaim(g_state.revision);
+        BootstrapPresentationOnceUnlocked();
         return;
     }
 
