@@ -300,6 +300,36 @@ int CampaignPresentationCapabilityValueValid(
     return 1;
 }
 
+static int StoredInPresentationDisk(const char* id) {
+    return StringEqual(id, "fov") ||
+           StringEqual(id, "camera_distance") ||
+           StringEqual(id, "camera_height") ||
+           StringEqual(id, "camera_smoothing");
+}
+
+int CampaignPresentationCatalogApplyStoredValues(void) {
+    uint32_t i;
+    int32_t value;
+
+    EnsureLoaded();
+    for (i = 0; i < g_count; ++i) {
+        const CampaignPresentationCapability* capability = &g_entries[i];
+
+        /*
+          The four legacy camera values live in ReXtremePresentation.dat and
+          are applied by CampaignPresentation itself. Avoid a second source of
+          truth in ReXtreme.ini.
+        */
+        if (StoredInPresentationDisk(capability->id)) continue;
+        if (!CampaignPresentationCapabilityRuntimeReady(i)) continue;
+
+        value = capability->original_value;
+        if (!CampaignPresentationCatalogGetValue(i, &value)) return 0;
+        if (!CampaignPresentationBindingsApply(capability->id, value)) return 0;
+    }
+    return 1;
+}
+
 int CampaignPresentationCatalogGetValue(uint32_t index, int32_t* out_value) {
     const CampaignPresentationCapability* capability;
     WCHAR key[CAMPAIGN_PRESENTATION_CAPABILITY_ID_MAX];
