@@ -11,7 +11,7 @@ File Type: DLL
 FILE HEADER VALUES
              14C machine (x86)
                4 number of sections
-        6AB54D8E time date stamp Thu Sep 24 16:19:26 2026
+        6AB54DB5 time date stamp Thu Sep 24 16:20:05 2026
                0 file pointer to symbol table
                0 number of symbols
               E0 size of optional header
@@ -54,7 +54,7 @@ OPTIONAL HEADER VALUES
                0 [       0] RVA [size] of Resource Directory
                0 [       0] RVA [size] of Exception Directory
                0 [       0] RVA [size] of Certificates Directory
-          150000 [    16EC] RVA [size] of Base Relocation Directory
+          150000 [    16FC] RVA [size] of Base Relocation Directory
            14AF0 [      1C] RVA [size] of Debug Directory
                0 [       0] RVA [size] of Architecture Directory
                0 [       0] RVA [size] of Global Pointer Directory
@@ -69,8 +69,8 @@ OPTIONAL HEADER VALUES
 
 SECTION HEADER #1
    .text name
-   12717 virtual size
-    1000 virtual address (10001000 to 10013716)
+   127C7 virtual size
+    1000 virtual address (10001000 to 100137C6)
    12800 size of raw data
      400 file pointer to raw data (00000400 to 00012BFF)
        0 file pointer to relocation table
@@ -99,7 +99,7 @@ SECTION HEADER #2
 
         Time Type        Size      RVA  Pointer
     -------- ------- -------- -------- --------
-    6AB54D8E coffgrp       DC 00014E7C    13A7C
+    6AB54DB5 coffgrp       DC 00014E7C    13A7C
 
   Section contains the following imports:
 
@@ -151,8 +151,8 @@ C0000040 flags
 
 SECTION HEADER #4
   .reloc name
-    16EC virtual size
-  150000 virtual address (10150000 to 101516EB)
+    16FC virtual size
+  150000 virtual address (10150000 to 101516FB)
     1800 size of raw data
    13E00 file pointer to raw data (00013E00 to 000155FF)
        0 file pointer to relocation table
