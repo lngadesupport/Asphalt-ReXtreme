@@ -183,7 +183,7 @@ static int WriteTestOriginalUiCatalog(void) {
 static int WriteTestRaceHudCatalog(void) {
     const WCHAR* path = L"prebuilt\\campaign-core\\CampaignRaceHudBindings.dat";
     TestBindingHeader header;
-    CampaignRaceHudBinding bindings[5];
+    CampaignRaceHudBinding bindings[6];
     HMODULE module;
     uintptr_t base;
     uintptr_t targets[5];
@@ -229,9 +229,18 @@ static int WriteTestRaceHudCatalog(void) {
         }
     }
 
+    bindings[5].element = CAMPAIGN_RACE_HUD_NITRO;
+    bindings[5].property = CAMPAIGN_RACE_HUD_PROP_X;
+    bindings[5].base_kind = CAMPAIGN_RACE_HUD_BASE_GUI_ARGUMENT;
+    bindings[5].target_rva = 0;
+    bindings[5].field_offset = 4;
+    bindings[5].value_kind = CAMPAIGN_PRESENTATION_VALUE_FLOAT_SCALED;
+    bindings[5].scale_divisor = 1000;
+    bindings[5].flags = 1;
+
     header.magic = 0x42485852u;
     header.version = 1;
-    header.count = 5;
+    header.count = 6;
     header.entry_size = sizeof(CampaignRaceHudBinding);
     header.entries_hash = TestFnv1a((const unsigned char*)bindings, sizeof(bindings));
     header.pe_time_date_stamp = stamp;
@@ -794,7 +803,7 @@ int main(void) {
         if (CampaignRaceHudApplyElement(&hud)) return Fail(124);
         if (!WriteTestRaceHudCatalog()) return Fail(125);
         if (!CampaignRaceHudBindingsLoad()) return Fail(126);
-        if (CampaignRaceHudBindingsCount() != 5) return Fail(127);
+        if (CampaignRaceHudBindingsCount() != 6) return Fail(127);
         if (!CampaignRaceHudElementReady(CAMPAIGN_RACE_HUD_SPEED, hud.set_flags)) return Fail(128);
         if (!CampaignRaceHudApplyElement(&hud)) return Fail(129);
         if (g_test_hud_x != 12.5f ||
@@ -802,6 +811,24 @@ int main(void) {
             g_test_hud_scale != 1.25f ||
             g_test_hud_opacity != 0.75f ||
             g_test_hud_visible != 1) return Fail(130);
+
+        {
+            struct TestGuiHud {
+                uint32_t pad;
+                float nitro_x;
+            } gui;
+            CampaignRaceHudElementState nitro;
+            ZeroMemory(&gui, sizeof(gui));
+            ZeroMemory(&nitro, sizeof(nitro));
+            nitro.size = sizeof(nitro);
+            nitro.element = CAMPAIGN_RACE_HUD_NITRO;
+            nitro.set_flags = CAMPAIGN_RACE_HUD_SET_X;
+            nitro.x_x1000 = 33000;
+
+            if (CampaignRaceHudApplyElement(&nitro)) return Fail(141);
+            if (!CampaignRaceHudApplyElementFromGui(&gui, &nitro)) return Fail(142);
+            if (gui.nitro_x != 33.0f) return Fail(143);
+        }
 
         if (!CampaignRaceHudLayoutReset()) return Fail(131);
         if (!CampaignRaceHudLayoutSet(&hud)) return Fail(132);
@@ -872,7 +899,7 @@ int main(void) {
         diagnostics.verified_binding_count != 1 ||
         diagnostics.original_ui_binding_count != 12 ||
         diagnostics.original_ui_feature_mask != 0x1Fu ||
-        diagnostics.race_hud_binding_count != 5 ||
+        diagnostics.race_hud_binding_count != 6 ||
         diagnostics.race_hud_original_ui_ready != 1 ||
         diagnostics.race_hud_layout_count != 1) return Fail(100);
 
