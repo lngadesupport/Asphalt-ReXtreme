@@ -365,7 +365,28 @@ function Update-Beta {
         "docs/PUBLIC_BETA_0.1.0.md",
         "tools/public_beta.ps1",
         "tools/build_ams_phase2.ps1",
-        "tools/build_package_phase5.ps1"
+        "tools/build_package_phase5.ps1",
+        "tools/xtea_assets.py",
+        "tools/rextreme_economy.py",
+        "tools/economy_audit.py",
+        "tools/build_campaign_vehicle_catalog.py",
+        "tools/build_campaign_event_catalog.py",
+        "tools/build_campaign_upgrade_catalog.py",
+        "tools/build_campaign_objective_catalog.py",
+        "tools/build_campaign_objective_catalog_from_package.py",
+        "tools/build_campaign_upgrade_ui_map.py",
+        "tools/build_campaign_production_data.py",
+        "tools/build_campaign_auxiliary_data.py",
+        "tools/build_campaign_store_catalog.py",
+        "tools/build_campaign_store_from_shop.py",
+        "tools/audit_campaign_store_keys_from_package.py",
+        "tools/campaign_garage_v2.py",
+        "tools/campaign_career_adapter_v2.py",
+        "tools/campaign_career_adapter_v3.py",
+        "tools/campaign_upgrade_adapter_v1.py",
+        "tools/campaign_store_adapter_v1.py",
+        "tools/validate_campaign_data_prepatch.py",
+        "tools/validate_campaign_final.py"
     )
 
     $tmp = Join-Path $env:TEMP ("ReXtremeBetaUpdate-" + [Guid]::NewGuid().ToString("N"))
