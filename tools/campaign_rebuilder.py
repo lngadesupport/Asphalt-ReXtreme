@@ -32,6 +32,7 @@ PACKAGE_METADATA_DIRS = (
 
 DEFAULT_MANIFEST = Path("patches/1.7.3.8-x86.json")
 DEFAULT_CONFIG = Path("config/ReXtreme-1.0.ini")
+DEFAULT_PRESENTATION_CAPABILITIES = Path("config/presentation-capabilities.verified.json")
 
 
 class BuildError(RuntimeError):
@@ -137,6 +138,41 @@ def apply_verified_patches(
         raise BuildError(f"Verified patcher failed with exit code {result.returncode}")
 
 
+def build_presentation_catalog(output: Path, source: Path, builder: Path) -> dict:
+    if not source.is_file():
+        raise BuildError(f"Presentation capability source not found: {source}")
+    if not builder.is_file():
+        raise BuildError(f"Presentation capability builder not found: {builder}")
+
+    target = output / "CampaignPresentationOptions.dat"
+    report = output / "CampaignPresentationOptions.report.json"
+    cmd = [
+        sys.executable,
+        str(builder),
+        str(source),
+        str(target),
+        "--report",
+        str(report),
+    ]
+    result = subprocess.run(cmd, text=True)
+    if result.returncode != 0:
+        raise BuildError(
+            f"Presentation capability catalog build failed with exit code {result.returncode}"
+        )
+
+    try:
+        summary = json.loads(report.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BuildError(f"Invalid presentation capability report: {exc}") from exc
+
+    return {
+        "catalog": target.name,
+        "report": report.name,
+        "count": int(summary.get("count", 0)),
+        "safe_empty_catalog": bool(summary.get("safe_empty_catalog", False)),
+    }
+
+
 def overlay_directory(output: Path, overlay: Path) -> list[str]:
     if not overlay.is_dir():
         raise BuildError(f"Overlay directory not found: {overlay}")
@@ -158,6 +194,7 @@ def write_status(
     verified: list[dict],
     moved_metadata: list[str],
     overlay_files: list[str],
+    presentation_catalog: dict,
 ) -> Path:
     status = {
         "edition": "Campaign",
@@ -165,6 +202,7 @@ def write_status(
         "source_files_verified": verified,
         "verified_core_patches_applied": True,
         "offline_overlay_files": overlay_files,
+        "presentation_capability_catalog": presentation_catalog,
         "package_metadata_moved_out_of_runtime_root": moved_metadata,
         "portable_startup_ready": False,
         "startup_decoupling_status": "pending-runtime-validation",
@@ -186,6 +224,11 @@ def main() -> int:
     parser.add_argument("output_dir", type=Path)
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    parser.add_argument(
+        "--presentation-capabilities",
+        type=Path,
+        default=DEFAULT_PRESENTATION_CAPABILITIES,
+    )
     parser.add_argument("--offline-overlay", type=Path)
     parser.add_argument("--verify-only", action="store_true")
     args = parser.parse_args()
@@ -194,7 +237,10 @@ def main() -> int:
     output = args.output_dir.resolve()
     manifest_path = args.manifest.resolve()
     config_path = args.config.resolve()
-    patcher = (Path(__file__).resolve().parent / "patcher.py").resolve()
+    presentation_capabilities_path = args.presentation_capabilities.resolve()
+    tools_dir = Path(__file__).resolve().parent
+    patcher = (tools_dir / "patcher.py").resolve()
+    presentation_builder = (tools_dir / "build_presentation_capability_catalog.py").resolve()
 
     if not source.is_dir():
         print(f"ERROR: source directory not found: {source}", file=sys.stderr)
@@ -221,12 +267,29 @@ def main() -> int:
 
         copy_config(output, config_path)
 
+        presentation_catalog = build_presentation_catalog(
+            output,
+            presentation_capabilities_path,
+            presentation_builder,
+        )
+        print(
+            "[PRESENTATION] verified options: "
+            f"{presentation_catalog['count']} "
+            f"(safe empty={presentation_catalog['safe_empty_catalog']})"
+        )
+
         overlay_files: list[str] = []
         if args.offline_overlay:
             overlay_files = overlay_directory(output, args.offline_overlay.resolve())
             print(f"[OVERLAY] files applied: {len(overlay_files)}")
 
-        status_path = write_status(output, verified, moved, overlay_files)
+        status_path = write_status(
+            output,
+            verified,
+            moved,
+            overlay_files,
+            presentation_catalog,
+        )
         print(f"[STATUS] {status_path}")
         print("[DONE] Campaign staging tree created; portable startup validation still pending")
         return 0
