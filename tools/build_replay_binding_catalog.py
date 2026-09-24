@@ -18,7 +18,7 @@ MAX_BINDINGS = 32
 CHAIN_MAX = 4
 
 HEADER = struct.Struct("<7I")
-ENTRY = struct.Struct("<4I4iiiIiI")
+ENTRY = struct.Struct("<4I4iiIiI")
 
 SEMANTICS = {
     "time_ms": 1,
