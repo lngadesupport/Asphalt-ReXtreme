@@ -110,6 +110,12 @@ int __cdecl CampaignCraftInvoke(void* garage);
 int __cdecl CampaignBeginRaceFromGui(void* game_mode_gui);
 int __cdecl CampaignFinishRaceFromGui(void* game_mode_gui);
 
+/*
+  Per-frame Replay ABI. This remains fail-closed until the exact original
+  GameModeGUIBase update/vehicle transform chain is verified for 1.7.3.8.
+*/
+int __cdecl CampaignReplayFrameFromGui(void* game_mode_gui);
+
 #ifdef __cplusplus
 }
 #endif
