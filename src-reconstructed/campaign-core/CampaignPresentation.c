@@ -441,6 +441,9 @@ int __cdecl CampaignPresentationLoadSettings(void) {
     if (result) {
         result = ApplyLegacyPresentationBindings(&g_settings);
     }
+    if (result) {
+        result = CampaignPresentationCatalogApplyStoredValues();
+    }
     PresentationUnlock();
     return result;
 }
