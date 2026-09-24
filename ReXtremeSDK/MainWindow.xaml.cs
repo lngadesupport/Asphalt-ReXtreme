@@ -168,47 +168,55 @@ public partial class MainWindow : Window
             var extension = Path.GetExtension(dialog.FileName).ToLowerInvariant();
             var models = Path.Combine(ProjectRoot, "assets", "models");
             var sources = Path.Combine(ProjectRoot, "assets", "source");
+            var previews = Path.Combine(ProjectRoot, "assets", ".preview");
             Directory.CreateDirectory(models);
             Directory.CreateDirectory(sources);
+            Directory.CreateDirectory(previews);
 
-            string target;
-            if (extension == ".blend")
+            var sourceCopy = Path.Combine(sources, Path.GetFileName(dialog.FileName));
+            File.Copy(dialog.FileName, sourceCopy, true);
+
+            var blender = BlenderBridgeService.FindBlender();
+            string runtimeAsset;
+
+            if (extension == ".glb")
             {
-                var sourceCopy = Path.Combine(sources, Path.GetFileName(dialog.FileName));
-                File.Copy(dialog.FileName, sourceCopy, true);
-
-                var blender = BlenderBridgeService.FindBlender();
-                if (blender is null)
-                {
-                    Log("BLEND importado como fonte, mas Blender não foi encontrado. Defina BLENDER_PATH ou instale Blender.");
-                    ViewportHint.Text = Path.GetFileName(sourceCopy) + " — aguardando conversão via Blender.";
-                    RefreshProjectTree();
-                    return;
-                }
-
-                target = Path.Combine(models, Path.GetFileNameWithoutExtension(dialog.FileName) + ".glb");
-                BlenderBridgeService.ConvertBlendToGlb(blender, dialog.FileName, target);
-                Log($"Blender convertido automaticamente: {Path.GetFileName(dialog.FileName)} -> {Path.GetFileName(target)}");
+                runtimeAsset = Path.Combine(models, Path.GetFileName(dialog.FileName));
+                File.Copy(dialog.FileName, runtimeAsset, true);
+            }
+            else if (blender is not null)
+            {
+                runtimeAsset = Path.Combine(models, Path.GetFileNameWithoutExtension(dialog.FileName) + ".glb");
+                BlenderBridgeService.ConvertModelToGlb(blender, dialog.FileName, runtimeAsset);
+                Log($"Modelo convertido para GLB canônico: {Path.GetFileName(runtimeAsset)}");
             }
             else
             {
-                target = Path.Combine(models, Path.GetFileName(dialog.FileName));
-                File.Copy(dialog.FileName, target, true);
+                runtimeAsset = Path.Combine(models, Path.GetFileName(dialog.FileName));
+                File.Copy(dialog.FileName, runtimeAsset, true);
+                Log("Blender não encontrado: fonte preservada sem conversão canônica. Defina BLENDER_PATH para ampliar compatibilidade.");
             }
 
-            if (Path.GetExtension(target).Equals(".obj", StringComparison.OrdinalIgnoreCase))
+            if (extension == ".obj")
             {
-                PreviewVisual.Content = ObjPreviewLoader.Load(target);
-                ViewportHint.Text = Path.GetFileName(target) + " — arraste para girar";
+                PreviewVisual.Content = ObjPreviewLoader.Load(dialog.FileName);
+                ViewportHint.Text = Path.GetFileName(dialog.FileName) + " — arraste para girar";
+            }
+            else if (blender is not null)
+            {
+                var previewObj = Path.Combine(previews, Path.GetFileNameWithoutExtension(dialog.FileName) + ".obj");
+                BlenderBridgeService.ConvertToPreviewObj(blender, dialog.FileName, previewObj);
+                PreviewVisual.Content = ObjPreviewLoader.Load(previewObj);
+                ViewportHint.Text = Path.GetFileName(dialog.FileName) + " — preview convertido via Blender";
             }
             else
             {
                 PreviewVisual.Content = null;
-                ViewportHint.Text = Path.GetFileName(target) + " importado para o pipeline de assets.";
+                ViewportHint.Text = Path.GetFileName(dialog.FileName) + " importado; instale/configure Blender para preview 3D deste formato.";
             }
 
             RefreshProjectTree();
-            Log($"Modelo importado: {target}");
+            Log($"Modelo importado: {runtimeAsset}");
         }
         catch (Exception ex) { Fail(ex); }
     }
