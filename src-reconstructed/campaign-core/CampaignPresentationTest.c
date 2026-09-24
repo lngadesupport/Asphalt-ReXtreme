@@ -416,7 +416,14 @@ int main(void) {
     if (!CampaignPresentationGetSettings(&loaded)) return Fail(91);
     settings = loaded;
     settings.fov_x100 = 7500;
-    if (!CampaignPresentationSetSettings(&settings)) return Fail(92);
+    if (!CampaignPresentationSetSettings(&settings)) return Fail(97);
+    if (g_test_bound_fov != 7500) return Fail(98);
+
+    ZeroMemory(&diagnostics, sizeof(diagnostics));
+    diagnostics.size = sizeof(diagnostics);
+    if (!CampaignPresentationGetDiagnostics(&diagnostics)) return Fail(99);
+    if (diagnostics.verified_capability_count != 1 ||
+        diagnostics.verified_binding_count != 1) return Fail(100);
 
     DeleteFileW(replay_path);
     DeleteFileW(L"prebuilt\\campaign-core\\ReXtremePresentation.dat");
