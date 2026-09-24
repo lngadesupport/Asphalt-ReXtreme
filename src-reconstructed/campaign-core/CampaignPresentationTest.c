@@ -875,9 +875,19 @@ int main(void) {
     if (!WriteTestCapabilityCatalog()) return Fail(51);
     if (!CampaignPresentationCatalogLoad()) return Fail(52);
     if (CampaignPresentationCatalogCount() != 1) return Fail(83);
+    if (CampaignPresentationCatalogRuntimeReadyCount() != 0) return Fail(155);
+    if (CampaignPresentationCapabilityRuntimeReady(0)) return Fail(156);
+
+    ZeroMemory(&simple_fov, sizeof(simple_fov));
+    simple_fov.size = sizeof(simple_fov);
+    if (!CampaignPresentationSimpleFovGet(&simple_fov)) return Fail(157);
+    if (simple_fov.available != 0) return Fail(158);
+
     if (!WriteTestBindingCatalog()) return Fail(84);
     if (!CampaignPresentationBindingsLoad()) return Fail(85);
     if (CampaignPresentationBindingsCount() != 1) return Fail(86);
+    if (CampaignPresentationCatalogRuntimeReadyCount() != 1) return Fail(159);
+    if (!CampaignPresentationCapabilityRuntimeReady(0)) return Fail(160);
 
     g_test_bound_fov = 7000;
     ZeroMemory(&simple_fov, sizeof(simple_fov));
@@ -931,6 +941,7 @@ int main(void) {
     diagnostics.size = sizeof(diagnostics);
     if (!CampaignPresentationGetDiagnostics(&diagnostics)) return Fail(99);
     if (diagnostics.verified_capability_count != 1 ||
+        diagnostics.runtime_ready_capability_count != 1 ||
         diagnostics.verified_binding_count != 1 ||
         diagnostics.original_ui_binding_count != 13 ||
         diagnostics.original_ui_feature_mask != 0x7Fu ||
