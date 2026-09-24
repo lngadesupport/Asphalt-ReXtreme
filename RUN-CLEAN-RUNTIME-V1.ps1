@@ -19,8 +19,8 @@ function Resolve-ProjectRoot([string]$candidate){
   $valid=@()
   foreach($h in $hits){
     $r=$h.Directory.Parent.FullName
-    if((Test-Path -LiteralPath (Join-Path $r "_AMS_PHASE2\AMS.exe") -PathType Leaf) -and
-       (Test-Path -LiteralPath (Join-Path $r "_PACKAGE_PHASE5\AppxManifest.xml") -PathType Leaf)){
+    if((Test-Path -LiteralPath (Join-Path $r "_PACKAGE_PHASE5\AppxManifest.xml") -PathType Leaf) -and
+       (Test-Path -LiteralPath (Join-Path $r "runtime\python312-x86\python.exe") -PathType Leaf)){
       $valid += $r
     }
   }
@@ -28,7 +28,7 @@ function Resolve-ProjectRoot([string]$candidate){
   $valid=@($valid | Select-Object -Unique)
   if($valid.Count-eq1){return $valid[0]}
   if($valid.Count-gt1){throw "Multiple project roots found: $($valid -join '; ')"}
-  throw "Project root invalid: could not find _PACKAGE_PHASE5\AMS.exe and _AMS_PHASE2\AMS.exe"
+  throw "Project root invalid: could not find the clean package root"
 }
 
 $ProjectRoot=Resolve-ProjectRoot $ProjectRoot
