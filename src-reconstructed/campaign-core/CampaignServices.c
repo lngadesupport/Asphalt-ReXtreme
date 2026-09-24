@@ -2,6 +2,7 @@
 #include "CampaignServices.h"
 #include "CampaignCore.h"
 #include "CampaignEventBus.h"
+#include "CampaignGarageFlow.h"
 
 static void ZeroBytes(void* p, uint32_t count) {
     volatile unsigned char* q = (volatile unsigned char*)p;
@@ -36,6 +37,7 @@ int __cdecl CampaignServiceBoot(void) {
     CampaignCommand cmd;
 
     CampaignEventReset();
+    CampaignGarageFlowReset();
 
     if (!Run(&cmd, CAMPAIGN_OP_RELOAD, 0, 0, 0, 0)) return 0;
 
