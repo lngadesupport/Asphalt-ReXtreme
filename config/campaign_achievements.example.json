@@ -1,0 +1,9 @@
+{
+  "format": "rextreme-campaign-achievements",
+  "version": 1,
+  "achievements": [
+    {"id": 2001, "metric": "wins", "compare": "ge", "threshold": 10},
+    {"id": 2002, "metric": "drift_meters", "compare": "ge", "threshold": 100000},
+    {"id": 2003, "metric": "best_finish_time_ms", "compare": "le", "threshold": 60000}
+  ]
+}
