@@ -12,6 +12,9 @@ EXTERN _CampaignFinishCareerFromPostRequest:PROC
 EXTERN _CampaignBeginRaceFromGui:PROC
 EXTERN _CampaignFinishRaceFromGui:PROC
 EXTERN _CampaignBeginRaceAdapter:PROC
+EXTERN _CampaignUiSubmit:PROC
+EXTERN _CampaignOnlineResolve:PROC
+EXTERN _CampaignEventPoll:PROC
 
 CAMPAIGN_CRAFT_MAGIC   EQU 0C0DEC0DEh
 CAMPAIGN_OWNED_MAGIC   EQU 0C0DE0A11h
@@ -22,6 +25,9 @@ CAMPAIGN_CAREER_BEGIN_MAGIC EQU 0C0DEB072h
 CAMPAIGN_UPGRADE_BATCH_MAGIC EQU 0C0DE4401h
 CAMPAIGN_UPGRADE_LEGACY_MAGIC EQU 0C0DE4402h
 CAMPAIGN_STORE_LEGACY_MAGIC EQU 0C0DE5501h
+CAMPAIGN_UI_MAGIC           EQU 0C0DE7701h
+CAMPAIGN_POLICY_MAGIC       EQU 0C0DE7702h
+CAMPAIGN_EVENT_POLL_MAGIC   EQU 0C0DE7703h
 
 .code
 
@@ -82,6 +88,15 @@ campaign_gateway PROC
     cmp eax, CAMPAIGN_STORE_LEGACY_MAGIC
     je campaign_store_legacy
 
+    cmp eax, CAMPAIGN_UI_MAGIC
+    je campaign_ui
+
+    cmp eax, CAMPAIGN_POLICY_MAGIC
+    je campaign_policy
+
+    cmp eax, CAMPAIGN_EVENT_POLL_MAGIC
+    je campaign_event_poll
+
     xor eax, eax
     ret 4
 
@@ -136,6 +151,24 @@ campaign_upgrade_legacy:
 campaign_store_legacy:
     push ecx
     call _CampaignPurchaseLegacyStore
+    add esp, 4
+    ret 4
+
+campaign_ui:
+    push ecx
+    call _CampaignUiSubmit
+    add esp, 4
+    ret 4
+
+campaign_policy:
+    push ecx
+    call _CampaignOnlineResolve
+    add esp, 4
+    ret 4
+
+campaign_event_poll:
+    push ecx
+    call _CampaignEventPoll
     add esp, 4
     ret 4
 campaign_gateway ENDP
