@@ -130,11 +130,10 @@ echo.
 echo [PATCH 3/4] Upgrades / Pro-Kits...
 if exist "%PKG%\CampaignUpgradeUiMap.dat" (
   python.exe "%TOOLS%\campaign_upgrade_adapter_v1.py" --project-root "%ROOT%"
-  if errorlevel 1 (
-    echo [AVISO] Upgrade adapter recusou o estado atual; registrado como bloqueado.
-  )
+  if errorlevel 1 goto :patch_fail
 ) else (
-  echo [AVISO] CampaignUpgradeUiMap.dat nao foi reconstruido; upgrade adapter bloqueado.
+  echo [BLOQUEIO] CampaignUpgradeUiMap.dat nao foi reconstruido.
+  goto :data_fail
 )
 
 echo.
@@ -146,7 +145,8 @@ echo.
 echo [VALIDATE] Validando Campaign Edition...
 python.exe "%TOOLS%\validate_campaign_final.py" ^
   --project-root "%ROOT%" ^
-  --output "%ROOT%\_TRACE_MONTAR\CAMPAIGN-FINAL-STATUS.json"
+  --output "%ROOT%\_TRACE_MONTAR\CAMPAIGN-FINAL-STATUS.json" ^
+  --require-complete
 set "VALERR=%ERRORLEVEL%"
 
 echo.
@@ -164,8 +164,8 @@ echo Inicie:
 echo   _PACKAGE_PHASE5\RUN-PACKAGE-PHASE5.cmd
 echo.
 if not "%VALERR%"=="0" (
-  echo ATENCAO: o validador registrou pelo menos um bloqueio.
-  echo Consulte CAMPAIGN-FINAL-STATUS.json antes de chamar a build de completa.
+  echo BLOQUEIO: a reconstrucao literal ainda nao esta completa.
+  echo Consulte CAMPAIGN-FINAL-STATUS.json para o subsistema exato.
 )
 pause
 exit /b %VALERR%
