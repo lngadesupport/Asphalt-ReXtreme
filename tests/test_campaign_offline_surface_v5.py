@@ -23,3 +23,15 @@ def test_protected_caves_overlap_guard():
     assert m.overlaps_protected(0x004693C1,0x004693C1+m.FILTER_LEN)
     assert m.overlaps_protected(0x00CE8FA5,0x00CE8FA5+m.FILTER_LEN)
     assert not m.overlaps_protected(0x00500000,0x00500000+m.FILTER_LEN)
+
+
+def test_isolated_legacy_cave_fallback():
+    data = bytearray(b"\x90" * 0x00500000)
+    data[m.LEGACY_FILTER_CAVE_OFF:m.LEGACY_FILTER_CAVE_OFF+m.FILTER_LEN] = b"\xCC" * m.FILTER_LEN
+    sections = [{
+        "raw": 0,
+        "raw_size": len(data),
+        "chars": 0x20000000,
+    }]
+    off = m.find_exec_cave(bytes(data), sections, allow_legacy_cave=True)
+    assert off == m.LEGACY_FILTER_CAVE_OFF
