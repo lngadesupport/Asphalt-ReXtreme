@@ -121,10 +121,36 @@ public partial class MainWindow : Window
             };
             if (dialog.ShowDialog() != true) return;
 
+            var extension = Path.GetExtension(dialog.FileName).ToLowerInvariant();
             var models = Path.Combine(ProjectRoot, "assets", "models");
+            var sources = Path.Combine(ProjectRoot, "assets", "source");
             Directory.CreateDirectory(models);
-            var target = Path.Combine(models, Path.GetFileName(dialog.FileName));
-            File.Copy(dialog.FileName, target, true);
+            Directory.CreateDirectory(sources);
+
+            string target;
+            if (extension == ".blend")
+            {
+                var sourceCopy = Path.Combine(sources, Path.GetFileName(dialog.FileName));
+                File.Copy(dialog.FileName, sourceCopy, true);
+
+                var blender = BlenderBridgeService.FindBlender();
+                if (blender is null)
+                {
+                    Log("BLEND importado como fonte, mas Blender não foi encontrado. Defina BLENDER_PATH ou instale Blender.");
+                    ViewportHint.Text = Path.GetFileName(sourceCopy) + " — aguardando conversão via Blender.";
+                    RefreshProjectTree();
+                    return;
+                }
+
+                target = Path.Combine(models, Path.GetFileNameWithoutExtension(dialog.FileName) + ".glb");
+                BlenderBridgeService.ConvertBlendToGlb(blender, dialog.FileName, target);
+                Log($"Blender convertido automaticamente: {Path.GetFileName(dialog.FileName)} -> {Path.GetFileName(target)}");
+            }
+            else
+            {
+                target = Path.Combine(models, Path.GetFileName(dialog.FileName));
+                File.Copy(dialog.FileName, target, true);
+            }
 
             if (Path.GetExtension(target).Equals(".obj", StringComparison.OrdinalIgnoreCase))
             {
@@ -134,8 +160,9 @@ public partial class MainWindow : Window
             else
             {
                 PreviewVisual.Content = null;
-                ViewportHint.Text = Path.GetFileName(target) + " importado; preview/conversor deste formato entra no pipeline DCC.";
+                ViewportHint.Text = Path.GetFileName(target) + " importado para o pipeline de assets.";
             }
+
             RefreshProjectTree();
             Log($"Modelo importado: {target}");
         }
