@@ -4,6 +4,7 @@
 #include "CampaignPresentation.h"
 #include "CampaignPresentationBindings.h"
 #include "CampaignPhotoBindings.h"
+#include "CampaignOriginalUiBindings.h"
 
 static volatile int32_t g_test_bound_fov;
 static volatile float g_test_photo_x;
@@ -13,6 +14,7 @@ static volatile int32_t g_test_photo_pitch;
 static volatile int32_t g_test_photo_yaw;
 static volatile int32_t g_test_photo_roll;
 static volatile unsigned char g_test_photo_hud;
+static volatile uint32_t g_test_ui_targets[16];
 
 typedef struct TestCatalogHeader {
     uint32_t magic;
@@ -72,6 +74,104 @@ typedef struct TestPhotoBindingHeader {
 static int Fail(int code) {
     return code;
 }
+
+static int TestCopyAscii(char* dst, uint32_t cap, const char* src) {
+    uint32_t i = 0;
+    if (!dst || !src || cap == 0) return 0;
+    while (src[i]) {
+        if (i + 1 >= cap) return 0;
+        dst[i] = src[i];
+        ++i;
+    }
+    dst[i] = 0;
+    return 1;
+}
+
+static int WriteTestOriginalUiCatalog(void) {
+    const WCHAR* path = L"prebuilt\\campaign-core\\CampaignOriginalUiBindings.dat";
+    TestBindingHeader header;
+    CampaignOriginalUiBinding bindings[12];
+    static const char* ids[12] = {
+        "settings.screen",
+        "settings.row",
+        "ui.slider",
+        "ui.toggle",
+        "ui.button",
+        "ui.label",
+        "ui.screen",
+        "ui.panel",
+        "ui.list",
+        "pause.screen",
+        "pause.menu.slot",
+        "race.hud"
+    };
+    static const uint32_t kinds[12] = {
+        CAMPAIGN_ORIGINAL_UI_SCREEN,
+        CAMPAIGN_ORIGINAL_UI_PANEL,
+        CAMPAIGN_ORIGINAL_UI_SLIDER,
+        CAMPAIGN_ORIGINAL_UI_TOGGLE,
+        CAMPAIGN_ORIGINAL_UI_BUTTON,
+        CAMPAIGN_ORIGINAL_UI_LABEL,
+        CAMPAIGN_ORIGINAL_UI_SCREEN,
+        CAMPAIGN_ORIGINAL_UI_PANEL,
+        CAMPAIGN_ORIGINAL_UI_LIST,
+        CAMPAIGN_ORIGINAL_UI_SCREEN,
+        CAMPAIGN_ORIGINAL_UI_PANEL,
+        CAMPAIGN_ORIGINAL_UI_PANEL
+    };
+    HMODULE module;
+    uintptr_t base;
+    uintptr_t target;
+    HANDLE h;
+    DWORD written = 0;
+    uint32_t stamp = 0;
+    uint32_t image_size = 0;
+    uint32_t i;
+
+    ZeroMemory(&header, sizeof(header));
+    ZeroMemory(bindings, sizeof(bindings));
+
+    module = GetModuleHandleW(0);
+    if (!module || !CurrentTestPeFingerprint(&stamp, &image_size)) return 0;
+    base = (uintptr_t)module;
+
+    for (i = 0; i < 12; ++i) {
+        target = (uintptr_t)&g_test_ui_targets[i];
+        if (target <= base || target - base > 0xFFFFFFFFu) return 0;
+        if (!TestCopyAscii(bindings[i].id, CAMPAIGN_ORIGINAL_UI_ID_MAX, ids[i])) return 0;
+        bindings[i].kind = kinds[i];
+        bindings[i].base_kind = CAMPAIGN_ORIGINAL_UI_MODULE_RVA;
+        bindings[i].field_offset = 0;
+        bindings[i].target_rva = (uint32_t)(target - base);
+        bindings[i].semantic = i + 1u;
+    }
+
+    header.magic = 0x55495852u;
+    header.version = 1;
+    header.count = 12;
+    header.entry_size = sizeof(CampaignOriginalUiBinding);
+    header.entries_hash = TestFnv1a((const unsigned char*)bindings, sizeof(bindings));
+    header.pe_time_date_stamp = stamp;
+    header.pe_size_of_image = image_size;
+
+    h = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+    if (h == INVALID_HANDLE_VALUE) return 0;
+
+    if (!WriteFile(h, &header, sizeof(header), &written, 0) || written != sizeof(header)) {
+        CloseHandle(h);
+        return 0;
+    }
+
+    written = 0;
+    if (!WriteFile(h, bindings, sizeof(bindings), &written, 0) || written != sizeof(bindings)) {
+        CloseHandle(h);
+        return 0;
+    }
+
+    CloseHandle(h);
+    return 1;
+}
+
 
 static int WriteTestCapabilityCatalog(void) {
     const WCHAR* path = L"prebuilt\\campaign-core\\CampaignPresentationOptions.dat";
@@ -579,6 +679,18 @@ int main(void) {
         !diagnostics.photo_free_camera_ready ||
         diagnostics.original_ui_binding_count != 0 ||
         diagnostics.original_ui_feature_mask != 0) return Fail(54);
+
+    if (CampaignOriginalUiBindingsCount() != 0) return Fail(116);
+    if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_GRAPHICS_SETTINGS)) return Fail(117);
+    if (!WriteTestOriginalUiCatalog()) return Fail(118);
+    if (!CampaignOriginalUiBindingsLoad()) return Fail(119);
+    if (CampaignOriginalUiBindingsCount() != 12) return Fail(120);
+    if (!CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_GRAPHICS_SETTINGS) ||
+        !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_CAMERA_SETTINGS) ||
+        !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_REPLAY) ||
+        !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_PHOTO_MODE) ||
+        !CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_RACE_HUD)) return Fail(121);
+    if (CampaignOriginalUiBindingsResolve("ui.button") != (void*)&g_test_ui_targets[4]) return Fail(122);
 
     if (CampaignPresentationCatalogCount() != 0) return Fail(50);
     if (!WriteTestCapabilityCatalog()) return Fail(51);
