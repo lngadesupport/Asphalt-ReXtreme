@@ -57,6 +57,44 @@ static int WriteTestCapabilityCatalog(void) {
     return 1;
 }
 
+static int CorruptReplayTail(const WCHAR* path) {
+    HANDLE h;
+    LARGE_INTEGER pos;
+    BYTE value;
+    DWORD got = 0;
+    DWORD written = 0;
+
+    h = CreateFileW(path, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    if (h == INVALID_HANDLE_VALUE) return 0;
+
+    pos.QuadPart = -1;
+    if (!SetFilePointerEx(h, pos, 0, FILE_END)) {
+        CloseHandle(h);
+        return 0;
+    }
+
+    if (!ReadFile(h, &value, 1, &got, 0) || got != 1) {
+        CloseHandle(h);
+        return 0;
+    }
+
+    value ^= 0x5Au;
+    pos.QuadPart = -1;
+    if (!SetFilePointerEx(h, pos, 0, FILE_END)) {
+        CloseHandle(h);
+        return 0;
+    }
+
+    if (!WriteFile(h, &value, 1, &written, 0) || written != 1) {
+        CloseHandle(h);
+        return 0;
+    }
+
+    FlushFileBuffers(h);
+    CloseHandle(h);
+    return 1;
+}
+
 int main(void) {
     CampaignPresentationSettings settings;
     CampaignPresentationSettings loaded;
@@ -173,6 +211,9 @@ int main(void) {
     if (marker_readback.time_ms != 150) return Fail(80);
     if (!CampaignReplayPreviousMarker(200, &marker_readback)) return Fail(81);
     if (marker_readback.time_ms != 150) return Fail(82);
+
+    if (!CorruptReplayTail(replay_path)) return Fail(83);
+    if (CampaignReplayLoad(replay_path)) return Fail(84);
 
     photo.size = sizeof(photo);
     photo.camera_mode = CAMPAIGN_PHOTO_CAMERA_FREE;
