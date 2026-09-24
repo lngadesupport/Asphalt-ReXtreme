@@ -1805,6 +1805,7 @@ int __cdecl CampaignPresentationGetDiagnostics(CampaignPresentationDiagnostics* 
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_ACHIEVEMENTS)) out->original_ui_feature_mask |= 1u << 6;
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_RESULTS)) out->original_ui_feature_mask |= 1u << 7;
     if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_PROFILE)) out->original_ui_feature_mask |= 1u << 8;
+    if (CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_SPECIAL_EVENTS)) out->original_ui_feature_mask |= 1u << 9;
     out->race_hud_binding_count = CampaignRaceHudBindingsCount();
     out->race_hud_original_ui_ready =
         CampaignOriginalUiFeatureReady(CAMPAIGN_ORIGINAL_UI_FEATURE_RACE_HUD) ? 1u : 0u;
