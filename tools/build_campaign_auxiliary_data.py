@@ -290,7 +290,18 @@ def build_ui_map(candidates, output: Path, report: Path):
     }
     report.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    if conflicts or not rows:
+    if conflicts:
+        return False, payload
+
+    if not rows:
+        # Public beta fail-closed fallback: materialize a valid zero-entry map.
+        # The Campaign Upgrade Adapter will then reject every legacy UI action
+        # locally instead of falling back to the retired online request path.
+        # This is NOT considered a reconstructed/ready mapping.
+        output.write_bytes(ui_binary.build(ui_binary.normalize([])))
+        payload["fallback"] = "empty-fail-closed"
+        payload["runtime_behavior"] = "upgrade actions rejected locally; no legacy backend request"
+        report.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
         return False, payload
 
     entries = ui_binary.normalize(rows)
