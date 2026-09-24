@@ -7,6 +7,13 @@
 #define RXPB_MAGIC 0x42505852u /* RXPB */
 #define RXPB_VERSION 1u
 
+/*
+  MSVC emits a reference to __fltused when a translation unit contains x86
+  floating-point operations. Campaign Core deliberately links /nodefaultlib,
+  so provide the marker locally instead of introducing a CRT dependency.
+*/
+int _fltused = 0;
+
 typedef struct CampaignPresentationBindingFileHeader {
     uint32_t magic;
     uint32_t version;
