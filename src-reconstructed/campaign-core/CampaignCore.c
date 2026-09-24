@@ -21,6 +21,7 @@
 #include "CampaignSpecialEventState.h"
 #include "CampaignChampionshipCatalog.h"
 #include "CampaignActivityContext.h"
+#include "CampaignSeasonCatalog.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
 #define CAMPAIGN_VERSION 3u
@@ -3200,6 +3201,53 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             c->out0=(int32_t)session_id;
             c->out1=def->round_event_ids[c->b];
             c->out2=c->b;
+            c->status=1;c->revision=g_state.revision;return 1;
+        }
+
+    case CAMPAIGN_OP_SEASON_COUNT:
+        c->out0=(int32_t)CampaignSeasonCatalogCount();
+        c->status=1;c->revision=g_state.revision;return 1;
+
+    case CAMPAIGN_OP_SEASON_ID_AT:
+        {
+            const CampaignSeasonDefinition* def=CampaignSeasonCatalogGet((uint32_t)c->a);
+            if(!def)return 0;
+            c->out0=def->season_id;
+            c->status=1;c->revision=g_state.revision;return 1;
+        }
+
+    case CAMPAIGN_OP_SEASON_STATUS:
+        {
+            const CampaignSeasonDefinition* def=CampaignSeasonCatalogFind(c->a);
+            uint32_t i,completed=0;
+            int unlocked;
+            if(!def)return 0;
+            for(i=0;i<def->event_count;++i){
+                int index=FindEventStateIndex(def->event_ids[i]);
+                if(index>=0&&g_state.event_states[index].completion_count>0)++completed;
+            }
+            unlocked=ProgressGateUnlocked(def->required_node_id);
+            c->out0=(int32_t)completed;
+            c->out1=(int32_t)def->event_count;
+            c->out2=((completed==def->event_count)?1:0)|(unlocked?2:0);
+            c->status=1;c->revision=g_state.revision;return 1;
+        }
+
+    case CAMPAIGN_OP_SEASON_EVENT:
+        {
+            const CampaignSeasonDefinition* season=CampaignSeasonCatalogFind(c->a);
+            const CampaignEventDefinition* event_def;
+            int index,completed=0,unlocked=0;
+            if(!season||c->b<0||(uint32_t)c->b>=season->event_count)return 0;
+            c->out0=season->event_ids[c->b];
+            event_def=CampaignEventCatalogFind(c->out0);
+            if(!event_def)return 0;
+            index=FindEventStateIndex(c->out0);
+            if(index>=0&&g_state.event_states[index].completion_count>0)completed=1;
+            if(ProgressGateUnlocked(season->required_node_id)&&
+               ProgressGateUnlocked(event_def->required_node_id))unlocked=1;
+            c->out1=completed;
+            c->out2=unlocked;
             c->status=1;c->revision=g_state.revision;return 1;
         }
 
