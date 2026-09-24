@@ -1419,19 +1419,27 @@ int __cdecl CampaignReplayLibraryDelete(uint32_t index) {
 }
 
 int __cdecl CampaignPhotoEnter(const CampaignPhotoState* initial) {
-    PresentationLock();
-    ZeroBytes(&g_photo, (uint32_t)sizeof(g_photo));
-    g_photo.size = (uint32_t)sizeof(g_photo);
-    g_photo.active = 1;
-    g_photo.camera_mode = CAMPAIGN_PHOTO_CAMERA_FREE;
-    g_photo.hide_hud = 1;
+    CampaignPhotoState candidate;
+
+    ZeroBytes(&candidate, (uint32_t)sizeof(candidate));
+    candidate.size = (uint32_t)sizeof(candidate);
+    candidate.active = 1;
+    candidate.camera_mode = CAMPAIGN_PHOTO_CAMERA_FREE;
+    candidate.hide_hud = 1;
 
     if (initial && initial->size >= (uint32_t)sizeof(*initial)) {
-        CopyBytes(&g_photo, initial, (uint32_t)sizeof(g_photo));
-        g_photo.size = (uint32_t)sizeof(g_photo);
-        g_photo.active = 1;
+        CopyBytes(&candidate, initial, (uint32_t)sizeof(candidate));
+        candidate.size = (uint32_t)sizeof(candidate);
+        candidate.active = 1;
     }
 
+    if (candidate.camera_mode != CAMPAIGN_PHOTO_CAMERA_FREE ||
+        !CampaignPhotoBindingsReady(candidate.camera_mode)) {
+        return 0;
+    }
+
+    PresentationLock();
+    CopyBytes(&g_photo, &candidate, (uint32_t)sizeof(g_photo));
     PresentationUnlock();
     return 1;
 }
@@ -1456,6 +1464,11 @@ int __cdecl CampaignPhotoSet(const CampaignPhotoState* state) {
     if (!state || state->size < (uint32_t)sizeof(*state)) return 0;
     if (state->camera_mode > CAMPAIGN_PHOTO_CAMERA_ORBIT) return 0;
     if (state->fov_x100 < 0) return 0;
+    if (state->active &&
+        (state->camera_mode != CAMPAIGN_PHOTO_CAMERA_FREE ||
+         !CampaignPhotoBindingsReady(state->camera_mode))) {
+        return 0;
+    }
 
     PresentationLock();
     CopyBytes(&g_photo, state, (uint32_t)sizeof(g_photo));
