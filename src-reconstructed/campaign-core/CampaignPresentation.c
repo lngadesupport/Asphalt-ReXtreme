@@ -47,6 +47,8 @@ static CampaignReplayPlaybackState g_playback;
 static CampaignReplayMetadata g_replay_metadata;
 
 static CampaignPhotoState g_photo;
+static CampaignPhotoState g_photo_restore;
+static uint32_t g_photo_restore_valid;
 
 static WCHAR g_settings_path[1024];
 static WCHAR g_settings_tmp[1024];
@@ -1420,8 +1422,17 @@ int __cdecl CampaignReplayLibraryDelete(uint32_t index) {
 
 int __cdecl CampaignPhotoEnter(const CampaignPhotoState* initial) {
     CampaignPhotoState candidate;
+    CampaignPhotoState restore;
 
-    ZeroBytes(&candidate, (uint32_t)sizeof(candidate));
+    ZeroBytes(&restore, (uint32_t)sizeof(restore));
+    restore.size = (uint32_t)sizeof(restore);
+
+    if (!CampaignPhotoBindingsReady(CAMPAIGN_PHOTO_CAMERA_FREE) ||
+        !CampaignPhotoBindingsRead(&restore)) {
+        return 0;
+    }
+
+    CopyBytes(&candidate, &restore, (uint32_t)sizeof(candidate));
     candidate.size = (uint32_t)sizeof(candidate);
     candidate.active = 1;
     candidate.camera_mode = CAMPAIGN_PHOTO_CAMERA_FREE;
@@ -1433,21 +1444,42 @@ int __cdecl CampaignPhotoEnter(const CampaignPhotoState* initial) {
         candidate.active = 1;
     }
 
-    if (candidate.camera_mode != CAMPAIGN_PHOTO_CAMERA_FREE ||
-        !CampaignPhotoBindingsReady(candidate.camera_mode)) {
-        return 0;
-    }
+    if (candidate.camera_mode != CAMPAIGN_PHOTO_CAMERA_FREE) return 0;
+
+    restore.active = 1;
+    restore.camera_mode = CAMPAIGN_PHOTO_CAMERA_FREE;
 
     PresentationLock();
+    CopyBytes(&g_photo_restore, &restore, (uint32_t)sizeof(g_photo_restore));
+    g_photo_restore_valid = 1;
     CopyBytes(&g_photo, &candidate, (uint32_t)sizeof(g_photo));
     PresentationUnlock();
     return 1;
 }
 
 int __cdecl CampaignPhotoExit(void) {
+    CampaignPhotoState restore;
+    int should_restore = 0;
+
+    ZeroBytes(&restore, (uint32_t)sizeof(restore));
+
+    PresentationLock();
+    if (g_photo_restore_valid) {
+        CopyBytes(&restore, &g_photo_restore, (uint32_t)sizeof(restore));
+        should_restore = 1;
+    }
+    PresentationUnlock();
+
+    if (should_restore && !CampaignPhotoBindingsApply(&restore)) {
+        return 0;
+    }
+
     PresentationLock();
     ZeroBytes(&g_photo, (uint32_t)sizeof(g_photo));
     g_photo.size = (uint32_t)sizeof(g_photo);
+    ZeroBytes(&g_photo_restore, (uint32_t)sizeof(g_photo_restore));
+    g_photo_restore.size = (uint32_t)sizeof(g_photo_restore);
+    g_photo_restore_valid = 0;
     PresentationUnlock();
     return 1;
 }
