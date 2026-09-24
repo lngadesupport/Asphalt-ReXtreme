@@ -1896,7 +1896,7 @@ int __cdecl CampaignReplayFrameFromGui(void* game_mode_gui) {
 
     ZeroBytes(&sample, (uint32_t)sizeof(sample));
     if (!CampaignReplayBindingsSample(game_mode_gui, &sample)) return 0;
-    return CampaignReplayRecord(&sample);
+    return CampaignReplayRecordFrame(&sample);
 }
 
 int __cdecl CampaignPhotoFrameFromGui(void* game_mode_gui) {
