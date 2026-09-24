@@ -97,6 +97,7 @@ class CampaignRebuilderTests(unittest.TestCase):
                 {"catalog": "CampaignChallenges.dat", "report": "CampaignChallenges.report.json", "count": 0, "state": "UserData/CampaignEdition/ChallengeState.dat", "portable": True},
                 {"catalog": "CampaignAchievements.dat", "report": "CampaignAchievements.report.json", "count": 0, "state": "UserData/CampaignEdition/AchievementState.dat", "metrics_source": "CampaignStatistics-v1", "rewards": "none", "portable": True},
                 {"catalog": "CampaignSpecialEvents.dat", "report": "CampaignSpecialEvents.report.json", "count": 0, "validated_against_event_catalog": False, "uses_existing_campaign_events_only": True, "online_backend_required": False, "portable": True},
+                {"catalog": "CampaignChampionships.dat", "report": "CampaignChampionships.report.json", "count": 0, "validated_against_event_catalog": False, "uses_existing_campaign_events_only": True, "online_backend_required": False, "state": "UserData/CampaignEdition/ChampionshipState.dat", "portable": True},
                 ["UserData/CampaignEdition/", "UserData/Replays/", "UserData/Screenshots/"],
             )
             data = json.loads(status_path.read_text(encoding="utf-8"))
@@ -131,6 +132,16 @@ class CampaignRebuilderTests(unittest.TestCase):
             self.assertTrue(data["special_events_reuse_campaign_events"])
             self.assertFalse(data["special_events_online_backend_required"])
             self.assertTrue(data["special_events_ui_requires_original_templates"])
+            self.assertEqual(
+                data["special_event_period_state"],
+                "UserData/CampaignEdition/SpecialEventPeriodState.dat",
+            )
+            self.assertTrue(data["special_event_rotating_progress_reset"])
+            self.assertEqual(data["championship_catalog"]["count"], 0)
+            self.assertTrue(data["championship_state_portable"])
+            self.assertTrue(data["championships_reuse_campaign_events"])
+            self.assertFalse(data["championships_online_backend_required"])
+            self.assertTrue(data["championships_ui_requires_original_templates"])
 
 
 if __name__ == "__main__":
