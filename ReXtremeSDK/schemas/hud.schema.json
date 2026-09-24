@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReXtreme Race HUD",
+  "type": "object",
+  "required": ["id", "components"],
+  "properties": {
+    "id": { "type": "string" },
+    "base": { "type": "string" },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "anchor"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string" },
+          "anchor": { "enum": ["top-left", "top-center", "top-right", "center-left", "center", "center-right", "bottom-left", "bottom-center", "bottom-right"] },
+          "x": { "type": "number" },
+          "y": { "type": "number" },
+          "scale": { "type": "number", "exclusiveMinimum": 0 },
+          "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+          "binding": { "type": ["string", "null"] },
+          "visible_when": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "aspect_variants": { "type": "object" }
+  }
+}
