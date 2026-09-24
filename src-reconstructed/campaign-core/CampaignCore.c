@@ -1916,6 +1916,29 @@ int __cdecl CampaignPhotoFrameFromGui(void* game_mode_gui) {
     return CampaignPhotoBindingsApply(&photo);
 }
 
+int __cdecl CampaignPhotoToggleFromGui(void* game_mode_gui) {
+    CampaignPresentationSettings settings;
+    CampaignPhotoState photo;
+
+    if (!game_mode_gui) return 0;
+
+    ZeroBytes(&settings, (uint32_t)sizeof(settings));
+    settings.size = (uint32_t)sizeof(settings);
+    if (!CampaignPresentationGetSettings(&settings) ||
+        !(settings.flags & CAMPAIGN_PRESENTATION_PHOTO_ENABLED)) {
+        return 0;
+    }
+
+    ZeroBytes(&photo, (uint32_t)sizeof(photo));
+    photo.size = (uint32_t)sizeof(photo);
+    if (!CampaignPhotoGet(&photo)) return 0;
+
+    if (photo.active) return CampaignPhotoExit();
+
+    if (!CampaignPhotoBindingsReady(CAMPAIGN_PHOTO_CAMERA_FREE)) return 0;
+    return CampaignPhotoEnter(0);
+}
+
 int __cdecl CampaignFinishRaceFromGui(void* game_mode_gui) {
     CampaignRaceMetrics metrics;
     int finish_status;
