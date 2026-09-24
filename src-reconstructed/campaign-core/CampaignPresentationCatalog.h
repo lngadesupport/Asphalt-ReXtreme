@@ -39,6 +39,7 @@ int CampaignPresentationCapabilityRuntimeReady(uint32_t index);
 int CampaignPresentationCatalogGetValue(uint32_t index, int32_t* out_value);
 int CampaignPresentationCatalogSetValue(uint32_t index, int32_t value);
 int CampaignPresentationCatalogResetValue(uint32_t index);
+int CampaignPresentationCatalogApplyStoredValues(void);
 
 #ifdef __cplusplus
 }
