@@ -288,18 +288,18 @@ static void* HudResolve(const CampaignRaceHudBinding* b, SIZE_T size) {
 
 static int HudApplyFixed(const CampaignRaceHudBinding* b, int32_t value_x1000) {
     void* target;
-    int64_t scaled64;
-    int32_t raw;
     float f;
 
     if (!b) return 0;
     if (b->value_kind == CAMPAIGN_PRESENTATION_VALUE_FLOAT_SCALED) {
-        scaled64 = ((int64_t)value_x1000 * (int64_t)b->scale_divisor) / 1000LL;
-        if (scaled64 < -2147483647LL - 1LL || scaled64 > 2147483647LL) return 0;
-        raw = (int32_t)scaled64;
         target = HudResolve(b, sizeof(float));
         if (!target) return 0;
-        f = (float)raw / (float)b->scale_divisor;
+        /*
+          value_x1000 is the canonical HUD fixed-point representation.
+          The target itself is a float, so writing the canonical value directly
+          avoids 64-bit division helpers in the no-CRT x86 runtime.
+        */
+        f = (float)value_x1000 / 1000.0f;
         *(volatile float*)target = f;
         return 1;
     }
