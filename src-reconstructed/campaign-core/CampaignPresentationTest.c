@@ -548,7 +548,9 @@ int main(void) {
     if (!CampaignPresentationGetDiagnostics(&diagnostics)) return Fail(53);
     if (diagnostics.photo_active != 0 ||
         diagnostics.photo_binding_count != 7 ||
-        !diagnostics.photo_free_camera_ready) return Fail(54);
+        !diagnostics.photo_free_camera_ready ||
+        diagnostics.original_ui_binding_count != 0 ||
+        diagnostics.original_ui_feature_mask != 0) return Fail(54);
 
     if (CampaignPresentationCatalogCount() != 0) return Fail(50);
     if (!WriteTestCapabilityCatalog()) return Fail(51);
@@ -596,6 +598,7 @@ int main(void) {
     DeleteFileW(L"prebuilt\\campaign-core\\CampaignPresentationOptions.dat");
     DeleteFileW(L"prebuilt\\campaign-core\\CampaignPresentationBindings.dat");
     DeleteFileW(L"prebuilt\\campaign-core\\CampaignPhotoBindings.dat");
+    DeleteFileW(L"prebuilt\\campaign-core\\CampaignOriginalUiBindings.dat");
     DeleteFileW(L"prebuilt\\campaign-core\\ReXtreme.ini");
 
     return 0;
