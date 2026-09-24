@@ -14,6 +14,7 @@
 #include "CampaignOriginalUiBindings.h"
 #include "CampaignRaceHudLayout.h"
 #include "CampaignChallengeCatalog.h"
+#include "CampaignStatistics.h"
 
 #define CAMPAIGN_MAGIC 0x32435852u /* RXC2 */
 #define CAMPAIGN_VERSION 3u
@@ -2018,6 +2019,7 @@ int __cdecl CampaignFinishRaceFromGui(void* game_mode_gui) {
             DeleteFileW(g_race_session_consuming_path);
             /* Challenge sidecar is secondary: a failure never invalidates the race commit. */
             CampaignChallengesOnRace(g_race_session_buffer.event_id, &metrics);
+            CampaignStatisticsRecordRace(&metrics);
         } else {
             CopyBytes(&g_state, &g_tx_backup, (uint32_t)sizeof(g_state));
             MoveFileExW(
@@ -2397,6 +2399,7 @@ static int ExecuteUnlocked(CampaignCommand* c) {
             DeleteFileW(g_race_session_consuming_path);
             /* Only full metric finishes contribute to Challenges. */
             CampaignChallengesOnRace(g_race_session_buffer.event_id, metrics);
+            CampaignStatisticsRecordRace(metrics);
 
             c->out0 = metrics->credits_awarded;
             c->out1 = metrics->premium_awarded;
@@ -2587,6 +2590,53 @@ static int ExecuteUnlocked(CampaignCommand* c) {
               sees revision > start_revision and finalizes without regranting.
             */
             CampaignChallengesFinalizeClaim(c->a, g_state.revision);
+            c->status = 1;
+            c->revision = g_state.revision;
+            return 1;
+        }
+
+    case CAMPAIGN_OP_GET_STATISTICS:
+        {
+            CampaignStatisticsSnapshot stats;
+            ZeroBytes(&stats, (uint32_t)sizeof(stats));
+            stats.size = (uint32_t)sizeof(stats);
+            if (!CampaignStatisticsGet(&stats)) return 0;
+
+            switch (c->a) {
+            case CAMPAIGN_STATISTICS_RACES:
+                c->out0 = (int32_t)stats.races_with_metrics;
+                c->out1 = (int32_t)stats.wins;
+                c->out2 = (int32_t)stats.podiums;
+                break;
+            case CAMPAIGN_STATISTICS_MOVEMENT:
+                c->out0 = (int32_t)stats.total_drift_meters;
+                c->out1 = (int32_t)stats.total_air_time_ms;
+                c->out2 = (int32_t)stats.total_nitro_time_ms;
+                break;
+            case CAMPAIGN_STATISTICS_DESTRUCTION:
+                c->out0 = (int32_t)stats.total_wrecked_cars;
+                c->out1 = (int32_t)stats.total_wrecked_environment;
+                c->out2 = (int32_t)stats.total_wrecks_made;
+                break;
+            case CAMPAIGN_STATISTICS_STUNTS:
+                c->out0 = (int32_t)stats.total_flat_spins;
+                c->out1 = (int32_t)stats.total_barrel_rolls;
+                c->out2 = (int32_t)stats.total_obstacles_broken;
+                break;
+            case CAMPAIGN_STATISTICS_NITRO:
+                c->out0 = (int32_t)stats.total_nitro_all_in;
+                c->out1 = (int32_t)stats.total_nitro_chain;
+                c->out2 = (int32_t)stats.total_nitro_normal;
+                break;
+            case CAMPAIGN_STATISTICS_BEST:
+                c->out0 = (int32_t)stats.best_placement;
+                c->out1 = (int32_t)stats.best_finish_time_ms;
+                c->out2 = (int32_t)stats.revision;
+                break;
+            default:
+                return 0;
+            }
+
             c->status = 1;
             c->revision = g_state.revision;
             return 1;
