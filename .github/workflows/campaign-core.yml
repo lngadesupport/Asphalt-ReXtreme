@@ -130,7 +130,7 @@ jobs:
           cl.exe /nologo /c /TC /O2 /MT /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /I"src-reconstructed\campaign-core" /Fo"prebuilt\campaign-core\CampaignPresentationTest.obj" "src-reconstructed\campaign-core\CampaignPresentationTest.c"
           if errorlevel 1 exit /b 25
 
-          link.exe /nologo /machine:x86 /out:"prebuilt\campaign-core\CampaignPresentationTest.exe" "prebuilt\campaign-core\CampaignPresentationTest.obj" "prebuilt\campaign-core\CampaignPresentation.obj" "prebuilt\campaign-core\CampaignPresentationCatalog.obj" "prebuilt\campaign-core\CampaignPresentationBindings.obj" "prebuilt\campaign-core\CampaignPhotoBindings.obj" kernel32.lib
+          link.exe /nologo /machine:x86 /out:"prebuilt\campaign-core\CampaignPresentationTest.exe" "prebuilt\campaign-core\CampaignPresentationTest.obj" "prebuilt\campaign-core\CampaignPresentation.obj" "prebuilt\campaign-core\CampaignPresentationCatalog.obj" "prebuilt\campaign-core\CampaignPresentationBindings.obj" "prebuilt\campaign-core\CampaignPhotoBindings.obj" "prebuilt\campaign-core\CampaignReplayBindings.obj" kernel32.lib
           if errorlevel 1 exit /b 26
 
           "prebuilt\campaign-core\CampaignPresentationTest.exe"
