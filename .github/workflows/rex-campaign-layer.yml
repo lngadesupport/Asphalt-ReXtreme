@@ -63,11 +63,22 @@ jobs:
               throw "Legacy runtime reference detected: $term"
             }
           }
+          $testFiles = Get-ChildItem "src/campaign-edition" -File -Recurse |
+            Where-Object { $_.Name -match "Test|Spec|Fixture" }
+          if ($testFiles) {
+            $testFiles | ForEach-Object { Write-Host $_.FullName }
+            throw "Test code detected inside production runtime"
+          }
 
-      - name: Build garage layer tests
+      - name: Build ReX runtime tests
         shell: cmd
-        run: cl.exe /nologo /W4 /WX /TC src\campaign-edition\*.c /Fe:RexGarageLayerTest.exe
+        run: >-
+          cl.exe /nologo /W4 /WX /TC
+          src\campaign-edition\*.c
+          tests\c\RexGarageLayerTest.c
+          /I src\campaign-edition
+          /Fe:RexGarageLayerTest.exe
 
-      - name: Run garage layer tests
+      - name: Run ReX runtime tests
         shell: cmd
         run: RexGarageLayerTest.exe
