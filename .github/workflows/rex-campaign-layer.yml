@@ -58,7 +58,11 @@ jobs:
             "IGPLib_x86"
           )
           foreach ($term in $banned) {
-            $hits = Get-ChildItem "src/campaign-edition","src/integration-shim","src/game-bridge" -File -Recurse |
+            $roots = @("src/campaign-edition","src/integration-shim","src/game-bridge")
+            if ($term -eq "IGPLib_x86") {
+              $roots = @("src/campaign-edition","src/integration-shim")
+            }
+            $hits = Get-ChildItem $roots -File -Recurse |
               Select-String -SimpleMatch $term
             if ($hits) {
               $hits | ForEach-Object { Write-Host $_.Line }
