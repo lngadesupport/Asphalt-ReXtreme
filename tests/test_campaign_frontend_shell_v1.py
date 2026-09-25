@@ -23,6 +23,11 @@ class CleanFrontendShellTests(unittest.TestCase):
         )
         self.assertEqual(p[-3:],b"\xC2\x08\x00")
 
+    def test_build_button_visual_state_is_frontend_only_active(self):
+        self.assertEqual(m.BUILD_VISUAL_STATE_OFF,0x00574FA7)
+        self.assertEqual(m.BUILD_VISUAL_STATE_ORIG,b"\xFF\x75\xD8")
+        self.assertEqual(m.BUILD_VISUAL_STATE_ACTIVE,b"\x6A\x01\x90")
+
     def test_exact_frontend_cave_size(self):
         self.assertEqual(m.CAVE_LEN,47)
         self.assertLessEqual(len(m.BOOT_STUB)+len(m.LOBBY_STUB),m.CAVE_LEN)
