@@ -9,7 +9,9 @@ on:
       - "src/campaign-edition/**"
       - "runtime-stubs/rex_campaign_gateway.asm"
       - "runtime-stubs/IGPLib_x86_rex_campaign.def"
-      - "tools/rex_audit.py"
+      - "tools/rex_*"
+      - "tests/test_rex_campaign.py"
+      - "RUN-REX-CAMPAIGN.ps1"
       - ".github/workflows/rex-campaign.yml"
 
 permissions:
