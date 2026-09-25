@@ -176,6 +176,13 @@ jobs:
           /Fe:RexIgpProxyTest.exe
           && RexIgpProxyTest.exe
 
+      - name: Restore production ReX content manifest
+        shell: cmd
+        run: >-
+          python builder\rex_content_v2.py
+          config\rex_campaign_content.json
+          CampaignContentV2.dat
+
       - name: Build new AMS host tests
         shell: cmd
         run: >-
