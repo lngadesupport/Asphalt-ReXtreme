@@ -5,6 +5,7 @@
 #include "RexGaragePresenter.h"
 #include "RexGaia.h"
 #include "RexGlobalSync.h"
+#include "RexPlatformServices.h"
 #include "RexPresentationAdapterV2.h"
 #include "RexState.h"
 
@@ -18,6 +19,7 @@ typedef struct RexRuntime {
     RexContent content;
     RexState state;
     RexGaia gaia;
+    RexPlatformServices platform_services;
     RexGlobalSync global_sync;
     RexCampaign campaign;
     RexGaragePresenter garage_presenter;

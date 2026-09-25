@@ -74,6 +74,12 @@ int RexRuntime_Init(
         return 0;
     }
 
+    if (!RexPlatformServices_Init(
+            &runtime->platform_services,
+            &runtime->gaia)) {
+        return 0;
+    }
+
     if (!RexGlobalSync_Init(
             &runtime->global_sync,
             &runtime->state,
