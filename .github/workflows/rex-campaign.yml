@@ -1,0 +1,138 @@
+name: Rex Campaign Edition x86
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - public-beta-0.1
+    paths:
+      - "src/campaign-edition/**"
+      - "runtime-stubs/rex_campaign_gateway.asm"
+      - "runtime-stubs/IGPLib_x86_rex_campaign.def"
+      - "tools/rex_audit.py"
+      - ".github/workflows/rex-campaign.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rex-campaign-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Audit new-only architecture
+        shell: pwsh
+        run: python tools/rex_audit.py --project-root .
+
+      - name: Build x86
+        shell: pwsh
+        run: |
+          $vswhere=Join-Path ([Environment]::GetEnvironmentVariable("ProgramFiles(x86)")) "Microsoft Visual Studio\Installer\vswhere.exe"
+          $install=(& $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath).Trim()
+          if(-not$install){throw "MSVC x86 toolchain not found"}
+          $vcvars=Join-Path $install "VC\Auxiliary\Build\vcvarsall.bat"
+          New-Item -ItemType Directory -Force -Path ".\prebuilt\rex-campaign"|Out-Null
+
+          $bat=@"
+          @echo off
+          call "$vcvars" x86
+          if errorlevel 1 exit /b 11
+
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\rex-campaign\RexContent.obj" "src\campaign-edition\RexContent.c"
+          if errorlevel 1 exit /b 12
+
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\rex-campaign\RexState.obj" "src\campaign-edition\RexState.c"
+          if errorlevel 1 exit /b 13
+
+          cl.exe /nologo /c /TC /O2 /GS- /Zl /DWIN32 /D_WINDOWS /DUNICODE /D_UNICODE /Fo"prebuilt\rex-campaign\RexCampaign.obj" "src\campaign-edition\RexCampaign.c"
+          if errorlevel 1 exit /b 14
+
+          ml.exe /nologo /c /coff /Fo"prebuilt\rex-campaign\rex_campaign_gateway.obj" "runtime-stubs\rex_campaign_gateway.asm"
+          if errorlevel 1 exit /b 15
+
+          link.exe /nologo /dll /noentry /machine:x86 /nodefaultlib /def:"runtime-stubs\IGPLib_x86_rex_campaign.def" /out:"prebuilt\rex-campaign\IGPLib_x86.dll" "prebuilt\rex-campaign\RexContent.obj" "prebuilt\rex-campaign\RexState.obj" "prebuilt\rex-campaign\RexCampaign.obj" "prebuilt\rex-campaign\rex_campaign_gateway.obj" kernel32.lib
+          if errorlevel 1 exit /b 16
+
+          dumpbin.exe /headers /imports "prebuilt\rex-campaign\IGPLib_x86.dll" > "prebuilt\rex-campaign\DUMPBIN.txt"
+          if errorlevel 1 exit /b 17
+          exit /b 0
+          "@
+
+          Set-Content ".\build-rex-campaign.cmd" $bat -Encoding ASCII
+          & cmd.exe /d /c ".\build-rex-campaign.cmd"
+          if($LASTEXITCODE-ne0){throw "build failed: $LASTEXITCODE"}
+
+      - name: Verify
+        shell: pwsh
+        run: |
+          $dll=".\prebuilt\rex-campaign\IGPLib_x86.dll"
+          [byte[]]$d=[IO.File]::ReadAllBytes($dll)
+          $pe=[BitConverter]::ToInt32($d,0x3C)
+          if([BitConverter]::ToUInt16($d,$pe+4)-ne0x014C){throw "not x86"}
+          $opt=$pe+24
+          if([BitConverter]::ToUInt16($d,$opt)-ne0x010B){throw "not PE32"}
+          if([BitConverter]::ToUInt32($d,$opt+16)-ne0){throw "entrypoint must be zero"}
+          $dump=Get-Content ".\prebuilt\rex-campaign\DUMPBIN.txt" -Raw
+          if($dump-match "VCRUNTIME|MSVCP|ucrtbase"){throw "CRT dependency"}
+
+          $hash=(Get-FileHash -LiteralPath $dll -Algorithm SHA256).Hash.ToLowerInvariant()
+          [ordered]@{
+            schema=1
+            runtime="Rex Campaign Edition"
+            architecture="x86"
+            no_entry=$true
+            crt_dependency=$false
+            original_frontend_only=$true
+            old_campaign_code_used=$false
+            state_file="CampaignStateV1.dat"
+            content_file="CampaignContentV1.dat"
+            selectors=[ordered]@{
+              boot="0xDEC0A001"
+              home="0xDEC0A002"
+              build="0xDEC0A003"
+              select_car="0xDEC0A004"
+              dispatch="0xDEC0A005"
+              read_view="0xDEC0A006"
+            }
+            sha256=$hash
+          }|ConvertTo-Json -Depth 8|Set-Content ".\prebuilt\rex-campaign\REPORT.json" -Encoding UTF8
+          Get-Content ".\prebuilt\rex-campaign\REPORT.json"
+
+      - name: Publish
+        shell: pwsh
+        run: |
+          $stage=Join-Path $env:RUNNER_TEMP "rex-campaign"
+          New-Item -ItemType Directory -Force -Path $stage|Out-Null
+          Copy-Item ".\prebuilt\rex-campaign\IGPLib_x86.dll" $stage -Force
+          Copy-Item ".\prebuilt\rex-campaign\REPORT.json" $stage -Force
+          Copy-Item ".\prebuilt\rex-campaign\AUDIT.json" $stage -Force
+          Copy-Item ".\prebuilt\rex-campaign\DUMPBIN.txt" $stage -Force
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin "$env:GITHUB_REF_NAME"
+          git reset --hard "origin/$env:GITHUB_REF_NAME"
+          New-Item -ItemType Directory -Force -Path ".\prebuilt\rex-campaign"|Out-Null
+          Copy-Item (Join-Path $stage "IGPLib_x86.dll") ".\prebuilt\rex-campaign\IGPLib_x86.dll" -Force
+          Copy-Item (Join-Path $stage "REPORT.json") ".\prebuilt\rex-campaign\REPORT.json" -Force
+          Copy-Item (Join-Path $stage "AUDIT.json") ".\prebuilt\rex-campaign\AUDIT.json" -Force
+          Copy-Item (Join-Path $stage "DUMPBIN.txt") ".\prebuilt\rex-campaign\DUMPBIN.txt" -Force
+          git add -f prebuilt/rex-campaign/*
+          git diff --cached --quiet
+          if($LASTEXITCODE-eq0){exit 0}
+          git commit -m "build: publish Rex Campaign Edition [skip ci]"
+          git push origin "HEAD:$env:GITHUB_REF_NAME"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Rex-Campaign-Edition-x86
+          path: |
+            prebuilt/rex-campaign/IGPLib_x86.dll
+            prebuilt/rex-campaign/REPORT.json
+            prebuilt/rex-campaign/AUDIT.json
+            prebuilt/rex-campaign/DUMPBIN.txt
