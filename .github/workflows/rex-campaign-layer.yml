@@ -7,6 +7,7 @@ on:
       - campaign-edition-rex-v2
     paths:
       - "src/campaign-edition/**"
+      - "src/integration-shim/**"
       - "builder/**"
       - "config/**"
       - "tests/**"
@@ -117,6 +118,20 @@ jobs:
 
           $hash = (Get-FileHash RexCore.dll -Algorithm SHA256).Hash.ToLowerInvariant()
           Write-Host "RexCore.dll SHA256=$hash"
+
+      - name: Build ReX integration shim tests
+        shell: cmd
+        run: >-
+          cl.exe /nologo /W4 /WX /TC
+          src\integration-shim\RexIntegrationShim.c
+          tests\c\RexIntegrationShimTest.c
+          /I src\integration-shim
+          /I src\campaign-edition
+          /Fe:RexIntegrationShimTest.exe
+
+      - name: Run ReX integration shim tests
+        shell: cmd
+        run: RexIntegrationShimTest.exe
 
       - uses: actions/upload-artifact@v4
         with:
