@@ -110,25 +110,42 @@ jobs:
         run: |
           $stage=Join-Path $env:RUNNER_TEMP "rex-campaign"
           New-Item -ItemType Directory -Force -Path $stage|Out-Null
-          Copy-Item ".\prebuilt\rex-campaign\IGPLib_x86.dll" $stage -Force
-          Copy-Item ".\prebuilt\rex-campaign\REPORT.json" $stage -Force
-          Copy-Item ".\prebuilt\rex-campaign\AUDIT.json" $stage -Force
-          Copy-Item ".\prebuilt\rex-campaign\DUMPBIN.txt" $stage -Force
+          foreach($name in @("IGPLib_x86.dll","REPORT.json","AUDIT.json","DUMPBIN.txt")){
+            Copy-Item (Join-Path ".\prebuilt\rex-campaign" $name) $stage -Force
+          }
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin "$env:GITHUB_REF_NAME"
-          git reset --hard "origin/$env:GITHUB_REF_NAME"
-          New-Item -ItemType Directory -Force -Path ".\prebuilt\rex-campaign"|Out-Null
-          Copy-Item (Join-Path $stage "IGPLib_x86.dll") ".\prebuilt\rex-campaign\IGPLib_x86.dll" -Force
-          Copy-Item (Join-Path $stage "REPORT.json") ".\prebuilt\rex-campaign\REPORT.json" -Force
-          Copy-Item (Join-Path $stage "AUDIT.json") ".\prebuilt\rex-campaign\AUDIT.json" -Force
-          Copy-Item (Join-Path $stage "DUMPBIN.txt") ".\prebuilt\rex-campaign\DUMPBIN.txt" -Force
-          git add -f prebuilt/rex-campaign/*
-          git diff --cached --quiet
-          if($LASTEXITCODE-eq0){exit 0}
-          git commit -m "build: publish Rex Campaign Edition [skip ci]"
-          git push origin "HEAD:$env:GITHUB_REF_NAME"
+
+          $published=$false
+          for($attempt=1;$attempt-le3-and-not$published;$attempt++){
+            git fetch origin "$env:GITHUB_REF_NAME"
+            git reset --hard "origin/$env:GITHUB_REF_NAME"
+
+            New-Item -ItemType Directory -Force -Path ".\prebuilt\rex-campaign"|Out-Null
+            foreach($name in @("IGPLib_x86.dll","REPORT.json","AUDIT.json","DUMPBIN.txt")){
+              Copy-Item (Join-Path $stage $name) (Join-Path ".\prebuilt\rex-campaign" $name) -Force
+              git add -f (Join-Path "prebuilt\rex-campaign" $name)
+            }
+
+            git diff --cached --quiet
+            if($LASTEXITCODE-eq0){
+              $published=$true
+              break
+            }
+
+            git commit -m "build: publish Rex Campaign Edition [skip ci]"
+            git push origin "HEAD:$env:GITHUB_REF_NAME"
+            if($LASTEXITCODE-eq0){
+              $published=$true
+              break
+            }
+
+            Write-Host ("Publish race on attempt "+$attempt+"; retrying against latest branch...")
+            Start-Sleep -Seconds 2
+          }
+
+          if(-not$published){throw "Could not publish Rex Campaign artifacts after retries"}
 
       - uses: actions/upload-artifact@v4
         with:
