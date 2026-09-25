@@ -62,7 +62,7 @@ def read_source(path:Path):
         else:
             # Blueprint economy will be authored natively in the new content
             # schema later. Until then, preserve availability without invoking
-            # any old CraftCar/inventory flow.
+            # any previous gameplay/service flow.
             mode=REX_FREE
             price=0
 
