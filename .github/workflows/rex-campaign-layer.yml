@@ -152,6 +152,10 @@ jobs:
           /Fe:IGPLib_x86.dll
           /link /DEF:src\game-bridge\RexIgpProxy.def
 
+      - name: Inspect ReX IGP proxy exports
+        shell: cmd
+        run: dumpbin.exe /exports IGPLib_x86.dll
+
       - name: Run ReX IGP proxy tests
         shell: cmd
         run: >-
