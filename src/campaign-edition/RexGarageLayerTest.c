@@ -229,6 +229,23 @@ static void test_presenter_enter_builds_view_model_and_tutorial(void) {
     CHECK(RexGaragePresenter_ShouldFocusBuild(&presenter) == 1);
 }
 
+static void test_presenter_car_selection_rebuilds_view_model(void) {
+    FakeCampaign fake = ready_fake(42);
+    RexGaragePresenter presenter = {0};
+    const RexGarageViewModel* vm;
+
+    RexGaragePresenter_Init(&presenter, fake_api(&fake), 0);
+    CHECK(RexGaragePresenter_OnEnter(&presenter, 42) == 1);
+
+    fake.vehicle.unlocked = 0;
+    CHECK(RexGaragePresenter_OnCarSelected(&presenter, 77) == 1);
+
+    vm = RexGaragePresenter_GetViewModel(&presenter);
+    CHECK(vm->selected_vehicle_id == 77);
+    CHECK(vm->build_enabled == 0);
+    CHECK(vm->build_status == REX_GARAGE_BUILD_LOCKED);
+}
+
 static void test_presenter_successful_build_refreshes_owned_state(void) {
     FakeCampaign fake = ready_fake(42);
     RexGaragePresenter presenter = {0};
@@ -305,6 +322,7 @@ int main(void) {
     test_tutorial_advances_only_after_successful_build();
     test_completed_tutorial_stays_complete();
     test_presenter_enter_builds_view_model_and_tutorial();
+    test_presenter_car_selection_rebuilds_view_model();
     test_presenter_successful_build_refreshes_owned_state();
     test_presenter_rejects_disabled_build_without_campaign_call();
     test_presenter_failed_campaign_action_returns_tutorial_to_focus();
