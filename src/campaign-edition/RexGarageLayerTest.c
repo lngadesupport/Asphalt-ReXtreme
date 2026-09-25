@@ -5,11 +5,22 @@
 
 static int failures = 0;
 
-#define CHECK(expr) do {     if (!(expr)) {         printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #expr);         failures += 1;     } } while (0)
+#define CHECK(expr) do { \
+    if (!(expr)) { \
+        printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #expr); \
+        failures += 1; \
+    } \
+} while (0)
+
+static RexGarageViewModel build_vm(RexGarageViewModelInput input) {
+    RexGarageViewModel vm = {0};
+    RexGarageViewModel_Build(&input, &vm);
+    return vm;
+}
 
 static void test_ready_vehicle_enables_build(void) {
     RexGarageViewModelInput input = {0};
-    RexGarageViewModel vm = {0};
+    RexGarageViewModel vm;
 
     input.selected_vehicle_id = 42;
     input.unlocked = 1;
@@ -17,7 +28,7 @@ static void test_ready_vehicle_enables_build(void) {
     input.blueprint_balance = 12;
     input.blueprint_cost = 10;
 
-    RexGarageViewModel_Build(&input, &vm);
+    vm = build_vm(input);
 
     CHECK(vm.selected_vehicle_id == 42);
     CHECK(vm.build_enabled == 1);
@@ -26,7 +37,7 @@ static void test_ready_vehicle_enables_build(void) {
 
 static void test_owned_vehicle_disables_build(void) {
     RexGarageViewModelInput input = {0};
-    RexGarageViewModel vm = {0};
+    RexGarageViewModel vm;
 
     input.selected_vehicle_id = 42;
     input.owned = 1;
@@ -35,15 +46,54 @@ static void test_owned_vehicle_disables_build(void) {
     input.blueprint_balance = 50;
     input.blueprint_cost = 10;
 
-    RexGarageViewModel_Build(&input, &vm);
+    vm = build_vm(input);
 
     CHECK(vm.build_enabled == 0);
     CHECK(vm.build_status == REX_GARAGE_BUILD_OWNED);
 }
 
+static void test_no_selection_is_not_buildable(void) {
+    RexGarageViewModelInput input = {0};
+    RexGarageViewModel vm = build_vm(input);
+
+    CHECK(vm.build_enabled == 0);
+    CHECK(vm.build_status == REX_GARAGE_BUILD_NO_SELECTION);
+}
+
+static void test_locked_vehicle_is_not_buildable(void) {
+    RexGarageViewModelInput input = {0};
+    RexGarageViewModel vm;
+
+    input.selected_vehicle_id = 55;
+    input.unlocked = 0;
+    input.has_recipe = 1;
+    input.blueprint_balance = 99;
+    input.blueprint_cost = 5;
+
+    vm = build_vm(input);
+
+    CHECK(vm.build_enabled == 0);
+    CHECK(vm.build_status == REX_GARAGE_BUILD_LOCKED);
+}
+
+static void test_vehicle_without_recipe_is_unavailable(void) {
+    RexGarageViewModelInput input = {0};
+    RexGarageViewModel vm;
+
+    input.selected_vehicle_id = 56;
+    input.unlocked = 1;
+    input.has_recipe = 0;
+    input.blueprint_balance = 99;
+
+    vm = build_vm(input);
+
+    CHECK(vm.build_enabled == 0);
+    CHECK(vm.build_status == REX_GARAGE_BUILD_UNAVAILABLE);
+}
+
 static void test_insufficient_blueprints_disables_build(void) {
     RexGarageViewModelInput input = {0};
-    RexGarageViewModel vm = {0};
+    RexGarageViewModel vm;
 
     input.selected_vehicle_id = 77;
     input.unlocked = 1;
@@ -51,10 +101,23 @@ static void test_insufficient_blueprints_disables_build(void) {
     input.blueprint_balance = 4;
     input.blueprint_cost = 5;
 
-    RexGarageViewModel_Build(&input, &vm);
+    vm = build_vm(input);
 
     CHECK(vm.build_enabled == 0);
     CHECK(vm.build_status == REX_GARAGE_BUILD_NEEDS_BLUEPRINTS);
+}
+
+static void test_tutorial_waits_until_build_is_available(void) {
+    RexTutorialController tutorial = {0};
+
+    RexTutorialController_Init(&tutorial, 0);
+    RexTutorialController_OnGarageEntered(&tutorial, 0);
+
+    CHECK(RexTutorialController_GetState(&tutorial) == REX_TUTORIAL_IDLE);
+    CHECK(RexTutorialController_ShouldFocusBuild(&tutorial) == 0);
+
+    RexTutorialController_OnBuildPressed(&tutorial);
+    CHECK(RexTutorialController_GetState(&tutorial) == REX_TUTORIAL_IDLE);
 }
 
 static void test_tutorial_advances_only_after_successful_build(void) {
@@ -93,7 +156,11 @@ static void test_completed_tutorial_stays_complete(void) {
 int main(void) {
     test_ready_vehicle_enables_build();
     test_owned_vehicle_disables_build();
+    test_no_selection_is_not_buildable();
+    test_locked_vehicle_is_not_buildable();
+    test_vehicle_without_recipe_is_unavailable();
     test_insufficient_blueprints_disables_build();
+    test_tutorial_waits_until_build_is_available();
     test_tutorial_advances_only_after_successful_build();
     test_completed_tutorial_stays_complete();
 
