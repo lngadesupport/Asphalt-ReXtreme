@@ -406,6 +406,7 @@ int __fastcall RexIGP_HttpPostLink(
 
 void __cdecl RexIGP_Init(const void* params) {
     (void)params;
+    (void)RexProxy_EnsureRuntime();
 }
 
 void __cdecl RexIGP_InitBridgeCallbacks(void) {
