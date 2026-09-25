@@ -13,21 +13,21 @@ def load(name,rel):
     spec.loader.exec_module(m)
     return m
 
-patch=load("rex_patch",Path("tools/rex_patch_frontend.py"))
-content=load("rex_content",Path("tools/rex_build_content.py"))
+patch=load("rex_frontend_v2",Path("tools/rex_frontend_adapter_v2.py"))
+content=load("rex_content_v2",Path("tools/rex_build_content_v2.py"))
 
 class RexCampaignTests(unittest.TestCase):
     def test_new_frontend_bridge_has_exact_cave_capacity(self):
-        self.assertEqual(patch.CAVE_LEN,47)
+        self.assertEqual(patch.BRIDGE_PAD_SIZE,47)
         self.assertLessEqual(
-            len(patch.BOOT_STUB)+len(patch.HOME_STUB),
+            len(patch.BOOT_BRIDGE)+len(patch.HOME_BRIDGE),
             patch.CAVE_LEN
         )
 
     def test_build_render_is_direct_active_presentation(self):
-        self.assertEqual(patch.BUILD_RENDER_OFF,0x00574FA7)
-        self.assertEqual(patch.BUILD_RENDER_BEFORE,b"\xFF\x75\xD8")
-        self.assertEqual(patch.BUILD_RENDER_AFTER,b"\x6A\x01\x90")
+        self.assertEqual(patch.GARAGE_ACTION_RENDER_OFF,0x00574FA7)
+        self.assertEqual(patch.GARAGE_ACTION_RENDER_EXPECTED,b"\xFF\x75\xD8")
+        self.assertEqual(patch.GARAGE_ACTION_RENDER_ACTIVE,b"\x6A\x01\x90")
 
     def test_new_selectors_are_separate_namespace(self):
         self.assertEqual(patch.SEL_BOOT,0xDEC0A001)
@@ -35,13 +35,16 @@ class RexCampaignTests(unittest.TestCase):
         self.assertEqual(patch.SEL_BUILD,0xDEC0A003)
 
     def test_new_content_format_is_not_previous_runtime_format(self):
-        rows=[(100,content.REX_FREE,0,1),(200,content.REX_CREDITS,25000,2)]
-        data=content.build(rows)
-        self.assertEqual(len(data),content.NEW_SIZE)
-        magic,version,count,reserved=content.NEW_HEADER.unpack_from(data,0)
-        self.assertEqual(magic,content.NEW_MAGIC)
-        self.assertEqual(version,content.NEW_VERSION)
+        cfg={"starter":100,"credits":50000,"tokens":0,"rows":[(100,content.MODE["free"],0,1),(200,content.MODE["credits"],25000,2)]}
+        data=content.build(cfg)
+        self.assertEqual(len(data),content.SIZE)
+        magic,version,count,reserved=content.HEADER.unpack_from(data,0)
+        self.assertEqual(magic,content.MAGIC)
+        self.assertEqual(version,content.VERSION)
         self.assertEqual(count,2)
+        self.assertEqual(starter,100)
+        self.assertEqual(credits,50000)
+        self.assertEqual(tokens,0)
         self.assertEqual(
             struct.unpack_from("<I",data,len(data)-4)[0],
             content.fnv1a(data[:-4])
