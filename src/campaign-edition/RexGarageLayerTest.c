@@ -4,6 +4,7 @@
 #include "RexGaragePresenter.h"
 #include "RexGarageViewModel.h"
 #include "RexTutorialController.h"
+#include "RexPresentationAdapterV2.h"
 
 #include <stdio.h>
 
@@ -636,6 +637,186 @@ static void test_content_v2_rejects_invalid_file(void) {
 }
 
 
+
+typedef struct FakePresentation {
+    uint32_t selected_vehicle_id;
+    int present_calls;
+    int action_calls;
+    int focus_build;
+    RexGarageViewModel last_view_model;
+    RexGaragePresenterResult last_action_result;
+} FakePresentation;
+
+static uint32_t fake_presentation_read_selected_vehicle_id(
+    void* context
+) {
+    FakePresentation* presentation = (FakePresentation*)context;
+    return presentation->selected_vehicle_id;
+}
+
+static void fake_presentation_present_garage(
+    void* context,
+    const RexGarageViewModel* view_model,
+    int focus_build
+) {
+    FakePresentation* presentation = (FakePresentation*)context;
+    presentation->present_calls += 1;
+    presentation->last_view_model = *view_model;
+    presentation->focus_build = focus_build;
+}
+
+static void fake_presentation_present_action_result(
+    void* context,
+    RexGaragePresenterResult result
+) {
+    FakePresentation* presentation = (FakePresentation*)context;
+    presentation->action_calls += 1;
+    presentation->last_action_result = result;
+}
+
+static RexPresentationGaragePort fake_presentation_port(
+    FakePresentation* presentation
+) {
+    RexPresentationGaragePort port = {0};
+
+    port.context = presentation;
+    port.read_selected_vehicle_id =
+        fake_presentation_read_selected_vehicle_id;
+    port.present_garage =
+        fake_presentation_present_garage;
+    port.present_action_result =
+        fake_presentation_present_action_result;
+
+    return port;
+}
+
+static void test_presentation_adapter_enters_and_presents_view_model(void) {
+    FakeCampaign fake = ready_fake(601u);
+    FakePresentation presentation = {0};
+    RexGaragePresenter presenter = {0};
+    RexPresentationAdapterV2 adapter = {0};
+
+    presentation.selected_vehicle_id = 601u;
+
+    RexGaragePresenter_Init(
+        &presenter,
+        fake_api(&fake),
+        0
+    );
+
+    CHECK(
+        RexPresentationAdapterV2_Init(
+            &adapter,
+            &presenter,
+            fake_presentation_port(&presentation)
+        ) == 1
+    );
+
+    CHECK(RexPresentationAdapterV2_OnEnter(&adapter) == 1);
+    CHECK(presentation.present_calls == 1);
+    CHECK(presentation.last_view_model.selected_vehicle_id == 601u);
+    CHECK(presentation.last_view_model.build_enabled == 1);
+    CHECK(presentation.focus_build == 1);
+}
+
+static void test_presentation_adapter_selection_change_rebuilds_state(void) {
+    FakeCampaign fake = ready_fake(601u);
+    FakePresentation presentation = {0};
+    RexGaragePresenter presenter = {0};
+    RexPresentationAdapterV2 adapter = {0};
+
+    presentation.selected_vehicle_id = 601u;
+
+    RexGaragePresenter_Init(
+        &presenter,
+        fake_api(&fake),
+        0
+    );
+    CHECK(
+        RexPresentationAdapterV2_Init(
+            &adapter,
+            &presenter,
+            fake_presentation_port(&presentation)
+        ) == 1
+    );
+    CHECK(RexPresentationAdapterV2_OnEnter(&adapter) == 1);
+
+    fake.vehicle.unlocked = 0;
+    presentation.selected_vehicle_id = 602u;
+
+    CHECK(
+        RexPresentationAdapterV2_OnSelectionChanged(&adapter) == 1
+    );
+    CHECK(presentation.present_calls == 2);
+    CHECK(presentation.last_view_model.selected_vehicle_id == 602u);
+    CHECK(presentation.last_view_model.build_enabled == 0);
+    CHECK(
+        presentation.last_view_model.build_status ==
+        REX_GARAGE_BUILD_LOCKED
+    );
+}
+
+static void test_presentation_adapter_routes_montar_and_renders_result(void) {
+    FakeCampaign fake = ready_fake(603u);
+    FakePresentation presentation = {0};
+    RexGaragePresenter presenter = {0};
+    RexPresentationAdapterV2 adapter = {0};
+    RexGaragePresenterResult result;
+
+    presentation.selected_vehicle_id = 603u;
+
+    RexGaragePresenter_Init(
+        &presenter,
+        fake_api(&fake),
+        0
+    );
+    CHECK(
+        RexPresentationAdapterV2_Init(
+            &adapter,
+            &presenter,
+            fake_presentation_port(&presentation)
+        ) == 1
+    );
+    CHECK(RexPresentationAdapterV2_OnEnter(&adapter) == 1);
+
+    result = RexPresentationAdapterV2_OnMontarPressed(&adapter);
+
+    CHECK(result == REX_GARAGE_PRESENTER_OK);
+    CHECK(fake.acquire_calls == 1);
+    CHECK(presentation.action_calls == 1);
+    CHECK(presentation.last_action_result == REX_GARAGE_PRESENTER_OK);
+    CHECK(presentation.present_calls == 2);
+    CHECK(presentation.last_view_model.owned == 1);
+    CHECK(presentation.last_view_model.build_enabled == 0);
+    CHECK(presentation.focus_build == 0);
+}
+
+static void test_presentation_adapter_requires_only_presentation_contract(void) {
+    FakeCampaign fake = ready_fake(604u);
+    FakePresentation presentation = {0};
+    RexGaragePresenter presenter = {0};
+    RexPresentationAdapterV2 adapter = {0};
+    RexPresentationGaragePort port;
+
+    RexGaragePresenter_Init(
+        &presenter,
+        fake_api(&fake),
+        0
+    );
+
+    port = fake_presentation_port(&presentation);
+    port.present_garage = 0;
+
+    CHECK(
+        RexPresentationAdapterV2_Init(
+            &adapter,
+            &presenter,
+            port
+        ) == 0
+    );
+}
+
+
 int main(void) {
     test_ready_vehicle_enables_build();
     test_owned_vehicle_disables_build();
@@ -661,6 +842,10 @@ int main(void) {
     test_real_campaign_presenter_persists_tutorial_completion();
     test_content_v2_binary_file_loads_local_catalog();
     test_content_v2_rejects_invalid_file();
+    test_presentation_adapter_enters_and_presents_view_model();
+    test_presentation_adapter_selection_change_rebuilds_state();
+    test_presentation_adapter_routes_montar_and_renders_result();
+    test_presentation_adapter_requires_only_presentation_contract();
 
     if (failures != 0) {
         printf("%d test assertion(s) failed.\n", failures);
