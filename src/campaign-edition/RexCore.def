@@ -1,4 +1,4 @@
-LIBRARY RexCampaignRuntime
+LIBRARY RexCore
 
 EXPORTS
     RexHost_Start=_RexHost_Start

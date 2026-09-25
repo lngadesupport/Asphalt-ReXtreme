@@ -88,18 +88,18 @@ jobs:
         run: >-
           cl.exe /nologo /W4 /WX /LD /TC
           src\campaign-edition\*.c
-          /Fe:RexCampaignRuntime.dll
-          /link /DEF:src\campaign-edition\RexCampaignRuntime.def
+          /Fe:RexCore.dll
+          /link /DEF:src\campaign-edition\RexCore.def
 
       - name: Verify ReX x86 runtime DLL
         shell: powershell
         run: |
-          $headers = (& dumpbin.exe /headers RexCampaignRuntime.dll | Out-String)
+          $headers = (& dumpbin.exe /headers RexCore.dll | Out-String)
           if ($headers -notmatch "14C machine \(x86\)") {
-            throw "RexCampaignRuntime.dll is not x86"
+            throw "RexCore.dll is not x86"
           }
 
-          $exports = (& dumpbin.exe /exports RexCampaignRuntime.dll | Out-String)
+          $exports = (& dumpbin.exe /exports RexCore.dll | Out-String)
           foreach ($name in @(
             "RexHost_Start",
             "RexHost_IsStarted",
@@ -112,11 +112,11 @@ jobs:
             }
           }
 
-          $hash = (Get-FileHash RexCampaignRuntime.dll -Algorithm SHA256).Hash.ToLowerInvariant()
-          Write-Host "RexCampaignRuntime.dll SHA256=$hash"
+          $hash = (Get-FileHash RexCore.dll -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host "RexCore.dll SHA256=$hash"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: RexCampaignRuntime-x86
-          path: RexCampaignRuntime.dll
+          name: RexCore-x86
+          path: RexCore.dll
           if-no-files-found: error
