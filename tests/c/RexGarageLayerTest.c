@@ -883,6 +883,27 @@ static void test_runtime_bootstrap_composes_new_campaign_stack(void) {
     CHECK(runtime.initialized == 1);
     CHECK(RexGaia_IsReady(&runtime.gaia) == 1);
     CHECK(RexGaia_IsNetworkRequired(&runtime.gaia) == 0);
+    CHECK(runtime.platform_services.initialized == 1);
+    {
+        RexPlatformCapabilities caps = {0};
+        CHECK(
+            RexPlatformServices_GetCapabilities(
+                &runtime.platform_services,
+                &caps
+            ) == 1
+        );
+        CHECK(caps.profile_ready == 1);
+        CHECK(caps.cloud_sync_enabled == 0);
+        CHECK(caps.network_required == 0);
+        CHECK(caps.login_authenticated == 1);
+        CHECK(caps.license_active == 1);
+        CHECK(caps.iap_enabled == 0);
+        CHECK(caps.ads_enabled == 0);
+        CHECK(caps.social_enabled == 0);
+        CHECK(caps.matchmaking_enabled == 0);
+        CHECK(caps.online_events_enabled == 0);
+        CHECK(caps.update_required == 0);
+    }
     CHECK(RexGlobalSync_IsNetworkRequired(&runtime.global_sync) == 0);
     CHECK(runtime.global_sync.state == &runtime.state);
     CHECK(runtime.global_sync.next_operation_id == 1u);
