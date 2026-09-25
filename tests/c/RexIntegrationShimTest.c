@@ -1,4 +1,5 @@
 #include "RexIntegrationShim.h"
+#include "RexPlatformServices.h"
 
 #include <stdio.h>
 #include <string.h>
