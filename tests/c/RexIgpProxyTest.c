@@ -108,6 +108,46 @@ static void cleanup_proxy_state(void) {
     remove("CampaignStateV1.dat.bak");
 }
 
+
+typedef void (__cdecl *RexInitFn)(const void* params);
+
+static void test_proxy_bootstraps_rex_runtime_on_game_init(void) {
+    static const char init_name[] =
+        "?Init@IGPControl@IGPLib@@SAXABUInitParams@2@@Z";
+    HMODULE module;
+    RexInitFn init_fn;
+    FILE* state_file = 0;
+
+    cleanup_proxy_state();
+    CHECK(write_proxy_content_fixture() == 1);
+
+    module = LoadLibraryA("IGPLib_x86.dll");
+    CHECK(module != 0);
+    if (module == 0) {
+        remove("CampaignContentV2.dat");
+        return;
+    }
+
+    init_fn = (RexInitFn)GetProcAddress(module, init_name);
+    CHECK(init_fn != 0);
+
+    if (init_fn != 0) {
+        init_fn(0);
+        CHECK(fopen_s(
+            &state_file,
+            "CampaignStateV1.dat",
+            "rb"
+        ) == 0);
+        if (state_file != 0) {
+            fclose(state_file);
+        }
+    }
+
+    FreeLibrary(module);
+    remove("CampaignContentV2.dat");
+    cleanup_proxy_state();
+}
+
 static void test_proxy_routes_new_gateway_to_rex_shim(void) {
     static const char http_name[] =
         "?HttpPostLink@IGPControl@IGPLib@@QAEXPBD@Z";
@@ -169,6 +209,7 @@ static void test_proxy_routes_new_gateway_to_rex_shim(void) {
 
 int main(void) {
     test_proxy_exposes_game_import_surface();
+    test_proxy_bootstraps_rex_runtime_on_game_init();
     test_proxy_routes_new_gateway_to_rex_shim();
 
     if (failures != 0) {
