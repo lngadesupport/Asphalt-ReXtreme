@@ -54,8 +54,8 @@ jobs:
       - name: Compile new Campaign Python
         shell: pwsh
         run: |
-          python -m py_compile tools/rex_build_content.py
-          python -m py_compile tools/rex_patch_frontend.py
+          python -m py_compile tools/rex_build_content_v2.py
+          python -m py_compile tools/rex_frontend_adapter_v2.py
           python -m py_compile tools/rex_audit.py
 
       - name: Run new Campaign tests
