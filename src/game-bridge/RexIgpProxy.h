@@ -1,0 +1,4 @@
+#pragma once
+#include <stdint.h>
+#define REX_IGP_GATE_MONTAR 0x52455842u
+#define REX_IGP_GATE_OWNED  0x5245584Fu

@@ -8,6 +8,7 @@ on:
     paths:
       - "src/campaign-edition/**"
       - "src/integration-shim/**"
+      - "src/game-bridge/**"
       - "builder/**"
       - "config/**"
       - "tests/**"
@@ -141,6 +142,23 @@ jobs:
           /I src\integration-shim
           /I src\campaign-edition
           /Fe:RexGameShim.dll
+
+      - name: Build ReX IGP proxy RED
+        shell: cmd
+        run: >-
+          cl.exe /nologo /W4 /WX /LD /TC
+          src\game-bridge\RexIgpProxy.c
+          /I src\game-bridge
+          /Fe:IGPLib_x86.dll
+
+      - name: Run ReX IGP proxy tests
+        shell: cmd
+        run: >-
+          cl.exe /nologo /W4 /WX /TC
+          tests\c\RexIgpProxyTest.c
+          /I src\game-bridge
+          /Fe:RexIgpProxyTest.exe
+          && RexIgpProxyTest.exe
 
       - name: Verify ReX x86 integration shim DLL
         shell: powershell
