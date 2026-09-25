@@ -20,6 +20,8 @@ FORBIDDEN = (
     "campaign_career_adapter",
     "RUN-CLEAN-RUNTIME-V1",
     "RUN-FRONTEND-ONLY",
+    "rex_build_content.py",
+    "rex_patch_frontend.py",
 )
 
 ABSENT_PATHS = (
@@ -41,8 +43,9 @@ ACTIVE = (
     "runtime-stubs/rex_campaign_gateway.asm",
     "runtime-stubs/IGPLib_x86_rex_campaign.def",
     "tools/rex_build_base.ps1",
-    "tools/rex_build_content.py",
-    "tools/rex_patch_frontend.py",
+    "tools/rex_build_content_v2.py",
+    "config/rex_campaign_content.json",
+    "tools/rex_frontend_adapter_v2.py",
     "tools/rex_apply.ps1",
     "tools/rex_test.ps1",
     "RUN-REX-CAMPAIGN.ps1",
