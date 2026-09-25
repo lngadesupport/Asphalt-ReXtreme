@@ -152,6 +152,10 @@ jobs:
           /Fe:IGPLib_x86.dll
           /link /DEF:src\game-bridge\RexIgpProxy.def
 
+      - name: Rewrite exact IGP decorated exports
+        shell: cmd
+        run: python builder\rex_fix_igp_exports.py IGPLib_x86.dll
+
       - name: Inspect ReX IGP proxy exports
         shell: cmd
         run: dumpbin.exe /exports IGPLib_x86.dll
