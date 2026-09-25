@@ -109,6 +109,8 @@ def main()->int:
         "runtime":"Rex Campaign Edition",
         "original_frontend_only":True,
         "old_campaign_code_used":False,
+        "content_schema":"CampaignContentV2",
+        "frontend_adapter":"Rex Presentation Adapter V2",
         "scanned":scanned,
         "problems":problems,
         "pass":not problems,
