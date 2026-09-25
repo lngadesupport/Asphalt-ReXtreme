@@ -36,8 +36,8 @@ $downloads=@(
   @{Commit="02586d7a8ba6acf5ef7ba6d811c8ddf890f0b8c6"; Path="tools/rex_frontend_adapter_v2.py"},
   @{Commit="eff682cde2263896853ec8bfd6c1b58a7cd2b7ba"; Path="tools/rex_apply.ps1"},
   @{Commit="303a54870257f1dbe2b927ff2f3aa5a92788eb61"; Path="tools/rex_test.ps1"},
-  @{Commit="86fcde70d0f409eeab8ba89939abce3eee9ce637"; Path="prebuilt/rex-campaign/IGPLib_x86.dll"},
-  @{Commit="86fcde70d0f409eeab8ba89939abce3eee9ce637"; Path="prebuilt/rex-campaign/REPORT.json"}
+  @{Commit="11d9e264b7db3517f5e651b650bf7fda7adb1f39"; Path="prebuilt/rex-campaign/IGPLib_x86.dll"},
+  @{Commit="11d9e264b7db3517f5e651b650bf7fda7adb1f39"; Path="prebuilt/rex-campaign/REPORT.json"}
 )
 
 foreach($x in $downloads){
@@ -53,7 +53,7 @@ foreach($x in $downloads){
 $report=Get-Content -LiteralPath (Join-Path $ProjectRoot "prebuilt\rex-campaign\REPORT.json") -Raw | ConvertFrom-Json
 $runtime=Join-Path $ProjectRoot "prebuilt\rex-campaign\IGPLib_x86.dll"
 $actual=(Get-FileHash -LiteralPath $runtime -Algorithm SHA256).Hash.ToLowerInvariant()
-$expected="47e800919eb462be2c12df77e536293c3f36358bd0d7a9ff40e4882d343bbf3b"
+$expected="17a965f6467c5e03e9be10173f9e3e8bee8d93189c4bc481e1e54f8dd81f9022"
 if(([string]$report.sha256).ToLowerInvariant()-ne$expected){
   throw "Published report hash mismatch"
 }
