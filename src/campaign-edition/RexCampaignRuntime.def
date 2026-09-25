@@ -1,0 +1,8 @@
+LIBRARY RexCampaignRuntime
+
+EXPORTS
+    RexHost_Start=_RexHost_Start
+    RexHost_IsStarted=_RexHost_IsStarted
+    RexHost_GarageEnter=_RexHost_GarageEnter
+    RexHost_GarageSelectionChanged=_RexHost_GarageSelectionChanged
+    RexHost_GarageMontarPressed=_RexHost_GarageMontarPressed

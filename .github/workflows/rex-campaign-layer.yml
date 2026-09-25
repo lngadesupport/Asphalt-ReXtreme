@@ -82,3 +82,41 @@ jobs:
       - name: Run ReX runtime tests
         shell: cmd
         run: RexGarageLayerTest.exe
+
+      - name: Build ReX x86 runtime DLL
+        shell: cmd
+        run: >-
+          cl.exe /nologo /W4 /WX /LD /TC
+          src\campaign-edition\*.c
+          /Fe:RexCampaignRuntime.dll
+          /link /DEF:src\campaign-edition\RexCampaignRuntime.def
+
+      - name: Verify ReX x86 runtime DLL
+        shell: powershell
+        run: |
+          $headers = (& dumpbin.exe /headers RexCampaignRuntime.dll | Out-String)
+          if ($headers -notmatch "14C machine \(x86\)") {
+            throw "RexCampaignRuntime.dll is not x86"
+          }
+
+          $exports = (& dumpbin.exe /exports RexCampaignRuntime.dll | Out-String)
+          foreach ($name in @(
+            "RexHost_Start",
+            "RexHost_IsStarted",
+            "RexHost_GarageEnter",
+            "RexHost_GarageSelectionChanged",
+            "RexHost_GarageMontarPressed"
+          )) {
+            if ($exports -notmatch [regex]::Escape($name)) {
+              throw "Missing export: $name"
+            }
+          }
+
+          $hash = (Get-FileHash RexCampaignRuntime.dll -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host "RexCampaignRuntime.dll SHA256=$hash"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RexCampaignRuntime-x86
+          path: RexCampaignRuntime.dll
+          if-no-files-found: error
