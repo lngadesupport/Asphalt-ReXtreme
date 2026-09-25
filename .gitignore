@@ -1,47 +1,16 @@
-# Original game content
-*.appx
-*.appxbundle
-*.msix
-*.msixbundle
-*.rar
-*.7z
-*.zip
+# Build output
+*.obj
 *.exe
-*.dll
-*.p7x
+*.pdb
+*.ilk
 
-# Extracted proprietary game directories
-Game/
-GameData/
-Original/
-Extracted/
-Asphalt Xtreme/
-
-# Patch build output
-build/
-dist/
-out/
+# Runtime state
+*.dat
 *.bak
-*.patched
+*.tmp
 
-# Collector output / local state
-collector-output/
-collector-last-path.txt
-analysis-output/
-stage2/
-ReXtreme-stage2.zip
-
-# Local analysis
-analysis/
-dumps/
-*.dmp
-*.log
-
-# IDE / OS
-.vs/
-.vscode/
-.idea/
-*.user
-*.suo
-Thumbs.db
-.DS_Store
+# Proprietary game files
+*.appx
+*.msix
+*.dll
+AMS.exe
