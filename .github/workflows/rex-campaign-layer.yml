@@ -57,7 +57,7 @@ jobs:
             "IGPLib_x86"
           )
           foreach ($term in $banned) {
-            $hits = Get-ChildItem "src/campaign-edition" -File -Recurse |
+            $hits = Get-ChildItem "src/campaign-edition","src/integration-shim" -File -Recurse |
               Select-String -SimpleMatch $term
             if ($hits) {
               $hits | ForEach-Object { Write-Host $_.Line }
@@ -133,8 +133,51 @@ jobs:
         shell: cmd
         run: RexIntegrationShimTest.exe
 
+      - name: Build ReX x86 integration shim DLL
+        shell: cmd
+        run: >-
+          cl.exe /nologo /W4 /WX /LD /TC
+          src\integration-shim\RexIntegrationShim.c
+          /I src\integration-shim
+          /I src\campaign-edition
+          /Fe:RexGameShim.dll
+
+      - name: Verify ReX x86 integration shim DLL
+        shell: powershell
+        run: |
+          $headers = (& dumpbin.exe /headers RexGameShim.dll | Out-String)
+          if ($headers -notmatch "14C machine \(x86\)") {
+            throw "RexGameShim.dll is not x86"
+          }
+
+          $exports = (& dumpbin.exe /exports RexGameShim.dll | Out-String)
+          Write-Host $exports
+          foreach ($name in @(
+            "RexShim_GetAbiVersion",
+            "RexShim_Start",
+            "RexShim_IsStarted",
+            "RexShim_GarageEnter",
+            "RexShim_GarageSelectionChanged",
+            "RexShim_GarageMontarPressed",
+            "RexShim_CopyGarageSnapshot",
+            "RexShim_GetLastActionResult"
+          )) {
+            if ($exports -notmatch [regex]::Escape($name)) {
+              throw "Missing shim export: $name"
+            }
+          }
+
+          $hash = (Get-FileHash RexGameShim.dll -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host "RexGameShim.dll SHA256=$hash"
+
       - uses: actions/upload-artifact@v4
         with:
           name: RexCore-x86
           path: RexCore.dll
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RexGameShim-x86
+          path: RexGameShim.dll
           if-no-files-found: error
