@@ -10,6 +10,7 @@
 #include "RexBoundaryV1.h"
 
 #include <stdio.h>
+#include <string.h>
 
 typedef struct TestPlatformRequestV1 {
     uint32_t abi_version;
