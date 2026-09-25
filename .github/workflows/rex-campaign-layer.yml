@@ -77,6 +77,21 @@ jobs:
             throw "Test code detected inside production runtime"
           }
 
+      - name: Build ReX Gaia and GlobalSync tests
+        shell: cmd
+        run: >-
+          cl.exe /nologo /W4 /WX /TC
+          src\campaign-edition\RexGaia.c
+          src\campaign-edition\RexGlobalSync.c
+          src\campaign-edition\RexState.c
+          tests\c\RexBackendServicesTest.c
+          /I src\campaign-edition
+          /Fe:RexBackendServicesTest.exe
+
+      - name: Run ReX Gaia and GlobalSync tests
+        shell: cmd
+        run: RexBackendServicesTest.exe
+
       - name: Build ReX runtime tests
         shell: cmd
         run: >-
