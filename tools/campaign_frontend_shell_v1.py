@@ -28,6 +28,14 @@ POPUP_OFF=0x009168B0
 POPUP_ORIG=bytes.fromhex("55 8B EC 6A FF")
 POPUP_RETIRED=bytes.fromhex("31 C0 C2 18 00")
 
+# Frontend presentation-only updater.
+# Original instruction pushes a computed legacy gameplay state into the
+# build_button visual-state method. Campaign Edition owns that state now,
+# so the frontend is told to render the MONTAR button as active.
+BUILD_VISUAL_STATE_OFF=0x00574FA7
+BUILD_VISUAL_STATE_ORIG=bytes.fromhex("FF 75 D8")
+BUILD_VISUAL_STATE_ACTIVE=bytes.fromhex("6A 01 90")
+
 CAVE_OFF=0x004693C1
 CAVE_VA=0x00869FC1
 CAVE_LEN=47
@@ -145,6 +153,9 @@ def apply(root:Path)->int:
         "frontend BOOT -> runtime intent",changes)
     guarded_patch(d,LOBBY_SITE_OFF,LOBBY_SITE_ORIG,LOBBY_PATCH,
         "frontend LOBBY -> runtime intent",changes)
+    guarded_patch(d,BUILD_VISUAL_STATE_OFF,
+        BUILD_VISUAL_STATE_ORIG,BUILD_VISUAL_STATE_ACTIVE,
+        "frontend build_button visual state -> ACTIVE",changes)
     guarded_patch(d,build_off,BUILD_PREFIX,build_patch,
         "frontend MONTAR -> BUILD_SELECTED_CAR",changes)
     guarded_patch(d,POPUP_OFF,POPUP_ORIG,POPUP_RETIRED,
@@ -171,6 +182,7 @@ def apply(root:Path)->int:
       "lobby_selector":"0xC0DE9006",
       "build_selector":"0xC0DE9003",
       "build_input":"no object pointer; selected car belongs to Campaign Runtime",
+      "build_visual_state":"frontend-only ACTIVE; no legacy gameplay state consulted",
       "network":False,
       "multiplayer":False,
       "sha256_before":before,
@@ -184,6 +196,7 @@ def apply(root:Path)->int:
     print("[OK] Clean Frontend Shell v1 applied.")
     print("[BOOT] frontend -> Campaign Runtime intent")
     print("[LOBBY] frontend -> Campaign Runtime intent")
+    print("[MONTAR UI] frontend build_button -> ACTIVE")
     print("[MONTAR] frontend -> BUILD_SELECTED_CAR")
     print("[ORIGINAL GAMEPLAY STRUCTURES] NONE")
     print("[NETWORK] NONE")
