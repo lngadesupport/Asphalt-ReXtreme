@@ -6,6 +6,7 @@
 #include "RexTutorialController.h"
 #include "RexPresentationAdapterV2.h"
 #include "RexRuntime.h"
+#include "RexHost.h"
 
 #include <stdio.h>
 
@@ -972,6 +973,57 @@ static void test_runtime_rejects_invalid_content_without_starting(void) {
 }
 
 
+
+static void test_host_exports_drive_new_runtime_end_to_end(void) {
+    const char* content_path = "RexHostContentTest.dat";
+    const char* state_path = "RexHostStateTest.dat";
+    FakePresentation presentation = {0};
+    RexPresentationGaragePort port;
+    RexState loaded;
+
+    remove(content_path);
+    cleanup_state_files(state_path);
+
+    CHECK(write_content_fixture(content_path) == 1);
+
+    presentation.selected_vehicle_id = 501u;
+    port = fake_presentation_port(&presentation);
+
+    CHECK(RexHost_IsStarted() == 0);
+    CHECK(
+        RexHost_Start(
+            content_path,
+            state_path,
+            &port
+        ) == 1
+    );
+    CHECK(RexHost_IsStarted() == 1);
+
+    CHECK(RexHost_GarageEnter() == 1);
+    CHECK(presentation.last_view_model.selected_vehicle_id == 501u);
+    CHECK(presentation.last_view_model.build_enabled == 1);
+
+    CHECK(
+        RexHost_GarageMontarPressed() ==
+        REX_GARAGE_PRESENTER_OK
+    );
+    CHECK(presentation.last_view_model.owned == 1);
+
+    RexState_Init(&loaded);
+    CHECK(RexState_Load(&loaded, state_path) == 1);
+    CHECK(RexState_IsOwned(&loaded, 501u) == 1);
+    CHECK(
+        RexState_GetBlueprintBalance(
+            &loaded,
+            9501u
+        ) == 3u
+    );
+
+    remove(content_path);
+    cleanup_state_files(state_path);
+}
+
+
 int main(void) {
     test_ready_vehicle_enables_build();
     test_owned_vehicle_disables_build();
@@ -1004,6 +1056,7 @@ int main(void) {
     test_runtime_bootstrap_composes_new_campaign_stack();
     test_runtime_first_launch_creates_new_state_file();
     test_runtime_rejects_invalid_content_without_starting();
+    test_host_exports_drive_new_runtime_end_to_end();
 
     if (failures != 0) {
         printf("%d test assertion(s) failed.\n", failures);
