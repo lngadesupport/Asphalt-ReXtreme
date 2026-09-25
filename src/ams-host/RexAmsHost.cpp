@@ -2,6 +2,8 @@
 #include <windows.h>
 #include <shobjidl.h>
 #include <wchar.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "RexAmsHost.h"
 
@@ -54,6 +56,74 @@ static int RexAmsHost_FileExists(
         (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0u;
 }
 
+
+static int RexAmsHost_ManifestTargetsGame(
+    const wchar_t* directory
+) {
+    wchar_t path[MAX_PATH];
+    HANDLE file;
+    LARGE_INTEGER size;
+    char* bytes = 0;
+    DWORD read = 0u;
+    int result = 0;
+
+    if (!RexAmsHost_BuildPath(
+            path,
+            MAX_PATH,
+            directory,
+            L"AppxManifest.xml")) {
+        return 0;
+    }
+
+    file = CreateFileW(
+        path,
+        GENERIC_READ,
+        FILE_SHARE_READ,
+        0,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        0
+    );
+    if (file == INVALID_HANDLE_VALUE) {
+        return 0;
+    }
+
+    if (!GetFileSizeEx(file, &size) ||
+        size.QuadPart <= 0 ||
+        size.QuadPart > (1024 * 1024)) {
+        CloseHandle(file);
+        return 0;
+    }
+
+    bytes = (char*)malloc((size_t)size.QuadPart + 1u);
+    if (bytes == 0) {
+        CloseHandle(file);
+        return 0;
+    }
+
+    if (ReadFile(
+            file,
+            bytes,
+            (DWORD)size.QuadPart,
+            &read,
+            0) &&
+        read == (DWORD)size.QuadPart) {
+        bytes[read] = '\0';
+        if (strstr(
+                bytes,
+                "Executable=\"AMS.Game.exe\"") != 0 ||
+            strstr(
+                bytes,
+                "Executable='AMS.Game.exe'") != 0) {
+            result = 1;
+        }
+    }
+
+    free(bytes);
+    CloseHandle(file);
+    return result;
+}
+
 int RexAmsHost_ValidateLayout(
     const wchar_t* directory
 ) {
@@ -65,6 +135,10 @@ int RexAmsHost_ValidateLayout(
             directory,
             L"AppxManifest.xml")) {
         return REX_AMS_LAYOUT_MISSING_MANIFEST;
+    }
+
+    if (!RexAmsHost_ManifestTargetsGame(directory)) {
+        return REX_AMS_LAYOUT_MANIFEST_NOT_REBOUND;
     }
 
     if (!RexAmsHost_FileExists(
