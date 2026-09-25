@@ -59,7 +59,7 @@ jobs:
             "IGPLib_x86"
           )
           foreach ($term in $banned) {
-            $roots = @("src/campaign-edition","src/integration-shim","src/game-bridge")
+            $roots = @("src/campaign-edition","src/integration-shim","src/game-bridge","src/ams-host")
             if ($term -eq "IGPLib_x86") {
               $roots = @("src/campaign-edition","src/integration-shim")
             }
@@ -190,6 +190,29 @@ jobs:
         shell: cmd
         run: RexAmsHostTest.exe
 
+      - name: Build new x86 AMS host
+        shell: cmd
+        run: >-
+          cl.exe /nologo /W4 /WX /EHsc /DUNICODE /D_UNICODE
+          src\ams-host\RexAmsHost.cpp
+          /I src\ams-host
+          /Fe:AMS.exe
+          ole32.lib uuid.lib
+          /link /SUBSYSTEM:WINDOWS
+
+      - name: Verify new x86 AMS host
+        shell: powershell
+        run: |
+          $headers = (& dumpbin.exe /headers AMS.exe | Out-String)
+          if ($headers -notmatch "14C machine \(x86\)") {
+            throw "AMS.exe host is not x86"
+          }
+          if ($headers -notmatch "Windows GUI") {
+            throw "AMS.exe host is not a Windows GUI executable"
+          }
+          $hash = (Get-FileHash AMS.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host "AMS.exe host SHA256=$hash"
+
       - name: Verify ReX x86 integration shim DLL
         shell: powershell
         run: |
@@ -236,4 +259,10 @@ jobs:
           path: |
             IGPLib_x86.dll
             CampaignContentV2.dat
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RexAmsHost-x86
+          path: AMS.exe
           if-no-files-found: error
