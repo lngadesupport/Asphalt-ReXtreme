@@ -868,6 +868,11 @@ static void test_runtime_bootstrap_composes_new_campaign_stack(void) {
         ) == 1
     );
     CHECK(runtime.initialized == 1);
+    CHECK(RexGaia_IsReady(&runtime.gaia) == 1);
+    CHECK(RexGaia_IsNetworkRequired(&runtime.gaia) == 0);
+    CHECK(RexGlobalSync_IsNetworkRequired(&runtime.global_sync) == 0);
+    CHECK(runtime.global_sync.state == &runtime.state);
+    CHECK(runtime.global_sync.next_operation_id == 1u);
 
     CHECK(RexRuntime_OnGarageEnter(&runtime) == 1);
     CHECK(presentation.present_calls == 1);
@@ -880,6 +885,8 @@ static void test_runtime_bootstrap_composes_new_campaign_stack(void) {
     );
     CHECK(presentation.last_view_model.owned == 1);
     CHECK(runtime.state.revision == 1u);
+    CHECK(runtime.global_sync.next_operation_id == 2u);
+    CHECK(RexGlobalSync_GetPendingCount(&runtime.global_sync) == 0u);
 
     RexState_Init(&reloaded);
     CHECK(RexState_Load(&reloaded, state_path) == 1);
