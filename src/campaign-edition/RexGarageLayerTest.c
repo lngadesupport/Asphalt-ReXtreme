@@ -586,6 +586,13 @@ static int write_content_fixture(const char* path) {
     ok = ok && write_u32_le(file, 0u);
     ok = ok && write_u32_le(file, 0u);
 
+    ok = ok && write_u32_le(file, 1u);
+    ok = ok && write_u32_le(file, 9501u);
+    ok = ok && write_u32_le(file, 10u);
+
+    ok = ok && write_u32_le(file, 1u);
+    ok = ok && write_u32_le(file, 502u);
+
     if (fclose(file) != 0) {
         ok = 0;
     }
@@ -616,6 +623,12 @@ static void test_content_v2_binary_file_loads_local_catalog(void) {
     CHECK(second != 0);
     CHECK(second->unlocked_by_default == 0);
     CHECK(second->has_recipe == 0);
+
+    CHECK(content.initial_balance_count == 1u);
+    CHECK(content.initial_balances[0].blueprint_id == 9501u);
+    CHECK(content.initial_balances[0].amount == 10u);
+    CHECK(content.starter_owned_count == 1u);
+    CHECK(content.starter_owned_vehicles[0] == 502u);
 
     remove(path);
 }
@@ -903,11 +916,25 @@ static void test_runtime_first_launch_creates_new_state_file(void) {
     );
     CHECK(runtime.state.version == REX_STATE_VERSION);
     CHECK(runtime.state.revision == 0u);
+    CHECK(
+        RexState_GetBlueprintBalance(
+            &runtime.state,
+            9501u
+        ) == 10u
+    );
+    CHECK(RexState_IsOwned(&runtime.state, 502u) == 1);
 
     RexState_Init(&loaded);
     CHECK(RexState_Load(&loaded, state_path) == 1);
     CHECK(loaded.version == REX_STATE_VERSION);
     CHECK(loaded.revision == 0u);
+    CHECK(
+        RexState_GetBlueprintBalance(
+            &loaded,
+            9501u
+        ) == 10u
+    );
+    CHECK(RexState_IsOwned(&loaded, 502u) == 1);
 
     remove(content_path);
     cleanup_state_files(state_path);
