@@ -15,6 +15,13 @@ typedef int (__cdecl *RexHostIsStartedFn)(void);
 typedef int (__cdecl *RexHostGarageEnterFn)(void);
 typedef int (__cdecl *RexHostGarageSelectionChangedFn)(void);
 typedef int (__cdecl *RexHostGarageMontarPressedFn)(void);
+typedef int (__cdecl *RexHostGaiaIsReadyFn)(void);
+typedef int (__cdecl *RexHostGaiaIsNetworkRequiredFn)(void);
+typedef uint32_t (__cdecl *RexHostGlobalSyncPendingCountFn)(void);
+typedef int (__cdecl *RexHostGlobalSyncCommitFn)(
+    uint32_t reason,
+    uint32_t* operation_id
+);
 
 typedef struct RexShimState {
     HMODULE core_module;
@@ -24,6 +31,10 @@ typedef struct RexShimState {
     RexHostGarageEnterFn garage_enter;
     RexHostGarageSelectionChangedFn garage_selection_changed;
     RexHostGarageMontarPressedFn garage_montar_pressed;
+    RexHostGaiaIsReadyFn gaia_is_ready;
+    RexHostGaiaIsNetworkRequiredFn gaia_is_network_required;
+    RexHostGlobalSyncPendingCountFn global_sync_pending_count;
+    RexHostGlobalSyncCommitFn global_sync_commit;
     uint32_t selected_vehicle_id;
     RexGarageSnapshotV1 snapshot;
     int has_snapshot;
@@ -145,6 +156,26 @@ int RexShim_Start(
             g_rex_shim.core_module,
             "RexHost_GarageMontarPressed"
         );
+    g_rex_shim.gaia_is_ready =
+        (RexHostGaiaIsReadyFn)RexShim_FindProc(
+            g_rex_shim.core_module,
+            "RexHost_GaiaIsReady"
+        );
+    g_rex_shim.gaia_is_network_required =
+        (RexHostGaiaIsNetworkRequiredFn)RexShim_FindProc(
+            g_rex_shim.core_module,
+            "RexHost_GaiaIsNetworkRequired"
+        );
+    g_rex_shim.global_sync_pending_count =
+        (RexHostGlobalSyncPendingCountFn)RexShim_FindProc(
+            g_rex_shim.core_module,
+            "RexHost_GlobalSyncPendingCount"
+        );
+    g_rex_shim.global_sync_commit =
+        (RexHostGlobalSyncCommitFn)RexShim_FindProc(
+            g_rex_shim.core_module,
+            "RexHost_GlobalSyncCommit"
+        );
 
     if (g_rex_shim.get_boundary_abi_version == 0 ||
         g_rex_shim.start_v1 == 0 ||
@@ -152,6 +183,10 @@ int RexShim_Start(
         g_rex_shim.garage_enter == 0 ||
         g_rex_shim.garage_selection_changed == 0 ||
         g_rex_shim.garage_montar_pressed == 0 ||
+        g_rex_shim.gaia_is_ready == 0 ||
+        g_rex_shim.gaia_is_network_required == 0 ||
+        g_rex_shim.global_sync_pending_count == 0 ||
+        g_rex_shim.global_sync_commit == 0 ||
         g_rex_shim.get_boundary_abi_version() !=
             REX_BOUNDARY_ABI_VERSION) {
         RexShim_Reset();
@@ -241,4 +276,43 @@ int RexShim_GetLastActionResult(
 
     *output = g_rex_shim.last_action_result;
     return 1;
+}
+
+int RexShim_GaiaIsReady(void) {
+    if (!g_rex_shim.started) {
+        return 0;
+    }
+
+    return g_rex_shim.gaia_is_ready();
+}
+
+int RexShim_GaiaIsNetworkRequired(void) {
+    if (!g_rex_shim.started) {
+        return 1;
+    }
+
+    return g_rex_shim.gaia_is_network_required();
+}
+
+uint32_t RexShim_GlobalSyncPendingCount(void) {
+    if (!g_rex_shim.started) {
+        return 0u;
+    }
+
+    return g_rex_shim.global_sync_pending_count();
+}
+
+int RexShim_GlobalSyncCommit(
+    uint32_t reason,
+    uint32_t* operation_id
+) {
+    if (!g_rex_shim.started ||
+        operation_id == 0) {
+        return (int)REX_GLOBAL_SYNC_INVALID_ARGUMENT;
+    }
+
+    return g_rex_shim.global_sync_commit(
+        reason,
+        operation_id
+    );
 }

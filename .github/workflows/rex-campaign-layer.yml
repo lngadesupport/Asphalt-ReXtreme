@@ -135,6 +135,10 @@ jobs:
             "RexHost_GarageEnter",
             "RexHost_GarageSelectionChanged",
             "RexHost_GarageMontarPressed",
+            "RexHost_GaiaIsReady",
+            "RexHost_GaiaIsNetworkRequired",
+            "RexHost_GlobalSyncPendingCount",
+            "RexHost_GlobalSyncCommit",
             "RexHost_GetBoundaryAbiVersion",
             "RexHost_StartV1"
           )) {
@@ -259,7 +263,11 @@ jobs:
             "RexShim_GarageSelectionChanged",
             "RexShim_GarageMontarPressed",
             "RexShim_CopyGarageSnapshot",
-            "RexShim_GetLastActionResult"
+            "RexShim_GetLastActionResult",
+            "RexShim_GaiaIsReady",
+            "RexShim_GaiaIsNetworkRequired",
+            "RexShim_GlobalSyncPendingCount",
+            "RexShim_GlobalSyncCommit"
           )) {
             if ($exports -notmatch [regex]::Escape($name)) {
               throw "Missing shim export: $name"

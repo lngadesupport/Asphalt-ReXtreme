@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RexBoundaryV1.h"
+#include "RexGlobalSync.h"
 
 #include <stdint.h>
 
@@ -42,6 +43,17 @@ REX_SHIM_API int RexShim_CopyGarageSnapshot(
 
 REX_SHIM_API int RexShim_GetLastActionResult(
     int* output
+);
+
+REX_SHIM_API int RexShim_GaiaIsReady(void);
+
+REX_SHIM_API int RexShim_GaiaIsNetworkRequired(void);
+
+REX_SHIM_API uint32_t RexShim_GlobalSyncPendingCount(void);
+
+REX_SHIM_API int RexShim_GlobalSyncCommit(
+    uint32_t reason,
+    uint32_t* operation_id
 );
 
 #ifdef __cplusplus

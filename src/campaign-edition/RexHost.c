@@ -57,3 +57,47 @@ int RexHost_GarageMontarPressed(void) {
         &g_rex_runtime
     );
 }
+
+int RexHost_GaiaIsReady(void) {
+    if (!g_rex_started) {
+        return 0;
+    }
+
+    return RexGaia_IsReady(&g_rex_runtime.gaia);
+}
+
+int RexHost_GaiaIsNetworkRequired(void) {
+    if (!g_rex_started) {
+        return 1;
+    }
+
+    return RexGaia_IsNetworkRequired(&g_rex_runtime.gaia);
+}
+
+uint32_t RexHost_GlobalSyncPendingCount(void) {
+    if (!g_rex_started) {
+        return 0u;
+    }
+
+    return RexGlobalSync_GetPendingCount(
+        &g_rex_runtime.global_sync
+    );
+}
+
+int RexHost_GlobalSyncCommit(
+    uint32_t reason,
+    uint32_t* operation_id
+) {
+    if (!g_rex_started ||
+        operation_id == 0 ||
+        reason < (uint32_t)REX_GLOBAL_SYNC_REASON_PROFILE_BOOTSTRAP ||
+        reason > (uint32_t)REX_GLOBAL_SYNC_REASON_CAREER) {
+        return (int)REX_GLOBAL_SYNC_INVALID_ARGUMENT;
+    }
+
+    return (int)RexGlobalSync_Commit(
+        &g_rex_runtime.global_sync,
+        (RexGlobalSyncReason)reason,
+        operation_id
+    );
+}

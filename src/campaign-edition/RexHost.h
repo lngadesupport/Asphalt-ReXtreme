@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RexPresentationAdapterV2.h"
+#include "RexGlobalSync.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,6 +26,17 @@ REX_HOST_API int RexHost_GarageEnter(void);
 REX_HOST_API int RexHost_GarageSelectionChanged(void);
 
 REX_HOST_API int RexHost_GarageMontarPressed(void);
+
+REX_HOST_API int RexHost_GaiaIsReady(void);
+
+REX_HOST_API int RexHost_GaiaIsNetworkRequired(void);
+
+REX_HOST_API uint32_t RexHost_GlobalSyncPendingCount(void);
+
+REX_HOST_API int RexHost_GlobalSyncCommit(
+    uint32_t reason,
+    uint32_t* operation_id
+);
 
 #ifdef __cplusplus
 }
