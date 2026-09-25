@@ -58,7 +58,7 @@ jobs:
             "IGPLib_x86"
           )
           foreach ($term in $banned) {
-            $hits = Get-ChildItem "src/campaign-edition","src/integration-shim" -File -Recurse |
+            $hits = Get-ChildItem "src/campaign-edition","src/integration-shim","src/game-bridge" -File -Recurse |
               Select-String -SimpleMatch $term
             if ($hits) {
               $hits | ForEach-Object { Write-Host $_.Line }
@@ -149,6 +149,8 @@ jobs:
           cl.exe /nologo /W4 /WX /LD /TC
           src\game-bridge\RexIgpProxy.c
           /I src\game-bridge
+          /I src\integration-shim
+          /I src\campaign-edition
           /Fe:IGPLib_x86.dll
           /link /DEF:src\game-bridge\RexIgpProxy.def
 
