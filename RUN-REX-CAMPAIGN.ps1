@@ -29,30 +29,33 @@ function Resolve-Root([string]$candidate){
 $ProjectRoot=Resolve-Root $ProjectRoot
 Write-Host ("[ROOT] "+$ProjectRoot)
 
-$base="https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/public-beta-0.1/"
-$files=@(
-  "tools/rex_build_base.ps1",
-  "tools/rex_build_content.py",
-  "tools/rex_patch_frontend.py",
-  "tools/rex_apply.ps1",
-  "tools/rex_test.ps1",
-  "prebuilt/rex-campaign/IGPLib_x86.dll",
-  "prebuilt/rex-campaign/REPORT.json"
+$downloads=@(
+  @{Commit="7238b98c42057bd6198a30ae22e656d43bac4e52"; Path="tools/rex_build_base.ps1"},
+  @{Commit="b156c5ffecba2d15446d8484469e6965d563c12f"; Path="tools/rex_build_content.py"},
+  @{Commit="35f33d2fc9e7ff1508469452d8de04b817878fc2"; Path="tools/rex_patch_frontend.py"},
+  @{Commit="cdef500f4455c7e528697c131376c77879c35fc0"; Path="tools/rex_apply.ps1"},
+  @{Commit="303a54870257f1dbe2b927ff2f3aa5a92788eb61"; Path="tools/rex_test.ps1"},
+  @{Commit="86fcde70d0f409eeab8ba89939abce3eee9ce637"; Path="prebuilt/rex-campaign/IGPLib_x86.dll"},
+  @{Commit="86fcde70d0f409eeab8ba89939abce3eee9ce637"; Path="prebuilt/rex-campaign/REPORT.json"}
 )
 
-foreach($rel in $files){
-  $dst=Join-Path $ProjectRoot ($rel-replace"/","\")
+foreach($x in $downloads){
+  $dst=Join-Path $ProjectRoot ($x.Path-replace"/","\")
   $dir=Split-Path -Parent $dst
   if($dir){New-Item -ItemType Directory -Force -Path $dir|Out-Null}
-  Write-Host ("[GET] "+$rel)
-  & curl.exe -fL ($base+$rel) -o $dst
-  if($LASTEXITCODE-ne0){throw "Download failed: $rel"}
+  $url="https://raw.githubusercontent.com/lngadesupport/Asphalt-ReXtreme/"+$x.Commit+"/"+$x.Path
+  Write-Host ("[GET] "+$x.Path)
+  & curl.exe -fL $url -o $dst
+  if($LASTEXITCODE-ne0){throw "Download failed: $($x.Path)"}
 }
 
 $report=Get-Content -LiteralPath (Join-Path $ProjectRoot "prebuilt\rex-campaign\REPORT.json") -Raw | ConvertFrom-Json
 $runtime=Join-Path $ProjectRoot "prebuilt\rex-campaign\IGPLib_x86.dll"
 $actual=(Get-FileHash -LiteralPath $runtime -Algorithm SHA256).Hash.ToLowerInvariant()
-$expected=([string]$report.sha256).ToLowerInvariant()
+$expected="47e800919eb462be2c12df77e536293c3f36358bd0d7a9ff40e4882d343bbf3b"
+if(([string]$report.sha256).ToLowerInvariant()-ne$expected){
+  throw "Published report hash mismatch"
+}
 if($actual-ne$expected){throw "Runtime hash mismatch: $actual expected $expected"}
 
 Write-Host ""
