@@ -9,6 +9,7 @@ on:
       - "src/campaign-edition/**"
       - "src/integration-shim/**"
       - "src/game-bridge/**"
+      - "src/ams-host/**"
       - "builder/**"
       - "config/**"
       - "tests/**"
@@ -174,6 +175,20 @@ jobs:
           /I src\game-bridge
           /Fe:RexIgpProxyTest.exe
           && RexIgpProxyTest.exe
+
+      - name: Build new AMS host tests
+        shell: cmd
+        run: >-
+          cl.exe /nologo /W4 /WX /EHsc
+          /DREX_AMS_HOST_NO_MAIN
+          src\ams-host\RexAmsHost.cpp
+          tests\c\RexAmsHostTest.cpp
+          /I src\ams-host
+          /Fe:RexAmsHostTest.exe
+
+      - name: Run new AMS host tests
+        shell: cmd
+        run: RexAmsHostTest.exe
 
       - name: Verify ReX x86 integration shim DLL
         shell: powershell
