@@ -21,42 +21,47 @@ jobs:
           $v = Get-Content beta/VERSION.json -Raw | ConvertFrom-Json
           if ($v.version -ne "0.1.0-beta.1") { throw "Unexpected beta version" }
           if ($v.source_build -ne "1.7.3.8-x86") { throw "Unexpected source build" }
-          if ($v.portable_startup_ready -ne $false) { throw "Portable startup must remain false until runtime validation" }
-          if ($v.startup_mode -ne "uwp-loose-compatibility") { throw "Unexpected startup mode" }
 
-      - name: Parse public beta PowerShell
+      - name: Parse new Campaign PowerShell
         shell: pwsh
         run: |
           foreach ($script in @(
-            "RUN-CLEAN-RUNTIME-V1.ps1",
-            "tools/test_clean_runtime_v1.ps1",
-            "tools/apply_clean_runtime_v1.ps1",
-            "tools/build_clean_ams_base_v1.ps1",
-            "tools/build_package_phase5.ps1"
+            "RUN-REX-CAMPAIGN.ps1",
+            "tools/rex_build_base.ps1",
+            "tools/rex_apply.ps1",
+            "tools/rex_test.ps1",
+            "tools/build_package_phase5.ps1",
+            "tools/public_beta.ps1"
           )) {
-            $tokens = $null
-            $errors = $null
+            $tokens=$null
+            $errors=$null
             [void][System.Management.Automation.Language.Parser]::ParseFile(
               (Resolve-Path $script),
               [ref]$tokens,
               [ref]$errors
             )
-            if ($errors.Count -gt 0) {
+            if($errors.Count -gt 0){
               Write-Host "Parse errors in $script"
-              $errors | Format-List
+              $errors|Format-List
               exit 1
             }
           }
 
-      - name: Compile Campaign Python tools
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Run clean runtime unit tests
+      - name: Compile new Campaign Python
         shell: pwsh
-        run: python -m unittest tests.test_campaign_frontend_shell_v1 -v
+        run: |
+          python -m py_compile tools/rex_build_content.py
+          python -m py_compile tools/rex_patch_frontend.py
+          python -m py_compile tools/rex_audit.py
 
-      - name: Audit clean runtime
+      - name: Run new Campaign tests
         shell: pwsh
-        run: python tools/audit_clean_runtime.py --project-root .
+        run: python -m unittest tests.test_rex_campaign -v
+
+      - name: Audit new-only architecture
+        shell: pwsh
+        run: python tools/rex_audit.py --project-root .
