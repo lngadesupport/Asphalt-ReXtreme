@@ -367,8 +367,9 @@ function Update-Beta {
         "docs/CAMPAIGN-FRONTEND-ONLY-ORIGINAL-CODE.md",
         "tools/public_beta.ps1",
         "tools/rex_build_base.ps1",
-        "tools/rex_build_content.py",
-        "tools/rex_patch_frontend.py",
+        "tools/rex_build_content_v2.py",
+        "config/rex_campaign_content.json",
+        "tools/rex_frontend_adapter_v2.py",
         "tools/rex_apply.ps1",
         "tools/rex_test.ps1",
         "tools/rex_audit.py"
