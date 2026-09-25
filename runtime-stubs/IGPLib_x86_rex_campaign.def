@@ -1,0 +1,17 @@
+LIBRARY IGPLib_x86.dll
+EXPORTS
+?AddIGPComponent@IGPControl@IGPLib@@QAEXPBD@Z=rex_noop4
+?DestroyIGP@IGPControl@IGPLib@@SAXXZ=rex_noop
+?GetInstance@IGPControl@IGPLib@@SAPAV12@XZ=rex_null
+?HttpPostLink@IGPControl@IGPLib@@QAEXPBD@Z=rex_gateway
+?Init@IGPControl@IGPLib@@SAXABUInitParams@2@@Z=rex_noop
+?Init@IGPControl@IGPLib@@SAXABUInitParams@2@@@Z=rex_noop
+?InitBridgeCallbacks@IGPLib@@YAXXZ=rex_noop
+?InitBridgeClass@IGPLib@@YAXP$AAVPanel@Controls@Xaml@UI@Windows@@@Z=rex_noop
+?IsOnScreenFreemium@IGPControl@IGPLib@@SA_NXZ=rex_false
+?PauseIGP@IGPControl@IGPLib@@QAEXXZ=rex_noop
+?ResumeIGP@IGPControl@IGPLib@@QAEXXZ=rex_noop
+?SetGender@IGPControl@IGPLib@@SAXPBD@Z=rex_noop
+?SetIGPLanguage@IGPControl@IGPLib@@QAEXPBD@Z=rex_noop4
+?SetUserAge@IGPControl@IGPLib@@SAXPBD@Z=rex_noop
+?ShowIGP@IGPControl@IGPLib@@QAEX_N@Z=rex_noop4
