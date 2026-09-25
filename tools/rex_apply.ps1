@@ -14,12 +14,12 @@ $ams=Join-Path $pkg "AMS.exe"
 $runtime=Join-Path $ProjectRoot "prebuilt\rex-campaign\IGPLib_x86.dll"
 $python=Join-Path $ProjectRoot "runtime\python312-x86\python.exe"
 $baseBuilder=Join-Path $ProjectRoot "tools\rex_build_base.ps1"
-$contentBuilder=Join-Path $ProjectRoot "tools\rex_build_content.py"
-$patcher=Join-Path $ProjectRoot "tools\rex_patch_frontend.py"
-$sourceCatalog=Join-Path $pkg "CampaignCatalog.dat"
-$newContent=Join-Path $pkg "CampaignContentV1.dat"
+$contentBuilder=Join-Path $ProjectRoot "tools\rex_build_content_v2.py"
+$contentManifest=Join-Path $ProjectRoot "config\rex_campaign_content.json"
+$adapter=Join-Path $ProjectRoot "tools\rex_frontend_adapter_v2.py"
+$newContent=Join-Path $pkg "CampaignContentV2.dat"
 
-foreach($p in @($ams,$runtime,$python,$baseBuilder,$contentBuilder,$patcher,$sourceCatalog)){
+foreach($p in @($ams,$runtime,$python,$baseBuilder,$contentBuilder,$contentManifest,$adapter)){
   if(-not(Test-Path -LiteralPath $p -PathType Leaf)){throw "Missing: $p"}
 }
 
@@ -31,14 +31,14 @@ if($LASTEXITCODE-ne0){throw "REX base build failed: $LASTEXITCODE"}
 $baseAms=Join-Path $ProjectRoot "_REX_BASE\AMS.exe"
 if(-not(Test-Path -LiteralPath $baseAms -PathType Leaf)){throw "Missing: $baseAms"}
 
-& $python $contentBuilder --source $sourceCatalog --output $newContent
+& $python $contentBuilder --manifest $contentManifest --output $newContent
 if($LASTEXITCODE-ne0){throw "REX content build failed: $LASTEXITCODE"}
 
 Copy-Item -LiteralPath $baseAms -Destination $ams -Force
 Copy-Item -LiteralPath $runtime -Destination (Join-Path $pkg "IGPLib_x86.dll") -Force
 
-& $python $patcher --project-root $ProjectRoot
-if($LASTEXITCODE-ne0){throw "REX frontend patch failed: $LASTEXITCODE"}
+& $python $adapter --project-root $ProjectRoot
+if($LASTEXITCODE-ne0){throw "REX presentation adapter failed: $LASTEXITCODE"}
 
 $runtimeHash=(Get-FileHash -LiteralPath (Join-Path $pkg "IGPLib_x86.dll") -Algorithm SHA256).Hash.ToLowerInvariant()
 $amsHash=(Get-FileHash -LiteralPath $ams -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -57,7 +57,7 @@ New-Item -ItemType Directory -Force -Path (Split-Path $out -Parent)|Out-Null
   network=$false
   multiplayer=$false
   state="CampaignStateV1.dat"
-  content="CampaignContentV1.dat"
+  content="CampaignContentV2.dat"
   runtime_sha256=$runtimeHash
   ams_sha256=$amsHash
   content_sha256=$contentHash
