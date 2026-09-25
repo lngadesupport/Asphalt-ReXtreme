@@ -1,0 +1,12 @@
+{
+  "schema": 2,
+  "metadata": {
+    "authority": "ReX clean-room runtime",
+    "catalog_status": "awaiting_verified_game_catalog"
+  },
+  "vehicles": [],
+  "initial_state": {
+    "blueprints": [],
+    "owned_vehicles": []
+  }
+}
