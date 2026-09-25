@@ -56,6 +56,10 @@ REX_SHIM_API int RexShim_GlobalSyncCommit(
     uint32_t* operation_id
 );
 
+REX_SHIM_API int RexShim_PlatformDispatchV1(
+    RexPlatformRequestV1* request
+);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RexPresentationAdapterV2.h"
+#include "RexBoundaryV1.h"
 #include "RexGlobalSync.h"
 
 #ifdef __cplusplus
@@ -36,6 +37,10 @@ REX_HOST_API uint32_t RexHost_GlobalSyncPendingCount(void);
 REX_HOST_API int RexHost_GlobalSyncCommit(
     uint32_t reason,
     uint32_t* operation_id
+);
+
+REX_HOST_API int RexHost_PlatformDispatchV1(
+    RexPlatformRequestV1* request
 );
 
 #ifdef __cplusplus

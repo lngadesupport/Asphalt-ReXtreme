@@ -146,6 +146,7 @@ jobs:
             "RexHost_GaiaIsNetworkRequired",
             "RexHost_GlobalSyncPendingCount",
             "RexHost_GlobalSyncCommit",
+            "RexHost_PlatformDispatchV1",
             "RexHost_GetBoundaryAbiVersion",
             "RexHost_StartV1"
           )) {
@@ -274,7 +275,8 @@ jobs:
             "RexShim_GaiaIsReady",
             "RexShim_GaiaIsNetworkRequired",
             "RexShim_GlobalSyncPendingCount",
-            "RexShim_GlobalSyncCommit"
+            "RexShim_GlobalSyncCommit",
+            "RexShim_PlatformDispatchV1"
           )) {
             if ($exports -notmatch [regex]::Escape($name)) {
               throw "Missing shim export: $name"

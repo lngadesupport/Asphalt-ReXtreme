@@ -22,6 +22,9 @@ typedef int (__cdecl *RexHostGlobalSyncCommitFn)(
     uint32_t reason,
     uint32_t* operation_id
 );
+typedef int (__cdecl *RexHostPlatformDispatchV1Fn)(
+    RexPlatformRequestV1* request
+);
 
 typedef struct RexShimState {
     HMODULE core_module;
@@ -35,6 +38,7 @@ typedef struct RexShimState {
     RexHostGaiaIsNetworkRequiredFn gaia_is_network_required;
     RexHostGlobalSyncPendingCountFn global_sync_pending_count;
     RexHostGlobalSyncCommitFn global_sync_commit;
+    RexHostPlatformDispatchV1Fn platform_dispatch_v1;
     uint32_t selected_vehicle_id;
     RexGarageSnapshotV1 snapshot;
     int has_snapshot;
@@ -176,6 +180,11 @@ int RexShim_Start(
             g_rex_shim.core_module,
             "RexHost_GlobalSyncCommit"
         );
+    g_rex_shim.platform_dispatch_v1 =
+        (RexHostPlatformDispatchV1Fn)RexShim_FindProc(
+            g_rex_shim.core_module,
+            "RexHost_PlatformDispatchV1"
+        );
 
     if (g_rex_shim.get_boundary_abi_version == 0 ||
         g_rex_shim.start_v1 == 0 ||
@@ -187,6 +196,7 @@ int RexShim_Start(
         g_rex_shim.gaia_is_network_required == 0 ||
         g_rex_shim.global_sync_pending_count == 0 ||
         g_rex_shim.global_sync_commit == 0 ||
+        g_rex_shim.platform_dispatch_v1 == 0 ||
         g_rex_shim.get_boundary_abi_version() !=
             REX_BOUNDARY_ABI_VERSION) {
         RexShim_Reset();
@@ -315,4 +325,15 @@ int RexShim_GlobalSyncCommit(
         reason,
         operation_id
     );
+}
+
+int RexShim_PlatformDispatchV1(
+    RexPlatformRequestV1* request
+) {
+    if (!g_rex_shim.started ||
+        request == 0) {
+        return 0;
+    }
+
+    return g_rex_shim.platform_dispatch_v1(request);
 }
