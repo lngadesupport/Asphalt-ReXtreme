@@ -282,11 +282,17 @@ static int RexProxy_EnsureRuntime(void) {
         return 0;
     }
 
-    if (!g_runtime.start(
-            core_path,
-            content_path,
-            state_path) ||
-        !g_runtime.is_started()) {
+    if (!g_runtime.is_started()) {
+        if (!g_runtime.start(
+                core_path,
+                content_path,
+                state_path)) {
+            RexProxy_ResetRuntime();
+            return 0;
+        }
+    }
+
+    if (!g_runtime.is_started()) {
         RexProxy_ResetRuntime();
         return 0;
     }
