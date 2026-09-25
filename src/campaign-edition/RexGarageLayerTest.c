@@ -545,6 +545,97 @@ static void test_real_campaign_presenter_persists_tutorial_completion(void) {
 }
 
 
+
+static int write_u32_le(FILE* file, uint32_t value) {
+    unsigned char data[4];
+
+    data[0] = (unsigned char)(value & 0xFFu);
+    data[1] = (unsigned char)((value >> 8) & 0xFFu);
+    data[2] = (unsigned char)((value >> 16) & 0xFFu);
+    data[3] = (unsigned char)((value >> 24) & 0xFFu);
+
+    return fwrite(data, 1u, sizeof(data), file) == sizeof(data);
+}
+
+static int write_content_fixture(const char* path) {
+    static const unsigned char magic[8] = {
+        'R', 'E', 'X', 'C', 'T', 'V', '2', 0
+    };
+    FILE* file = 0;
+    int ok = 1;
+
+    if (fopen_s(&file, path, "wb") != 0 || file == 0) {
+        return 0;
+    }
+
+    ok = ok && fwrite(magic, 1u, sizeof(magic), file) == sizeof(magic);
+    ok = ok && write_u32_le(file, REX_CONTENT_VERSION);
+    ok = ok && write_u32_le(file, 2u);
+
+    ok = ok && write_u32_le(file, 501u);
+    ok = ok && write_u32_le(file, 1u);
+    ok = ok && write_u32_le(file, 1u);
+    ok = ok && write_u32_le(file, 9501u);
+    ok = ok && write_u32_le(file, 7u);
+
+    ok = ok && write_u32_le(file, 502u);
+    ok = ok && write_u32_le(file, 0u);
+    ok = ok && write_u32_le(file, 0u);
+    ok = ok && write_u32_le(file, 0u);
+    ok = ok && write_u32_le(file, 0u);
+
+    if (fclose(file) != 0) {
+        ok = 0;
+    }
+
+    return ok;
+}
+
+static void test_content_v2_binary_file_loads_local_catalog(void) {
+    const char* path = "CampaignContentV2Test.dat";
+    RexContent content = {0};
+    const RexContentVehicle* first;
+    const RexContentVehicle* second;
+
+    remove(path);
+    CHECK(write_content_fixture(path) == 1);
+    CHECK(RexContent_Load(&content, path) == 1);
+    CHECK(content.vehicle_count == 2u);
+
+    first = RexContent_FindVehicle(&content, 501u);
+    second = RexContent_FindVehicle(&content, 502u);
+
+    CHECK(first != 0);
+    CHECK(first->unlocked_by_default == 1);
+    CHECK(first->has_recipe == 1);
+    CHECK(first->blueprint_id == 9501u);
+    CHECK(first->blueprint_cost == 7u);
+
+    CHECK(second != 0);
+    CHECK(second->unlocked_by_default == 0);
+    CHECK(second->has_recipe == 0);
+
+    remove(path);
+}
+
+static void test_content_v2_rejects_invalid_file(void) {
+    const char* path = "CampaignContentV2Invalid.dat";
+    FILE* file = 0;
+    RexContent content = {0};
+
+    remove(path);
+    CHECK(fopen_s(&file, path, "wb") == 0);
+    CHECK(file != 0);
+    if (file != 0) {
+        CHECK(fwrite("bad", 1u, 3u, file) == 3u);
+        CHECK(fclose(file) == 0);
+    }
+
+    CHECK(RexContent_Load(&content, path) == 0);
+    remove(path);
+}
+
+
 int main(void) {
     test_ready_vehicle_enables_build();
     test_owned_vehicle_disables_build();
@@ -568,6 +659,8 @@ int main(void) {
     test_real_campaign_api_drives_presenter_without_legacy_runtime();
     test_state_load_falls_back_to_backup_after_current_corruption();
     test_real_campaign_presenter_persists_tutorial_completion();
+    test_content_v2_binary_file_loads_local_catalog();
+    test_content_v2_rejects_invalid_file();
 
     if (failures != 0) {
         printf("%d test assertion(s) failed.\n", failures);
