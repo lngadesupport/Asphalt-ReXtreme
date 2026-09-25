@@ -36,6 +36,26 @@ PATCHES = (
         bytes.fromhex("0F 85 D8 00 00 00"),
         bytes.fromhex("E9 D9 00 00 00 90"),
     ),
+    (
+        0x008BCFF0,
+        bytes.fromhex("55 8B EC 83 7D 0C 00 8B 45 08 75"),
+        bytes.fromhex("8B 44 24 04 C7 00 00 00 00 00 C3"),
+    ),
+    (
+        0x008D3A02,
+        bytes.fromhex(
+            "C7 47 48 01 00 00 00 "
+            "8B 0D D0 A1 93 01 "
+            "E8 1C 5F AB FF "
+            "8B F0 8D 45 EC"
+        ),
+        bytes.fromhex(
+            "C7 47 48 01 00 00 00 "
+            "6A 00 6A 00 8B CF "
+            "E8 4C 7F 00 00 "
+            "E9 6A 00 00 00"
+        ),
+    ),
 )
 
 GUARDS = (
