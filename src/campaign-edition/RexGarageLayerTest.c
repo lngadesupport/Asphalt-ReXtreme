@@ -1,4 +1,6 @@
 #include "RexCampaign.h"
+#include "RexContent.h"
+#include "RexState.h"
 #include "RexGaragePresenter.h"
 #include "RexGarageViewModel.h"
 #include "RexTutorialController.h"
@@ -311,6 +313,159 @@ static void test_presenter_reports_read_failure(void) {
     CHECK(fake.read_calls == 1);
 }
 
+
+static void cleanup_state_files(const char* path) {
+    char tmp_path[128];
+    char bak_path[128];
+
+    sprintf_s(tmp_path, sizeof(tmp_path), "%s.tmp", path);
+    sprintf_s(bak_path, sizeof(bak_path), "%s.bak", path);
+
+    remove(path);
+    remove(tmp_path);
+    remove(bak_path);
+}
+
+static void test_content_lookup_is_new_local_catalog(void) {
+    const RexContentVehicle vehicles[] = {
+        {101u, 1, 1, 9001u, 3u},
+        {202u, 0, 0, 0u, 0u}
+    };
+    RexContent content = {0};
+    const RexContentVehicle* found;
+
+    RexContent_Init(&content, vehicles, 2u);
+
+    found = RexContent_FindVehicle(&content, 101u);
+    CHECK(found != 0);
+    CHECK(found->blueprint_id == 9001u);
+    CHECK(found->blueprint_cost == 3u);
+    CHECK(RexContent_FindVehicle(&content, 999u) == 0);
+}
+
+static void test_state_owns_inventory_and_round_trip_persistence(void) {
+    const char* path = "RexCampaignStateTest.dat";
+    RexState state;
+    RexState loaded;
+
+    cleanup_state_files(path);
+    RexState_Init(&state);
+
+    CHECK(RexState_AddOwned(&state, 101u) == 1);
+    CHECK(RexState_SetBlueprintBalance(&state, 9001u, 7u) == 1);
+    CHECK(RexState_SpendBlueprints(&state, 9001u, 2u) == 1);
+    RexState_SetGarageTutorialComplete(&state, 1);
+    state.revision = 9u;
+
+    CHECK(RexState_Save(&state, path) == 1);
+
+    RexState_Init(&loaded);
+    CHECK(RexState_Load(&loaded, path) == 1);
+    CHECK(loaded.version == REX_STATE_VERSION);
+    CHECK(loaded.revision == 9u);
+    CHECK(RexState_IsOwned(&loaded, 101u) == 1);
+    CHECK(RexState_GetBlueprintBalance(&loaded, 9001u) == 5u);
+    CHECK(loaded.garage_tutorial_complete == 1);
+
+    cleanup_state_files(path);
+}
+
+static void test_campaign_transaction_spends_blueprints_and_persists(void) {
+    const char* path = "RexCampaignAcquireTest.dat";
+    const RexContentVehicle vehicles[] = {
+        {101u, 1, 1, 9001u, 3u}
+    };
+    RexContent content = {0};
+    RexState state;
+    RexState loaded;
+    RexCampaign campaign = {0};
+    RexGarageViewModelInput input = {0};
+
+    cleanup_state_files(path);
+    RexContent_Init(&content, vehicles, 1u);
+    RexState_Init(&state);
+    CHECK(RexState_SetBlueprintBalance(&state, 9001u, 5u) == 1);
+    CHECK(RexCampaign_Init(&campaign, &content, &state, path) == 1);
+
+    CHECK(RexCampaign_ReadVehicle(&campaign, 101u, &input) == 1);
+    CHECK(input.owned == 0);
+    CHECK(input.unlocked == 1);
+    CHECK(input.has_recipe == 1);
+    CHECK(input.blueprint_balance == 5u);
+    CHECK(input.blueprint_cost == 3u);
+
+    CHECK(RexCampaign_AcquireVehicle(&campaign, 101u) == REX_CAMPAIGN_ACTION_OK);
+    CHECK(RexState_IsOwned(&state, 101u) == 1);
+    CHECK(RexState_GetBlueprintBalance(&state, 9001u) == 2u);
+    CHECK(state.revision == 1u);
+
+    RexState_Init(&loaded);
+    CHECK(RexState_Load(&loaded, path) == 1);
+    CHECK(RexState_IsOwned(&loaded, 101u) == 1);
+    CHECK(RexState_GetBlueprintBalance(&loaded, 9001u) == 2u);
+    CHECK(loaded.revision == 1u);
+
+    cleanup_state_files(path);
+}
+
+static void test_campaign_rejects_invalid_transaction_without_mutation(void) {
+    const char* path = "RexCampaignRejectTest.dat";
+    const RexContentVehicle vehicles[] = {
+        {101u, 1, 1, 9001u, 3u}
+    };
+    RexContent content = {0};
+    RexState state;
+    RexCampaign campaign = {0};
+
+    cleanup_state_files(path);
+    RexContent_Init(&content, vehicles, 1u);
+    RexState_Init(&state);
+    CHECK(RexState_SetBlueprintBalance(&state, 9001u, 2u) == 1);
+    CHECK(RexCampaign_Init(&campaign, &content, &state, path) == 1);
+
+    CHECK(
+        RexCampaign_AcquireVehicle(&campaign, 101u) ==
+        REX_CAMPAIGN_ACTION_REJECTED
+    );
+    CHECK(RexState_IsOwned(&state, 101u) == 0);
+    CHECK(RexState_GetBlueprintBalance(&state, 9001u) == 2u);
+    CHECK(state.revision == 0u);
+
+    cleanup_state_files(path);
+}
+
+static void test_real_campaign_api_drives_presenter_without_legacy_runtime(void) {
+    const char* path = "RexCampaignPresenterTest.dat";
+    const RexContentVehicle vehicles[] = {
+        {303u, 1, 1, 9303u, 4u}
+    };
+    RexContent content = {0};
+    RexState state;
+    RexCampaign campaign = {0};
+    RexGaragePresenter presenter = {0};
+
+    cleanup_state_files(path);
+    RexContent_Init(&content, vehicles, 1u);
+    RexState_Init(&state);
+    CHECK(RexState_SetBlueprintBalance(&state, 9303u, 6u) == 1);
+    CHECK(RexCampaign_Init(&campaign, &content, &state, path) == 1);
+
+    RexGaragePresenter_Init(
+        &presenter,
+        RexCampaign_MakeGarageApi(&campaign),
+        RexCampaign_IsGarageTutorialComplete(&campaign)
+    );
+
+    CHECK(RexGaragePresenter_OnEnter(&presenter, 303u) == 1);
+    CHECK(RexGaragePresenter_GetViewModel(&presenter)->build_enabled == 1);
+    CHECK(RexGaragePresenter_OnMontarPressed(&presenter) == REX_GARAGE_PRESENTER_OK);
+    CHECK(RexGaragePresenter_GetViewModel(&presenter)->owned == 1);
+    CHECK(RexState_GetBlueprintBalance(&state, 9303u) == 2u);
+
+    cleanup_state_files(path);
+}
+
+
 int main(void) {
     test_ready_vehicle_enables_build();
     test_owned_vehicle_disables_build();
@@ -327,6 +482,11 @@ int main(void) {
     test_presenter_rejects_disabled_build_without_campaign_call();
     test_presenter_failed_campaign_action_returns_tutorial_to_focus();
     test_presenter_reports_read_failure();
+    test_content_lookup_is_new_local_catalog();
+    test_state_owns_inventory_and_round_trip_persistence();
+    test_campaign_transaction_spends_blueprints_and_persists();
+    test_campaign_rejects_invalid_transaction_without_mutation();
+    test_real_campaign_api_drives_presenter_without_legacy_runtime();
 
     if (failures != 0) {
         printf("%d test assertion(s) failed.\n", failures);

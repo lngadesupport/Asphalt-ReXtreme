@@ -21,6 +21,9 @@ jobs:
       - name: Audit new-only runtime
         shell: powershell
         run: |
+          foreach ($legacy in @("src-reconstructed/campaign-core", "src-reconstructed/campaign-runtime-v2")) {
+            if (Test-Path $legacy) { throw "Legacy runtime directory exists: $legacy" }
+          }
           $banned = @(
             "CraftCar",
             "GlobalSync",
@@ -29,7 +32,10 @@ jobs:
             "CampaignGarageFlow",
             "CampaignCore",
             "CampaignRuntime",
-            "_AMS_PHASE2"
+            "_AMS_PHASE2",
+            "src-reconstructed",
+            "runtime-stubs",
+            "IGPLib_x86"
           )
           foreach ($term in $banned) {
             $hits = Get-ChildItem "src/campaign-edition" -File -Recurse |
