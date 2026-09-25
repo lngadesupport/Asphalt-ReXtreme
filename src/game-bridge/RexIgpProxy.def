@@ -1,0 +1,17 @@
+LIBRARY IGPLib_x86.dll
+EXPORTS
+    "?AddIGPComponent@IGPControl@IGPLib@@QAEXPBD@Z"=@RexIGP_AddIGPComponent@12
+    "?DestroyIGP@IGPControl@IGPLib@@SAXXZ"=_RexIGP_DestroyIGP
+    "?GetInstance@IGPControl@IGPLib@@SAPAV12@XZ"=_RexIGP_GetInstance
+    "?HttpPostLink@IGPControl@IGPLib@@QAEXPBD@Z"=@RexIGP_HttpPostLink@12
+    "?Init@IGPControl@IGPLib@@SAXABUInitParams@2@@@Z"=_RexIGP_Init
+    "?Init@IGPControl@IGPLib@@SAXABUInitParams@2@@Z"=_RexIGP_Init
+    "?InitBridgeCallbacks@IGPLib@@YAXXZ"=_RexIGP_InitBridgeCallbacks
+    "?InitBridgeClass@IGPLib@@YAXP$AAVPanel@Controls@Xaml@UI@Windows@@@Z"=_RexIGP_InitBridgeClass
+    "?IsOnScreenFreemium@IGPControl@IGPLib@@SA_NXZ"=_RexIGP_IsOnScreenFreemium
+    "?PauseIGP@IGPControl@IGPLib@@QAEXXZ"=@RexIGP_PauseIGP@8
+    "?ResumeIGP@IGPControl@IGPLib@@QAEXXZ"=@RexIGP_ResumeIGP@8
+    "?SetGender@IGPControl@IGPLib@@SAXPBD@Z"=_RexIGP_SetGender
+    "?SetIGPLanguage@IGPControl@IGPLib@@QAEXPBD@Z"=@RexIGP_SetIGPLanguage@12
+    "?SetUserAge@IGPControl@IGPLib@@SAXPBD@Z"=_RexIGP_SetUserAge
+    "?ShowIGP@IGPControl@IGPLib@@QAEX_N@Z"=@RexIGP_ShowIGP@12
