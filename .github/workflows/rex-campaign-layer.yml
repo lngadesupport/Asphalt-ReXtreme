@@ -214,3 +214,11 @@ jobs:
           name: RexGameShim-x86
           path: RexGameShim.dll
           if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RexGameBridge-x86
+          path: |
+            IGPLib_x86.dll
+            CampaignContentV2.dat
+          if-no-files-found: error
