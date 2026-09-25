@@ -48,6 +48,60 @@ static int touch_file(
     return 1;
 }
 
+
+static int write_text_file(
+    const wchar_t* directory,
+    const wchar_t* name,
+    const char* text
+) {
+    wchar_t path[MAX_PATH];
+    HANDLE file;
+    DWORD written = 0u;
+    size_t length;
+
+    if (text == 0) {
+        return 0;
+    }
+
+    if (swprintf_s(
+            path,
+            MAX_PATH,
+            L"%ls\\%ls",
+            directory,
+            name) < 0) {
+        return 0;
+    }
+
+    file = CreateFileW(
+        path,
+        GENERIC_WRITE,
+        0,
+        0,
+        CREATE_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL,
+        0
+    );
+    if (file == INVALID_HANDLE_VALUE) {
+        return 0;
+    }
+
+    length = strlen(text);
+    if (length > 0u &&
+        (!WriteFile(
+            file,
+            text,
+            (DWORD)length,
+            &written,
+            0) ||
+         written != (DWORD)length)) {
+        CloseHandle(file);
+        return 0;
+    }
+
+    CloseHandle(file);
+    return 1;
+}
+
 static void remove_file(
     const wchar_t* directory,
     const wchar_t* name
@@ -99,9 +153,26 @@ static void test_layout_contract(void) {
         REX_AMS_LAYOUT_MISSING_MANIFEST
     );
 
-    for (i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
+    CHECK(write_text_file(
+        directory,
+        L"AppxManifest.xml",
+        "<Application Id=\"App\" Executable=\"AMS.exe\" EntryPoint=\"AMS.App\" />"
+    ) == 1);
+
+    for (i = 1; i < sizeof(names) / sizeof(names[0]); ++i) {
         CHECK(touch_file(directory, names[i]) == 1);
     }
+
+    CHECK(
+        RexAmsHost_ValidateLayout(directory) ==
+        REX_AMS_LAYOUT_MANIFEST_NOT_REBOUND
+    );
+
+    CHECK(write_text_file(
+        directory,
+        L"AppxManifest.xml",
+        "<Application Id=\"App\" Executable=\"AMS.Game.exe\" EntryPoint=\"AMS.App\" />"
+    ) == 1);
 
     CHECK(
         RexAmsHost_ValidateLayout(directory) ==
