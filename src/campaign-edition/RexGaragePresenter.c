@@ -88,6 +88,12 @@ RexGaragePresenterResult RexGaragePresenter_OnMontarPressed(
         return REX_GARAGE_PRESENTER_CAMPAIGN_FAILED;
     }
 
+    if (presenter->campaign.complete_garage_tutorial != 0) {
+        (void)presenter->campaign.complete_garage_tutorial(
+            presenter->campaign.context
+        );
+    }
+
     RexTutorialController_OnBuildResult(
         &presenter->tutorial,
         1

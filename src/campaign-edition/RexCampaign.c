@@ -97,6 +97,10 @@ RexCampaignActionResult RexCampaign_AcquireVehicle(
         return REX_CAMPAIGN_ACTION_REJECTED;
     }
 
+    RexState_SetGarageTutorialComplete(
+        campaign->state,
+        1
+    );
     campaign->state->revision += 1u;
 
     if (!RexState_Save(
@@ -117,6 +121,37 @@ int RexCampaign_IsGarageTutorialComplete(
     }
 
     return campaign->state->garage_tutorial_complete != 0;
+}
+
+int RexCampaign_CompleteGarageTutorial(
+    RexCampaign* campaign
+) {
+    RexState before;
+
+    if (campaign == 0 || campaign->state == 0 ||
+        campaign->state_path == 0) {
+        return 0;
+    }
+
+    if (campaign->state->garage_tutorial_complete) {
+        return 1;
+    }
+
+    before = *campaign->state;
+    RexState_SetGarageTutorialComplete(
+        campaign->state,
+        1
+    );
+    campaign->state->revision += 1u;
+
+    if (!RexState_Save(
+            campaign->state,
+            campaign->state_path)) {
+        *campaign->state = before;
+        return 0;
+    }
+
+    return 1;
 }
 
 static int RexCampaign_ApiReadVehicle(
@@ -141,6 +176,14 @@ static RexCampaignActionResult RexCampaign_ApiAcquireVehicle(
     );
 }
 
+static int RexCampaign_ApiCompleteGarageTutorial(
+    void* context
+) {
+    return RexCampaign_CompleteGarageTutorial(
+        (RexCampaign*)context
+    );
+}
+
 RexCampaignGarageApi RexCampaign_MakeGarageApi(
     RexCampaign* campaign
 ) {
@@ -149,6 +192,8 @@ RexCampaignGarageApi RexCampaign_MakeGarageApi(
     api.context = campaign;
     api.read_vehicle = RexCampaign_ApiReadVehicle;
     api.acquire_vehicle = RexCampaign_ApiAcquireVehicle;
+    api.complete_garage_tutorial =
+        RexCampaign_ApiCompleteGarageTutorial;
 
     return api;
 }

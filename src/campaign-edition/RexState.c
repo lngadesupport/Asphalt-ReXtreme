@@ -375,9 +375,19 @@ int RexState_Load(
     RexState* state,
     const char* path
 ) {
+    char bak_path[512];
+
     if (state == 0 || path == 0) {
         return 0;
     }
 
-    return RexState_ReadFile(state, path);
+    if (RexState_ReadFile(state, path)) {
+        return 1;
+    }
+
+    if (sprintf_s(bak_path, sizeof(bak_path), "%s.bak", path) < 0) {
+        return 0;
+    }
+
+    return RexState_ReadFile(state, bak_path);
 }
