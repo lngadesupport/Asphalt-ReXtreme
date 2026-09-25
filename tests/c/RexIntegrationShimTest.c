@@ -3,29 +3,10 @@
 #include <stdio.h>
 #include <string.h>
 
-typedef struct TestPlatformRequestV1 {
-    uint32_t abi_version;
-    uint32_t struct_size;
-    uint32_t opcode;
-    int32_t status;
-    uint32_t id;
-    uint32_t aux_u32;
-    uint64_t value;
-    uint64_t result;
-    char text[64];
-} TestPlatformRequestV1;
-
-#define TEST_PLATFORM_ABI_V1 1u
-#define TEST_PLATFORM_GET_CAPABILITIES 1u
-#define TEST_PLATFORM_IAP_PURCHASE 16u
-#define TEST_PLATFORM_FLAG_PROFILE_READY 0x00000001u
-#define TEST_PLATFORM_FLAG_LICENSE_ACTIVE 0x00000010u
-
 extern int RexShim_GaiaIsReady(void);
 extern int RexShim_GaiaIsNetworkRequired(void);
 extern int RexShim_GlobalSyncCommit(uint32_t reason, uint32_t* operation_id);
 extern uint32_t RexShim_GlobalSyncPendingCount(void);
-extern int RexShim_PlatformDispatchV1(TestPlatformRequestV1* request);
 
 static int failures = 0;
 
@@ -147,14 +128,14 @@ static void test_shim_transports_garage_events_and_snapshots(void) {
     }
 
     {
-        TestPlatformRequestV1 request = {0};
-        request.abi_version = TEST_PLATFORM_ABI_V1;
+        RexPlatformRequestV1 request = {0};
+        request.abi_version = REX_PLATFORM_DISPATCH_ABI_VERSION;
         request.struct_size = (uint32_t)sizeof(request);
-        request.opcode = TEST_PLATFORM_GET_CAPABILITIES;
+        request.opcode = REX_PLATFORM_OP_GET_CAPABILITIES;
         CHECK(RexShim_PlatformDispatchV1(&request) == 1);
         CHECK(request.status == REX_PLATFORM_OK);
         CHECK(
-            (request.result & TEST_PLATFORM_FLAG_PROFILE_READY) != 0u
+            (request.result & REX_PLATFORM_FLAG_PROFILE_READY) != 0u
         );
     }
 

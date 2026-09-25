@@ -1,6 +1,8 @@
 #include "RexHost.h"
 #include "RexRuntime.h"
 
+#include <string.h>
+
 static RexRuntime g_rex_runtime;
 static int g_rex_started = 0;
 
