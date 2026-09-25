@@ -25,6 +25,9 @@ typedef int (__cdecl *RexShimGarageMontarPressedFn)(void);
 typedef int (__cdecl *RexShimCopyGarageSnapshotFn)(
     RexGarageSnapshotV1*
 );
+typedef int (__cdecl *RexShimPlatformDispatchV1Fn)(
+    RexPlatformRequestV1*
+);
 
 typedef struct RexProxyRuntime {
     HMODULE module;
@@ -35,6 +38,7 @@ typedef struct RexProxyRuntime {
     RexShimGarageSelectionChangedFn selection_changed;
     RexShimGarageMontarPressedFn montar_pressed;
     RexShimCopyGarageSnapshotFn copy_snapshot;
+    RexShimPlatformDispatchV1Fn platform_dispatch_v1;
     int ready;
 } RexProxyRuntime;
 
@@ -269,6 +273,11 @@ static int RexProxy_EnsureRuntime(void) {
             g_runtime.module,
             "RexShim_CopyGarageSnapshot"
         );
+    g_runtime.platform_dispatch_v1 =
+        (RexShimPlatformDispatchV1Fn)RexProxy_Find(
+            g_runtime.module,
+            "RexShim_PlatformDispatchV1"
+        );
 
     if (g_runtime.get_abi_version == 0 ||
         g_runtime.start == 0 ||
@@ -277,6 +286,7 @@ static int RexProxy_EnsureRuntime(void) {
         g_runtime.selection_changed == 0 ||
         g_runtime.montar_pressed == 0 ||
         g_runtime.copy_snapshot == 0 ||
+        g_runtime.platform_dispatch_v1 == 0 ||
         g_runtime.get_abi_version() != REX_SHIM_ABI_VERSION) {
         RexProxy_ResetRuntime();
         return 0;
@@ -375,6 +385,19 @@ int __fastcall RexIGP_HttpPostLink(
     RexGarageSnapshotV1 snapshot;
 
     (void)ignored_edx;
+
+    if (selector == (uintptr_t)REX_IGP_GATE_PLATFORM_DISPATCH) {
+        RexPlatformRequestV1* request =
+            (RexPlatformRequestV1*)self;
+
+        if (request == 0 ||
+            !RexProxy_EnsureRuntime() ||
+            !g_runtime.platform_dispatch_v1(request)) {
+            return -1;
+        }
+
+        return request->status;
+    }
 
     if (selector == (uintptr_t)REX_IGP_GATE_MONTAR) {
         if (!RexProxy_ReadSelectedVehicle(
