@@ -21,7 +21,7 @@ class RexCampaignTests(unittest.TestCase):
         self.assertEqual(patch.BRIDGE_PAD_SIZE,47)
         self.assertLessEqual(
             len(patch.BOOT_BRIDGE)+len(patch.HOME_BRIDGE),
-            patch.CAVE_LEN
+            patch.BRIDGE_PAD_SIZE
         )
 
     def test_build_render_is_direct_active_presentation(self):
@@ -38,7 +38,7 @@ class RexCampaignTests(unittest.TestCase):
         cfg={"starter":100,"credits":50000,"tokens":0,"rows":[(100,content.MODE["free"],0,1),(200,content.MODE["credits"],25000,2)]}
         data=content.build(cfg)
         self.assertEqual(len(data),content.SIZE)
-        magic,version,count,reserved=content.HEADER.unpack_from(data,0)
+        magic,version,count,starter,credits,tokens=content.HEADER.unpack_from(data,0)
         self.assertEqual(magic,content.MAGIC)
         self.assertEqual(version,content.VERSION)
         self.assertEqual(count,2)
