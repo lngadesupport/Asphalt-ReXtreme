@@ -92,7 +92,7 @@ jobs:
             original_frontend_only=$true
             old_campaign_code_used=$false
             state_file="CampaignStateV1.dat"
-            content_file="CampaignContentV1.dat"
+            content_file="CampaignContentV2.dat"
             selectors=[ordered]@{
               boot="0xDEC0A001"
               home="0xDEC0A002"
