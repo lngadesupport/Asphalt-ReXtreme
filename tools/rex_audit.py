@@ -33,6 +33,8 @@ ACTIVE = (
     "tools/rex_test.ps1",
     "RUN-REX-CAMPAIGN.ps1",
     "FINALIZE-CAMPAIGN-EDITION.cmd",
+    "tools/build_package_phase5.ps1",
+    "tools/public_beta.ps1",
 )
 
 def files_under(root:Path, rel:str):
