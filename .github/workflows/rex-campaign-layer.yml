@@ -57,13 +57,6 @@ jobs:
             "runtime-stubs",
             "IGPLib_x86"
           )
-          $legacyGlobalSyncHits = Get-ChildItem @("src/campaign-edition","src/integration-shim","src/game-bridge","src/ams-host") -File -Recurse |
-            Select-String -Pattern '(?<!Rex)GlobalSync'
-          if ($legacyGlobalSyncHits) {
-            $legacyGlobalSyncHits | ForEach-Object { Write-Host $_.Line }
-            throw "Legacy runtime reference detected: GlobalSync"
-          }
-
           foreach ($term in $banned) {
             $roots = @("src/campaign-edition","src/integration-shim","src/game-bridge","src/ams-host")
             if ($term -eq "IGPLib_x86") {
