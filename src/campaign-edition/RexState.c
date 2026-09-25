@@ -90,19 +90,25 @@ static int build_paths(void) {
     return 1;
 }
 static void defaults(void) {
-    const RexCarDefinition* starter=0;
+    RexContentDefaults content_defaults;
+
     memzero(&g_state,(uint32_t)sizeof(g_state));
+    memzero(&content_defaults,(uint32_t)sizeof(content_defaults));
+
     g_state.magic=REX_SAVE_MAGIC;
     g_state.version=REX_SAVE_VERSION;
     g_state.revision=1;
-    g_state.credits=50000;
+    g_state.credits=0;
     g_state.tokens=0;
     g_state.selected_car=-1;
     g_state.tutorial_stage=1;
     g_state.current_event=-1;
 
-    if(RexContentLoad()) starter=RexContentFirstCar();
-    if(starter) g_state.selected_car=starter->car_id;
+    if(RexContentDefaultsRead(&content_defaults)) {
+        g_state.credits=content_defaults.starting_credits;
+        g_state.tokens=content_defaults.starting_tokens;
+        g_state.selected_car=content_defaults.starter_car_id;
+    }
 
     g_state.checksum=checksum(&g_state);
 }
