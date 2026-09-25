@@ -4,6 +4,8 @@
 #include <stdio.h>
 
 #include "RexIgpProxy.h"
+#include "RexBoundaryV1.h"
+#include "RexPlatformServices.h"
 
 static int failures = 0;
 #define CHECK(expr) do { if (!(expr)) { \
@@ -43,6 +45,8 @@ static void test_proxy_exposes_game_import_surface(void) {
     FreeLibrary(module);
 }
 
+
+#define TEST_REX_IGP_GATE_PLATFORM_DISPATCH 0x52455850u
 
 typedef int (__fastcall *RexHttpPostLinkFn)(
     void* self,
@@ -148,6 +152,76 @@ static void test_proxy_bootstraps_rex_runtime_on_game_init(void) {
     cleanup_proxy_state();
 }
 
+
+static void test_proxy_routes_platform_dispatch_to_rex_services(void) {
+    static const char http_name[] =
+        "?HttpPostLink@IGPControl@IGPLib@@QAEXPBD@Z";
+    HMODULE module;
+    RexHttpPostLinkFn http_post;
+    RexPlatformRequestV1 request = {0};
+    int result;
+
+    cleanup_proxy_state();
+    CHECK(write_proxy_content_fixture() == 1);
+
+    module = LoadLibraryA("IGPLib_x86.dll");
+    CHECK(module != 0);
+    if (module == 0) {
+        remove("CampaignContentV2.dat");
+        return;
+    }
+
+    http_post = (RexHttpPostLinkFn)GetProcAddress(
+        module,
+        http_name
+    );
+    CHECK(http_post != 0);
+
+    if (http_post != 0) {
+        request.abi_version = REX_PLATFORM_DISPATCH_ABI_VERSION;
+        request.struct_size = (uint32_t)sizeof(request);
+        request.opcode = REX_PLATFORM_OP_GET_CAPABILITIES;
+        request.status = -99;
+
+        result = http_post(
+            &request,
+            0,
+            (const char*)(uintptr_t)
+                TEST_REX_IGP_GATE_PLATFORM_DISPATCH
+        );
+
+        CHECK(result == REX_PLATFORM_OK);
+        CHECK(request.status == REX_PLATFORM_OK);
+        CHECK(
+            (request.result & REX_PLATFORM_FLAG_PROFILE_READY) != 0u
+        );
+        CHECK(
+            (request.result & REX_PLATFORM_FLAG_LICENSE_ACTIVE) != 0u
+        );
+
+        memset(&request, 0, sizeof(request));
+        request.abi_version = REX_PLATFORM_DISPATCH_ABI_VERSION;
+        request.struct_size = (uint32_t)sizeof(request);
+        request.opcode = REX_PLATFORM_OP_IAP_PURCHASE;
+        request.status = -99;
+        strcpy_s(request.text, sizeof(request.text), "disabled-sku");
+
+        result = http_post(
+            &request,
+            0,
+            (const char*)(uintptr_t)
+                TEST_REX_IGP_GATE_PLATFORM_DISPATCH
+        );
+
+        CHECK(result == REX_PLATFORM_DISABLED);
+        CHECK(request.status == REX_PLATFORM_DISABLED);
+    }
+
+    FreeLibrary(module);
+    remove("CampaignContentV2.dat");
+    cleanup_proxy_state();
+}
+
 static void test_proxy_routes_new_gateway_to_rex_shim(void) {
     static const char http_name[] =
         "?HttpPostLink@IGPControl@IGPLib@@QAEXPBD@Z";
@@ -210,6 +284,7 @@ static void test_proxy_routes_new_gateway_to_rex_shim(void) {
 int main(void) {
     test_proxy_exposes_game_import_surface();
     test_proxy_bootstraps_rex_runtime_on_game_init();
+    test_proxy_routes_platform_dispatch_to_rex_services();
     test_proxy_routes_new_gateway_to_rex_shim();
 
     if (failures != 0) {
