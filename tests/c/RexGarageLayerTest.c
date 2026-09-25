@@ -802,10 +802,7 @@ static void test_presentation_adapter_routes_montar_and_renders_result(void) {
     CHECK(presentation.action_calls == 1);
     CHECK(presentation.last_action_result == REX_GARAGE_PRESENTER_OK);
     CHECK(presentation.present_calls == 2);
-    CHECK(presentation.action_calls == 1);
-    CHECK(presentation.last_action_result == REX_GARAGE_PRESENTER_OK);
-    CHECK(presentation.last_snapshot.owned == 1);
-    CHECK(presentation.last_snapshot.montar_enabled == 0);
+    CHECK(presentation.last_view_model.owned == 1);
     CHECK(presentation.last_view_model.build_enabled == 0);
     CHECK(presentation.focus_build == 0);
 }
@@ -1077,7 +1074,10 @@ static void test_host_exports_drive_new_runtime_end_to_end(void) {
         RexHost_GarageMontarPressed() ==
         REX_GARAGE_PRESENTER_OK
     );
-    CHECK(presentation.last_view_model.owned == 1);
+    CHECK(presentation.action_calls == 1);
+    CHECK(presentation.last_action_result == REX_GARAGE_PRESENTER_OK);
+    CHECK(presentation.last_snapshot.owned == 1);
+    CHECK(presentation.last_snapshot.montar_enabled == 0);
 
     RexState_Init(&loaded);
     CHECK(RexState_Load(&loaded, state_path) == 1);
