@@ -32,7 +32,34 @@ int RexRuntime_Init(
     if (!RexState_Load(
             &runtime->state,
             runtime->state_path)) {
+        uint32_t i;
+
         RexState_Init(&runtime->state);
+
+        for (
+            i = 0u;
+            i < runtime->content.initial_balance_count;
+            ++i
+        ) {
+            if (!RexState_SetBlueprintBalance(
+                    &runtime->state,
+                    runtime->content.initial_balances[i].blueprint_id,
+                    runtime->content.initial_balances[i].amount)) {
+                return 0;
+            }
+        }
+
+        for (
+            i = 0u;
+            i < runtime->content.starter_owned_count;
+            ++i
+        ) {
+            if (!RexState_AddOwned(
+                    &runtime->state,
+                    runtime->content.starter_owned_vehicles[i])) {
+                return 0;
+            }
+        }
 
         if (!RexState_Save(
                 &runtime->state,

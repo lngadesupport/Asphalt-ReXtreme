@@ -118,6 +118,45 @@ int RexContent_Load(
             has_recipe != 0u;
     }
 
+    if (!RexContent_ReadU32(
+            file,
+            &loaded.initial_balance_count) ||
+        loaded.initial_balance_count >
+            REX_CONTENT_MAX_INITIAL_BALANCES) {
+        fclose(file);
+        return 0;
+    }
+
+    for (i = 0u; i < loaded.initial_balance_count; ++i) {
+        if (!RexContent_ReadU32(
+                file,
+                &loaded.initial_balances[i].blueprint_id) ||
+            !RexContent_ReadU32(
+                file,
+                &loaded.initial_balances[i].amount)) {
+            fclose(file);
+            return 0;
+        }
+    }
+
+    if (!RexContent_ReadU32(
+            file,
+            &loaded.starter_owned_count) ||
+        loaded.starter_owned_count >
+            REX_CONTENT_MAX_STARTER_OWNED) {
+        fclose(file);
+        return 0;
+    }
+
+    for (i = 0u; i < loaded.starter_owned_count; ++i) {
+        if (!RexContent_ReadU32(
+                file,
+                &loaded.starter_owned_vehicles[i])) {
+            fclose(file);
+            return 0;
+        }
+    }
+
     if (fclose(file) != 0) {
         return 0;
     }
