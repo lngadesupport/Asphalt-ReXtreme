@@ -238,7 +238,7 @@ function Build-Beta {
     $ghostBackup = Repair-GhostRegistration
     Assert-NoConflictingRegistration
 
-    $cleanBase = Join-Path $Root "tools\build_clean_ams_base_v1.ps1"
+    $cleanBase = Join-Path $Root "tools\rex_build_base.ps1"
     $phase5 = Join-Path $Root "tools\build_package_phase5.ps1"
     $finalizer = Join-Path $Root "FINALIZE-CAMPAIGN-EDITION.cmd"
     foreach ($required in @($cleanBase,$phase5,$finalizer)) {
@@ -247,9 +247,9 @@ function Build-Beta {
         }
     }
 
-    Step "Construindo Clean AMS Base V1 a partir do pristine..."
+    Step "Construindo REX pristine base a partir do pristine..."
     & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $cleanBase -ProjectRoot $Root
-    if ($LASTEXITCODE -ne 0) { throw "Clean AMS Base V1 falhou: $LASTEXITCODE" }
+    if ($LASTEXITCODE -ne 0) { throw "REX pristine base falhou: $LASTEXITCODE" }
 
     Step "Construindo/registrando Package Phase 5 limpo..."
     & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $phase5 -SourceDir $Root
@@ -261,9 +261,9 @@ function Build-Beta {
     try {
         $env:PATH = $RuntimeRoot + ";" + $env:PATH
         $env:REXTREME_NO_PAUSE = "1"
-        Step "Aplicando Clean Campaign Runtime V1..."
+        Step "Aplicando Rex Campaign Edition..."
         & cmd.exe /d /c ('"' + $finalizer + '"')
-        if ($LASTEXITCODE -ne 0) { throw "Clean Campaign Runtime V1 falhou: $LASTEXITCODE" }
+        if ($LASTEXITCODE -ne 0) { throw "Rex Campaign Edition falhou: $LASTEXITCODE" }
     } finally {
         $env:PATH = $oldPath
         $env:REXTREME_NO_PAUSE = $oldNoPause
@@ -278,7 +278,7 @@ function Build-Beta {
         package_root = $PackageRoot
         startup_mode = "uwp-loose-compatibility"
         portable_startup_ready = $false
-        campaign_final_status = (Join-Path $Root "_TRACE_MONTAR\CLEAN-RUNTIME-V1-APPLY.json")
+        campaign_final_status = (Join-Path $Root "_TRACE_MONTAR\REX-CAMPAIGN-APPLY.json")
     }
     $state | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $StatePath -Encoding UTF8
 
@@ -361,17 +361,17 @@ function Update-Beta {
         "REPAIR-BETA.cmd",
         "UPDATE-BETA.cmd",
         "FINALIZE-CAMPAIGN-EDITION.cmd",
-        "RUN-CLEAN-RUNTIME-V1.ps1",
+        "RUN-REX-CAMPAIGN.ps1",
         "beta/VERSION.json",
         "docs/PUBLIC_BETA_0.1.0.md",
         "docs/CAMPAIGN-FRONTEND-ONLY-ORIGINAL-CODE.md",
         "tools/public_beta.ps1",
-        "tools/build_clean_ams_base_v1.ps1",
-        "tools/build_package_phase5.ps1",
-        "tools/apply_clean_runtime_v1.ps1",
-        "tools/test_clean_runtime_v1.ps1",
-        "tools/campaign_frontend_shell_v1.py",
-        "tools/audit_clean_runtime.py"
+        "tools/rex_build_base.ps1",
+        "tools/rex_build_content.py",
+        "tools/rex_patch_frontend.py",
+        "tools/rex_apply.ps1",
+        "tools/rex_test.ps1",
+        "tools/rex_audit.py"
     )
 
     $tmp = Join-Path $env:TEMP ("ReXtremeBetaUpdate-" + [Guid]::NewGuid().ToString("N"))
