@@ -1,0 +1,49 @@
+name: ReX Campaign Layer
+
+on:
+  push:
+    branches:
+      - campaign-edition-rex-v2
+    paths:
+      - "src/campaign-edition/**"
+      - ".github/workflows/rex-campaign-layer.yml"
+  workflow_dispatch:
+
+jobs:
+  test-x86:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x86
+
+      - name: Audit new-only runtime
+        shell: powershell
+        run: |
+          $banned = @(
+            "CraftCar",
+            "GlobalSync",
+            "GS_Garage",
+            "CampaignFrontendBridge",
+            "CampaignGarageFlow",
+            "CampaignCore",
+            "CampaignRuntime",
+            "_AMS_PHASE2"
+          )
+          foreach ($term in $banned) {
+            $hits = Get-ChildItem "src/campaign-edition" -File -Recurse |
+              Select-String -SimpleMatch $term
+            if ($hits) {
+              $hits | ForEach-Object { Write-Host $_.Line }
+              throw "Legacy runtime reference detected: $term"
+            }
+          }
+
+      - name: Build garage layer tests
+        shell: cmd
+        run: cl.exe /nologo /W4 /WX /TC src\campaign-edition\*.c /Fe:RexGarageLayerTest.exe
+
+      - name: Run garage layer tests
+        shell: cmd
+        run: RexGarageLayerTest.exe
