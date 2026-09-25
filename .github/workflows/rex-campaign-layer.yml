@@ -7,6 +7,9 @@ on:
       - campaign-edition-rex-v2
     paths:
       - "src/campaign-edition/**"
+      - "builder/**"
+      - "config/**"
+      - "tests/**"
       - ".github/workflows/rex-campaign-layer.yml"
   workflow_dispatch:
 
@@ -15,9 +18,16 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x86
+
+      - name: Run ReX content builder tests
+        shell: cmd
+        run: python -m unittest discover -s tests -v
 
       - name: Audit new-only runtime
         shell: powershell
