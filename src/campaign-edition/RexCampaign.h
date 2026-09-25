@@ -27,6 +27,9 @@ typedef struct RexCampaignGarageApi {
         void* context,
         uint32_t vehicle_id
     );
+    int (*complete_garage_tutorial)(
+        void* context
+    );
 } RexCampaignGarageApi;
 
 typedef struct RexCampaign {
@@ -55,6 +58,10 @@ RexCampaignActionResult RexCampaign_AcquireVehicle(
 
 int RexCampaign_IsGarageTutorialComplete(
     const RexCampaign* campaign
+);
+
+int RexCampaign_CompleteGarageTutorial(
+    RexCampaign* campaign
 );
 
 RexCampaignGarageApi RexCampaign_MakeGarageApi(

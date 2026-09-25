@@ -162,6 +162,8 @@ typedef struct FakeCampaign {
     int read_success;
     int read_calls;
     int acquire_calls;
+    int tutorial_complete_calls;
+    int tutorial_complete;
     RexCampaignActionResult acquire_result;
 } FakeCampaign;
 
@@ -197,11 +199,19 @@ static RexCampaignActionResult fake_acquire_vehicle(
     return fake->acquire_result;
 }
 
+static int fake_complete_garage_tutorial(void* context) {
+    FakeCampaign* fake = (FakeCampaign*)context;
+    fake->tutorial_complete_calls += 1;
+    fake->tutorial_complete = 1;
+    return 1;
+}
+
 static RexCampaignGarageApi fake_api(FakeCampaign* fake) {
-    RexCampaignGarageApi api;
+    RexCampaignGarageApi api = {0};
     api.context = fake;
     api.read_vehicle = fake_read_vehicle;
     api.acquire_vehicle = fake_acquire_vehicle;
+    api.complete_garage_tutorial = fake_complete_garage_tutorial;
     return api;
 }
 
@@ -266,6 +276,8 @@ static void test_presenter_successful_build_refreshes_owned_state(void) {
     CHECK(vm->build_enabled == 0);
     CHECK(vm->build_status == REX_GARAGE_BUILD_OWNED);
     CHECK(RexGaragePresenter_IsTutorialComplete(&presenter) == 1);
+    CHECK(fake.tutorial_complete_calls == 1);
+    CHECK(fake.tutorial_complete == 1);
 }
 
 static void test_presenter_rejects_disabled_build_without_campaign_call(void) {
@@ -466,6 +478,73 @@ static void test_real_campaign_api_drives_presenter_without_legacy_runtime(void)
 }
 
 
+
+static void test_state_load_falls_back_to_backup_after_current_corruption(void) {
+    const char* path = "RexCampaignBackupTest.dat";
+    RexState state;
+    RexState loaded;
+    FILE* corrupt = 0;
+
+    cleanup_state_files(path);
+    RexState_Init(&state);
+    state.revision = 1u;
+    CHECK(RexState_SetBlueprintBalance(&state, 7001u, 11u) == 1);
+    CHECK(RexState_Save(&state, path) == 1);
+
+    state.revision = 2u;
+    CHECK(RexState_SetBlueprintBalance(&state, 7001u, 22u) == 1);
+    CHECK(RexState_Save(&state, path) == 1);
+
+    CHECK(fopen_s(&corrupt, path, "wb") == 0);
+    CHECK(corrupt != 0);
+    if (corrupt != 0) {
+        CHECK(fwrite("bad", 1u, 3u, corrupt) == 3u);
+        CHECK(fclose(corrupt) == 0);
+    }
+
+    RexState_Init(&loaded);
+    CHECK(RexState_Load(&loaded, path) == 1);
+    CHECK(loaded.revision == 1u);
+    CHECK(RexState_GetBlueprintBalance(&loaded, 7001u) == 11u);
+
+    cleanup_state_files(path);
+}
+
+static void test_real_campaign_presenter_persists_tutorial_completion(void) {
+    const char* path = "RexCampaignTutorialTest.dat";
+    const RexContentVehicle vehicles[] = {
+        {404u, 1, 1, 9404u, 2u}
+    };
+    RexContent content = {0};
+    RexState state;
+    RexState loaded;
+    RexCampaign campaign = {0};
+    RexGaragePresenter presenter = {0};
+
+    cleanup_state_files(path);
+    RexContent_Init(&content, vehicles, 1u);
+    RexState_Init(&state);
+    CHECK(RexState_SetBlueprintBalance(&state, 9404u, 3u) == 1);
+    CHECK(RexCampaign_Init(&campaign, &content, &state, path) == 1);
+
+    RexGaragePresenter_Init(
+        &presenter,
+        RexCampaign_MakeGarageApi(&campaign),
+        RexCampaign_IsGarageTutorialComplete(&campaign)
+    );
+
+    CHECK(RexGaragePresenter_OnEnter(&presenter, 404u) == 1);
+    CHECK(RexGaragePresenter_OnMontarPressed(&presenter) == REX_GARAGE_PRESENTER_OK);
+    CHECK(RexCampaign_IsGarageTutorialComplete(&campaign) == 1);
+
+    RexState_Init(&loaded);
+    CHECK(RexState_Load(&loaded, path) == 1);
+    CHECK(loaded.garage_tutorial_complete == 1);
+
+    cleanup_state_files(path);
+}
+
+
 int main(void) {
     test_ready_vehicle_enables_build();
     test_owned_vehicle_disables_build();
@@ -487,6 +566,8 @@ int main(void) {
     test_campaign_transaction_spends_blueprints_and_persists();
     test_campaign_rejects_invalid_transaction_without_mutation();
     test_real_campaign_api_drives_presenter_without_legacy_runtime();
+    test_state_load_falls_back_to_backup_after_current_corruption();
+    test_real_campaign_presenter_persists_tutorial_completion();
 
     if (failures != 0) {
         printf("%d test assertion(s) failed.\n", failures);
