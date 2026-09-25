@@ -395,13 +395,15 @@ static void test_campaign_transaction_spends_blueprints_and_persists(void) {
     RexState state;
     RexState loaded;
     RexCampaign campaign = {0};
+    RexGlobalSync global_sync = {0};
     RexGarageViewModelInput input = {0};
 
     cleanup_state_files(path);
     RexContent_Init(&content, vehicles, 1u);
     RexState_Init(&state);
     CHECK(RexState_SetBlueprintBalance(&state, 9001u, 5u) == 1);
-    CHECK(RexCampaign_Init(&campaign, &content, &state, path) == 1);
+    CHECK(RexGlobalSync_Init(&global_sync, &state, path, 0, 0) == 1);
+    CHECK(RexCampaign_Init(&campaign, &content, &state, &global_sync) == 1);
 
     CHECK(RexCampaign_ReadVehicle(&campaign, 101u, &input) == 1);
     CHECK(input.owned == 0);
@@ -432,12 +434,14 @@ static void test_campaign_rejects_invalid_transaction_without_mutation(void) {
     RexContent content = {0};
     RexState state;
     RexCampaign campaign = {0};
+    RexGlobalSync global_sync = {0};
 
     cleanup_state_files(path);
     RexContent_Init(&content, vehicles, 1u);
     RexState_Init(&state);
     CHECK(RexState_SetBlueprintBalance(&state, 9001u, 2u) == 1);
-    CHECK(RexCampaign_Init(&campaign, &content, &state, path) == 1);
+    CHECK(RexGlobalSync_Init(&global_sync, &state, path, 0, 0) == 1);
+    CHECK(RexCampaign_Init(&campaign, &content, &state, &global_sync) == 1);
 
     CHECK(
         RexCampaign_AcquireVehicle(&campaign, 101u) ==
@@ -458,13 +462,15 @@ static void test_real_campaign_api_drives_presenter_without_legacy_runtime(void)
     RexContent content = {0};
     RexState state;
     RexCampaign campaign = {0};
+    RexGlobalSync global_sync = {0};
     RexGaragePresenter presenter = {0};
 
     cleanup_state_files(path);
     RexContent_Init(&content, vehicles, 1u);
     RexState_Init(&state);
     CHECK(RexState_SetBlueprintBalance(&state, 9303u, 6u) == 1);
-    CHECK(RexCampaign_Init(&campaign, &content, &state, path) == 1);
+    CHECK(RexGlobalSync_Init(&global_sync, &state, path, 0, 0) == 1);
+    CHECK(RexCampaign_Init(&campaign, &content, &state, &global_sync) == 1);
 
     RexGaragePresenter_Init(
         &presenter,
@@ -523,13 +529,15 @@ static void test_real_campaign_presenter_persists_tutorial_completion(void) {
     RexState state;
     RexState loaded;
     RexCampaign campaign = {0};
+    RexGlobalSync global_sync = {0};
     RexGaragePresenter presenter = {0};
 
     cleanup_state_files(path);
     RexContent_Init(&content, vehicles, 1u);
     RexState_Init(&state);
     CHECK(RexState_SetBlueprintBalance(&state, 9404u, 3u) == 1);
-    CHECK(RexCampaign_Init(&campaign, &content, &state, path) == 1);
+    CHECK(RexGlobalSync_Init(&global_sync, &state, path, 0, 0) == 1);
+    CHECK(RexCampaign_Init(&campaign, &content, &state, &global_sync) == 1);
 
     RexGaragePresenter_Init(
         &presenter,

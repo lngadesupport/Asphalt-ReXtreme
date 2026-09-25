@@ -3,6 +3,8 @@
 #include "RexCampaign.h"
 #include "RexContent.h"
 #include "RexGaragePresenter.h"
+#include "RexGaia.h"
+#include "RexGlobalSync.h"
 #include "RexPresentationAdapterV2.h"
 #include "RexState.h"
 
@@ -15,6 +17,8 @@ extern "C" {
 typedef struct RexRuntime {
     RexContent content;
     RexState state;
+    RexGaia gaia;
+    RexGlobalSync global_sync;
     RexCampaign campaign;
     RexGaragePresenter garage_presenter;
     RexPresentationAdapterV2 presentation_adapter;

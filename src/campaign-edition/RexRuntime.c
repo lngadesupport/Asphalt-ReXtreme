@@ -68,11 +68,26 @@ int RexRuntime_Init(
         }
     }
 
+    if (!RexGaia_Init(
+            &runtime->gaia,
+            "campaign-local")) {
+        return 0;
+    }
+
+    if (!RexGlobalSync_Init(
+            &runtime->global_sync,
+            &runtime->state,
+            runtime->state_path,
+            0,
+            0)) {
+        return 0;
+    }
+
     if (!RexCampaign_Init(
             &runtime->campaign,
             &runtime->content,
             &runtime->state,
-            runtime->state_path)) {
+            &runtime->global_sync)) {
         return 0;
     }
 

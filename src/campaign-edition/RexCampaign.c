@@ -6,16 +6,17 @@ int RexCampaign_Init(
     RexCampaign* campaign,
     const RexContent* content,
     RexState* state,
-    const char* state_path
+    RexGlobalSync* global_sync
 ) {
     if (campaign == 0 || content == 0 || state == 0 ||
-        state_path == 0) {
+        global_sync == 0 || !global_sync->initialized ||
+        global_sync->state != state) {
         return 0;
     }
 
     campaign->content = content;
     campaign->state = state;
-    campaign->state_path = state_path;
+    campaign->global_sync = global_sync;
     return 1;
 }
 
@@ -64,7 +65,7 @@ RexCampaignActionResult RexCampaign_AcquireVehicle(
     RexState before;
 
     if (campaign == 0 || campaign->content == 0 ||
-        campaign->state == 0 || campaign->state_path == 0) {
+        campaign->state == 0 || campaign->global_sync == 0) {
         return REX_CAMPAIGN_ACTION_REJECTED;
     }
 
@@ -101,13 +102,17 @@ RexCampaignActionResult RexCampaign_AcquireVehicle(
         campaign->state,
         1
     );
-    campaign->state->revision += 1u;
+    {
+        uint32_t operation_id = 0u;
 
-    if (!RexState_Save(
-            campaign->state,
-            campaign->state_path)) {
-        *campaign->state = before;
-        return REX_CAMPAIGN_ACTION_IO_ERROR;
+        if (RexGlobalSync_Commit(
+                campaign->global_sync,
+                REX_GLOBAL_SYNC_REASON_GARAGE,
+                &operation_id) != REX_GLOBAL_SYNC_OK ||
+            operation_id == 0u) {
+            *campaign->state = before;
+            return REX_CAMPAIGN_ACTION_IO_ERROR;
+        }
     }
 
     return REX_CAMPAIGN_ACTION_OK;
@@ -129,7 +134,7 @@ int RexCampaign_CompleteGarageTutorial(
     RexState before;
 
     if (campaign == 0 || campaign->state == 0 ||
-        campaign->state_path == 0) {
+        campaign->global_sync == 0) {
         return 0;
     }
 
@@ -142,13 +147,17 @@ int RexCampaign_CompleteGarageTutorial(
         campaign->state,
         1
     );
-    campaign->state->revision += 1u;
+    {
+        uint32_t operation_id = 0u;
 
-    if (!RexState_Save(
-            campaign->state,
-            campaign->state_path)) {
-        *campaign->state = before;
-        return 0;
+        if (RexGlobalSync_Commit(
+                campaign->global_sync,
+                REX_GLOBAL_SYNC_REASON_GARAGE,
+                &operation_id) != REX_GLOBAL_SYNC_OK ||
+            operation_id == 0u) {
+            *campaign->state = before;
+            return 0;
+        }
     }
 
     return 1;

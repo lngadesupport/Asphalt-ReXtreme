@@ -2,6 +2,7 @@
 
 #include "RexContent.h"
 #include "RexGarageViewModel.h"
+#include "RexGlobalSync.h"
 #include "RexState.h"
 
 #include <stdint.h>
@@ -35,14 +36,14 @@ typedef struct RexCampaignGarageApi {
 typedef struct RexCampaign {
     const RexContent* content;
     RexState* state;
-    const char* state_path;
+    RexGlobalSync* global_sync;
 } RexCampaign;
 
 int RexCampaign_Init(
     RexCampaign* campaign,
     const RexContent* content,
     RexState* state,
-    const char* state_path
+    RexGlobalSync* global_sync
 );
 
 int RexCampaign_ReadVehicle(
