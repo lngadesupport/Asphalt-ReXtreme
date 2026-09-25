@@ -22,6 +22,20 @@ FORBIDDEN = (
     "RUN-FRONTEND-ONLY",
 )
 
+ABSENT_PATHS = (
+    "src-reconstructed/campaign-core",
+    "src-reconstructed/campaign-runtime",
+    "src-reconstructed/campaign-runtime-v2",
+    "prebuilt/campaign-core",
+    "prebuilt/campaign-runtime",
+    "runtime-stubs/campaign_gateway.asm",
+    "runtime-stubs/IGPLib_x86_campaign.def",
+    "runtime-stubs/campaign_runtime_gateway.asm",
+    "runtime-stubs/IGPLib_x86_campaign_runtime.def",
+    "RUN-CLEAN-RUNTIME-V1.ps1",
+    "RUN-FRONTEND-ONLY-V2.ps1",
+)
+
 ACTIVE = (
     "src/campaign-edition",
     "runtime-stubs/rex_campaign_gateway.asm",
@@ -53,6 +67,13 @@ def main()->int:
 
     problems=[]
     scanned=[]
+
+    for rel in ABSENT_PATHS:
+        if (root / rel).exists():
+            problems.append({
+                "file": rel,
+                "rule": "superseded-runtime-must-not-exist"
+            })
 
     for rel in ACTIVE:
         items=files_under(root,rel)
