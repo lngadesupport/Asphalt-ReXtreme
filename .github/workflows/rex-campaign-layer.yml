@@ -206,6 +206,8 @@ jobs:
           cl.exe /nologo /W4 /WX /TC
           tests\c\RexIgpProxyTest.c
           /I src\game-bridge
+          /I src\integration-shim
+          /I src\campaign-edition
           /Fe:RexIgpProxyTest.exe
           && RexIgpProxyTest.exe
 
