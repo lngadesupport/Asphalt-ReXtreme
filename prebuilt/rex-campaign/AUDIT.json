@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "runtime": "Rex Campaign Edition",
+  "original_frontend_only": true,
+  "old_campaign_code_used": false,
+  "scanned": [
+    "src\\campaign-edition\\RexCampaign.c",
+    "src\\campaign-edition\\RexCampaign.h",
+    "src\\campaign-edition\\RexContent.c",
+    "src\\campaign-edition\\RexContent.h",
+    "src\\campaign-edition\\RexState.c",
+    "src\\campaign-edition\\RexState.h",
+    "runtime-stubs\\rex_campaign_gateway.asm",
+    "runtime-stubs\\IGPLib_x86_rex_campaign.def",
+    "tools\\rex_build_base.ps1",
+    "tools\\rex_build_content.py",
+    "tools\\rex_patch_frontend.py",
+    "tools\\rex_apply.ps1",
+    "tools\\rex_test.ps1",
+    "RUN-REX-CAMPAIGN.ps1",
+    "FINALIZE-CAMPAIGN-EDITION.cmd",
+    "tools\\build_package_phase5.ps1",
+    "tools\\public_beta.ps1"
+  ],
+  "problems": [],
+  "pass": true
+}
