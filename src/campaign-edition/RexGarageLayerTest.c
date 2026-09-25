@@ -5,6 +5,7 @@
 #include "RexGarageViewModel.h"
 #include "RexTutorialController.h"
 #include "RexPresentationAdapterV2.h"
+#include "RexRuntime.h"
 
 #include <stdio.h>
 
@@ -817,6 +818,133 @@ static void test_presentation_adapter_requires_only_presentation_contract(void) 
 }
 
 
+
+static void test_runtime_bootstrap_composes_new_campaign_stack(void) {
+    const char* content_path = "RexRuntimeContentTest.dat";
+    const char* state_path = "RexRuntimeStateTest.dat";
+    RexState seed;
+    RexRuntime runtime = {0};
+    FakePresentation presentation = {0};
+    RexState reloaded;
+
+    remove(content_path);
+    cleanup_state_files(state_path);
+
+    CHECK(write_content_fixture(content_path) == 1);
+
+    RexState_Init(&seed);
+    CHECK(
+        RexState_SetBlueprintBalance(
+            &seed,
+            9501u,
+            9u
+        ) == 1
+    );
+    CHECK(RexState_Save(&seed, state_path) == 1);
+
+    presentation.selected_vehicle_id = 501u;
+
+    CHECK(
+        RexRuntime_Init(
+            &runtime,
+            content_path,
+            state_path,
+            fake_presentation_port(&presentation)
+        ) == 1
+    );
+    CHECK(runtime.initialized == 1);
+
+    CHECK(RexRuntime_OnGarageEnter(&runtime) == 1);
+    CHECK(presentation.present_calls == 1);
+    CHECK(presentation.last_view_model.selected_vehicle_id == 501u);
+    CHECK(presentation.last_view_model.build_enabled == 1);
+
+    CHECK(
+        RexRuntime_OnGarageMontarPressed(&runtime) ==
+        REX_GARAGE_PRESENTER_OK
+    );
+    CHECK(presentation.last_view_model.owned == 1);
+    CHECK(runtime.state.revision == 1u);
+
+    RexState_Init(&reloaded);
+    CHECK(RexState_Load(&reloaded, state_path) == 1);
+    CHECK(RexState_IsOwned(&reloaded, 501u) == 1);
+    CHECK(
+        RexState_GetBlueprintBalance(
+            &reloaded,
+            9501u
+        ) == 2u
+    );
+
+    remove(content_path);
+    cleanup_state_files(state_path);
+}
+
+static void test_runtime_first_launch_creates_new_state_file(void) {
+    const char* content_path = "RexRuntimeFirstContent.dat";
+    const char* state_path = "RexRuntimeFirstState.dat";
+    RexRuntime runtime = {0};
+    FakePresentation presentation = {0};
+    RexState loaded;
+
+    remove(content_path);
+    cleanup_state_files(state_path);
+
+    CHECK(write_content_fixture(content_path) == 1);
+    presentation.selected_vehicle_id = 501u;
+
+    CHECK(
+        RexRuntime_Init(
+            &runtime,
+            content_path,
+            state_path,
+            fake_presentation_port(&presentation)
+        ) == 1
+    );
+    CHECK(runtime.state.version == REX_STATE_VERSION);
+    CHECK(runtime.state.revision == 0u);
+
+    RexState_Init(&loaded);
+    CHECK(RexState_Load(&loaded, state_path) == 1);
+    CHECK(loaded.version == REX_STATE_VERSION);
+    CHECK(loaded.revision == 0u);
+
+    remove(content_path);
+    cleanup_state_files(state_path);
+}
+
+static void test_runtime_rejects_invalid_content_without_starting(void) {
+    const char* content_path = "RexRuntimeInvalidContent.dat";
+    const char* state_path = "RexRuntimeInvalidState.dat";
+    RexRuntime runtime = {0};
+    FakePresentation presentation = {0};
+    FILE* file = 0;
+
+    remove(content_path);
+    cleanup_state_files(state_path);
+
+    CHECK(fopen_s(&file, content_path, "wb") == 0);
+    CHECK(file != 0);
+    if (file != 0) {
+        CHECK(fwrite("bad", 1u, 3u, file) == 3u);
+        CHECK(fclose(file) == 0);
+    }
+
+    CHECK(
+        RexRuntime_Init(
+            &runtime,
+            content_path,
+            state_path,
+            fake_presentation_port(&presentation)
+        ) == 0
+    );
+    CHECK(runtime.initialized == 0);
+
+    remove(content_path);
+    cleanup_state_files(state_path);
+}
+
+
 int main(void) {
     test_ready_vehicle_enables_build();
     test_owned_vehicle_disables_build();
@@ -846,6 +974,9 @@ int main(void) {
     test_presentation_adapter_selection_change_rebuilds_state();
     test_presentation_adapter_routes_montar_and_renders_result();
     test_presentation_adapter_requires_only_presentation_contract();
+    test_runtime_bootstrap_composes_new_campaign_stack();
+    test_runtime_first_launch_creates_new_state_file();
+    test_runtime_rejects_invalid_content_without_starting();
 
     if (failures != 0) {
         printf("%d test assertion(s) failed.\n", failures);
