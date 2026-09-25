@@ -11,6 +11,11 @@
 
 #include <stdio.h>
 
+extern int RexHost_GaiaIsReady(void);
+extern int RexHost_GaiaIsNetworkRequired(void);
+extern uint32_t RexHost_GlobalSyncPendingCount(void);
+extern int RexHost_GlobalSyncCommit(uint32_t reason, uint32_t* operation_id);
+
 static int failures = 0;
 
 #define CHECK(expr) do { \
@@ -1079,6 +1084,21 @@ static void test_host_exports_drive_new_runtime_end_to_end(void) {
         ) == 1
     );
     CHECK(RexHost_IsStarted() == 1);
+
+    {
+        uint32_t operation_id = 0u;
+        CHECK(RexHost_GaiaIsReady() == 1);
+        CHECK(RexHost_GaiaIsNetworkRequired() == 0);
+        CHECK(RexHost_GlobalSyncPendingCount() == 0u);
+        CHECK(
+            RexHost_GlobalSyncCommit(
+                REX_GLOBAL_SYNC_REASON_PROFILE_BOOTSTRAP,
+                &operation_id
+            ) == REX_GLOBAL_SYNC_OK
+        );
+        CHECK(operation_id == 1u);
+        CHECK(RexHost_GlobalSyncPendingCount() == 0u);
+    }
 
     CHECK(RexHost_GarageEnter() == 1);
     CHECK(presentation.snapshot_calls == 1);

@@ -2,6 +2,11 @@
 
 #include <stdio.h>
 
+extern int RexShim_GaiaIsReady(void);
+extern int RexShim_GaiaIsNetworkRequired(void);
+extern int RexShim_GlobalSyncCommit(uint32_t reason, uint32_t* operation_id);
+extern uint32_t RexShim_GlobalSyncPendingCount(void);
+
 static int failures = 0;
 
 #define CHECK(expr) do { \
@@ -105,6 +110,21 @@ static void test_shim_transports_garage_events_and_snapshots(void) {
         ) == 1
     );
     CHECK(RexShim_IsStarted() == 1);
+
+    {
+        uint32_t operation_id = 0u;
+        CHECK(RexShim_GaiaIsReady() == 1);
+        CHECK(RexShim_GaiaIsNetworkRequired() == 0);
+        CHECK(RexShim_GlobalSyncPendingCount() == 0u);
+        CHECK(
+            RexShim_GlobalSyncCommit(
+                REX_GLOBAL_SYNC_REASON_PROFILE_BOOTSTRAP,
+                &operation_id
+            ) == REX_GLOBAL_SYNC_OK
+        );
+        CHECK(operation_id == 1u);
+        CHECK(RexShim_GlobalSyncPendingCount() == 0u);
+    }
 
     CHECK(RexShim_GarageEnter(501u) == 1);
     CHECK(RexShim_CopyGarageSnapshot(&snapshot) == 1);
