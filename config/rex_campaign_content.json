@@ -1,0 +1,19 @@
+{
+  "schema": 2,
+  "product": "Asphalt ReXtreme Campaign Edition",
+  "economy": {
+    "starting_credits": 50000,
+    "starting_tokens": 0
+  },
+  "garage": {
+    "starter_car_id": 1,
+    "cars": [
+      {
+        "car_id": 1,
+        "acquire_mode": "free",
+        "price": 0,
+        "class_id": 1
+      }
+    ]
+  }
+}
