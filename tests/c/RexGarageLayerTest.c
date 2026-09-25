@@ -7,6 +7,7 @@
 #include "RexPresentationAdapterV2.h"
 #include "RexRuntime.h"
 #include "RexHost.h"
+#include "RexBoundaryV1.h"
 
 #include <stdio.h>
 
@@ -801,7 +802,10 @@ static void test_presentation_adapter_routes_montar_and_renders_result(void) {
     CHECK(presentation.action_calls == 1);
     CHECK(presentation.last_action_result == REX_GARAGE_PRESENTER_OK);
     CHECK(presentation.present_calls == 2);
-    CHECK(presentation.last_view_model.owned == 1);
+    CHECK(presentation.action_calls == 1);
+    CHECK(presentation.last_action_result == REX_GARAGE_PRESENTER_OK);
+    CHECK(presentation.last_snapshot.owned == 1);
+    CHECK(presentation.last_snapshot.montar_enabled == 0);
     CHECK(presentation.last_view_model.build_enabled == 0);
     CHECK(presentation.focus_build == 0);
 }
@@ -974,11 +978,76 @@ static void test_runtime_rejects_invalid_content_without_starting(void) {
 
 
 
+
+typedef struct FakeBoundaryPresentation {
+    uint32_t selected_vehicle_id;
+    RexGarageSnapshotV1 last_snapshot;
+    int snapshot_calls;
+    int action_calls;
+    int last_action_result;
+} FakeBoundaryPresentation;
+
+static uint32_t fake_boundary_read_selected(void* context) {
+    FakeBoundaryPresentation* fake = (FakeBoundaryPresentation*)context;
+    return fake->selected_vehicle_id;
+}
+
+static void fake_boundary_present_snapshot(
+    void* context,
+    const RexGarageSnapshotV1* snapshot
+) {
+    FakeBoundaryPresentation* fake = (FakeBoundaryPresentation*)context;
+    fake->last_snapshot = *snapshot;
+    fake->snapshot_calls += 1;
+}
+
+static void fake_boundary_present_action(
+    void* context,
+    int result
+) {
+    FakeBoundaryPresentation* fake = (FakeBoundaryPresentation*)context;
+    fake->last_action_result = result;
+    fake->action_calls += 1;
+}
+
+static RexGamePresentationPortV1 fake_boundary_port(
+    FakeBoundaryPresentation* fake
+) {
+    RexGamePresentationPortV1 port = {0};
+    port.abi_version = REX_BOUNDARY_ABI_VERSION;
+    port.struct_size = (uint32_t)sizeof(port);
+    port.context = fake;
+    port.read_selected_vehicle_id = fake_boundary_read_selected;
+    port.present_garage_snapshot = fake_boundary_present_snapshot;
+    port.present_action_result = fake_boundary_present_action;
+    return port;
+}
+
+static void test_boundary_v1_reports_stable_abi_version(void) {
+    CHECK(RexHost_GetBoundaryAbiVersion() == REX_BOUNDARY_ABI_VERSION);
+}
+
+static void test_boundary_v1_rejects_wrong_abi_without_starting(void) {
+    FakeBoundaryPresentation presentation = {0};
+    RexGamePresentationPortV1 port = fake_boundary_port(&presentation);
+
+    port.abi_version = REX_BOUNDARY_ABI_VERSION + 1u;
+
+    CHECK(
+        RexHost_StartV1(
+            "does-not-matter.dat",
+            "does-not-matter-state.dat",
+            &port
+        ) == 0
+    );
+    CHECK(RexHost_IsStarted() == 0);
+}
+
 static void test_host_exports_drive_new_runtime_end_to_end(void) {
     const char* content_path = "RexHostContentTest.dat";
     const char* state_path = "RexHostStateTest.dat";
-    FakePresentation presentation = {0};
-    RexPresentationGaragePort port;
+    FakeBoundaryPresentation presentation = {0};
+    RexGamePresentationPortV1 port;
     RexState loaded;
 
     remove(content_path);
@@ -987,11 +1056,11 @@ static void test_host_exports_drive_new_runtime_end_to_end(void) {
     CHECK(write_content_fixture(content_path) == 1);
 
     presentation.selected_vehicle_id = 501u;
-    port = fake_presentation_port(&presentation);
+    port = fake_boundary_port(&presentation);
 
     CHECK(RexHost_IsStarted() == 0);
     CHECK(
-        RexHost_Start(
+        RexHost_StartV1(
             content_path,
             state_path,
             &port
@@ -1000,8 +1069,9 @@ static void test_host_exports_drive_new_runtime_end_to_end(void) {
     CHECK(RexHost_IsStarted() == 1);
 
     CHECK(RexHost_GarageEnter() == 1);
-    CHECK(presentation.last_view_model.selected_vehicle_id == 501u);
-    CHECK(presentation.last_view_model.build_enabled == 1);
+    CHECK(presentation.snapshot_calls == 1);
+    CHECK(presentation.last_snapshot.selected_vehicle_id == 501u);
+    CHECK(presentation.last_snapshot.montar_enabled == 1);
 
     CHECK(
         RexHost_GarageMontarPressed() ==
@@ -1056,6 +1126,8 @@ int main(void) {
     test_runtime_bootstrap_composes_new_campaign_stack();
     test_runtime_first_launch_creates_new_state_file();
     test_runtime_rejects_invalid_content_without_starting();
+    test_boundary_v1_reports_stable_abi_version();
+    test_boundary_v1_rejects_wrong_abi_without_starting();
     test_host_exports_drive_new_runtime_end_to_end();
 
     if (failures != 0) {

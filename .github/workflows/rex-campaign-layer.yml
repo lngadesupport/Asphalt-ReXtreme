@@ -106,7 +106,9 @@ jobs:
             "RexHost_IsStarted",
             "RexHost_GarageEnter",
             "RexHost_GarageSelectionChanged",
-            "RexHost_GarageMontarPressed"
+            "RexHost_GarageMontarPressed",
+            "RexHost_GetBoundaryAbiVersion",
+            "RexHost_StartV1"
           )) {
             if ($exports -notmatch [regex]::Escape($name)) {
               throw "Missing export: $name"
