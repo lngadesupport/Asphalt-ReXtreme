@@ -3,14 +3,16 @@
 #include <stdint.h>
 #include "RexContent.h"
 
-#define REX_CONTENT_MAGIC 0x31434552u /* REC1 */
-#define REX_CONTENT_VERSION 1u
+#define REX_CONTENT_MAGIC 0x32434552u /* REC2 */
+#define REX_CONTENT_VERSION 2u
 
 typedef struct RexContentFile {
     uint32_t magic;
     uint32_t version;
     uint32_t count;
-    uint32_t reserved;
+    uint32_t starter_car_id;
+    int32_t starting_credits;
+    int32_t starting_tokens;
     RexCarDefinition cars[REX_CONTENT_MAX_CARS];
     uint32_t checksum;
 } RexContentFile;
@@ -37,7 +39,7 @@ static int build_path(void) {
     HMODULE self;
     DWORD n;
     uint32_t i,j;
-    static const WCHAR file_name[]=L"CampaignContentV1.dat";
+    static const WCHAR file_name[]=L"CampaignContentV2.dat";
 
     memzero(g_path,(uint32_t)sizeof(g_path));
     self=GetModuleHandleW(L"IGPLib_x86.dll");
@@ -64,7 +66,10 @@ static int valid(const RexContentFile* f) {
     if(f->magic!=REX_CONTENT_MAGIC ||
        f->version!=REX_CONTENT_VERSION ||
        f->count==0 ||
-       f->count>REX_CONTENT_MAX_CARS) return 0;
+       f->count>REX_CONTENT_MAX_CARS ||
+       f->starter_car_id<=0 ||
+       f->starting_credits<0 ||
+       f->starting_tokens<0) return 0;
     if(f->checksum!=calc_checksum(f)) return 0;
     for(i=0;i<f->count;++i) {
         if(f->cars[i].car_id<=0) return 0;
@@ -126,4 +131,13 @@ const RexCarDefinition* __cdecl RexContentFindCar(int32_t car_id) {
         else hi=mid-1;
     }
     return 0;
+}
+
+int __cdecl RexContentDefaultsRead(RexContentDefaults* out) {
+    if(!out || !RexContentLoad()) return 0;
+    if(!RexContentFindCar(g_content.starter_car_id)) return 0;
+    out->starter_car_id=g_content.starter_car_id;
+    out->starting_credits=g_content.starting_credits;
+    out->starting_tokens=g_content.starting_tokens;
+    return 1;
 }
