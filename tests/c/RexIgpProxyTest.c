@@ -222,6 +222,63 @@ static void test_proxy_routes_platform_dispatch_to_rex_services(void) {
     cleanup_proxy_state();
 }
 
+
+static void test_proxy_exposes_short_platform_capability_gates(void) {
+    static const char http_name[] =
+        "?HttpPostLink@IGPControl@IGPLib@@QAEXPBD@Z";
+    static const struct {
+        uint32_t selector;
+        int expected;
+    } cases[] = {
+        {0x52454741u, 1},
+        {0x52455052u, 1},
+        {0x52454F4Eu, 0},
+        {0x52454C47u, 1},
+        {0x52454C43u, 1},
+        {0x52454950u, 0},
+        {0x52454144u, 0},
+        {0x5245534Fu, 0},
+        {0x52454D4Du, 0},
+        {0x52454556u, 0},
+        {0x52455550u, 0}
+    };
+    HMODULE module;
+    RexHttpPostLinkFn http_post;
+    size_t i;
+
+    cleanup_proxy_state();
+    CHECK(write_proxy_content_fixture() == 1);
+
+    module = LoadLibraryA("IGPLib_x86.dll");
+    CHECK(module != 0);
+    if (module == 0) {
+        remove("CampaignContentV2.dat");
+        return;
+    }
+
+    http_post = (RexHttpPostLinkFn)GetProcAddress(
+        module,
+        http_name
+    );
+    CHECK(http_post != 0);
+
+    if (http_post != 0) {
+        for (i = 0u; i < sizeof(cases)/sizeof(cases[0]); ++i) {
+            CHECK(
+                http_post(
+                    0,
+                    0,
+                    (const char*)(uintptr_t)cases[i].selector
+                ) == cases[i].expected
+            );
+        }
+    }
+
+    FreeLibrary(module);
+    remove("CampaignContentV2.dat");
+    cleanup_proxy_state();
+}
+
 static void test_proxy_routes_new_gateway_to_rex_shim(void) {
     static const char http_name[] =
         "?HttpPostLink@IGPControl@IGPLib@@QAEXPBD@Z";
@@ -285,6 +342,7 @@ int main(void) {
     test_proxy_exposes_game_import_surface();
     test_proxy_bootstraps_rex_runtime_on_game_init();
     test_proxy_routes_platform_dispatch_to_rex_services();
+    test_proxy_exposes_short_platform_capability_gates();
     test_proxy_routes_new_gateway_to_rex_shim();
 
     if (failures != 0) {
