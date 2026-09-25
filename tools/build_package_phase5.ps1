@@ -60,22 +60,22 @@ $cleanAms = @(Get-ChildItem -LiteralPath $cleanBase -Recurse -File -Filter "AMS.
 if ($cleanAms.Count -ne 1) { throw "Expected exactly one clean AMS.exe under $cleanBase; found $($cleanAms.Count)." }
 $cleanGameRoot = $cleanAms[0].Directory.FullName
 
-$cleanBaseBuilder = Join-Path $SourceDir "tools\build_clean_ams_base_v1.ps1"
+$cleanBaseBuilder = Join-Path $SourceDir "tools\rex_build_base.ps1"
 if (-not (Test-Path -LiteralPath $cleanBaseBuilder -PathType Leaf)) {
-    throw "Missing Clean Base builder: $cleanBaseBuilder"
+    throw "Missing REX Base builder: $cleanBaseBuilder"
 }
 
 & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $cleanBaseBuilder -ProjectRoot $SourceDir
-if ($LASTEXITCODE -ne 0) { throw "Clean AMS Base V1 build failed: $LASTEXITCODE" }
+if ($LASTEXITCODE -ne 0) { throw "REX pristine base build failed: $LASTEXITCODE" }
 
-$cleanBaseAms = Join-Path $SourceDir "_AMS_CLEAN_BASE\AMS.exe"
+$cleanBaseAms = Join-Path $SourceDir "_REX_BASE\AMS.exe"
 if (-not (Test-Path -LiteralPath $cleanBaseAms -PathType Leaf)) {
-    throw "Missing Clean AMS Base V1: $cleanBaseAms"
+    throw "Missing REX pristine base: $cleanBaseAms"
 }
 
 $dllChars = Get-PeDllCharacteristics $cleanBaseAms
 if (($dllChars -band 0x1000) -eq 0) {
-    throw ("Clean AMS Base V1 no longer has AppContainer set (DllCharacteristics=0x{0:X4})." -f $dllChars)
+    throw ("REX pristine base no longer has AppContainer set (DllCharacteristics=0x{0:X4})." -f $dllChars)
 }
 
 $out = Join-Path $SourceDir "_PACKAGE_PHASE5"
@@ -85,7 +85,7 @@ if (Test-Path -LiteralPath $out) {
 Write-Host "Copying pristine packaged tree..." -ForegroundColor Cyan
 Copy-Item -LiteralPath $cleanGameRoot -Destination $out -Recurse -Force
 
-Write-Host "Overlaying Clean AMS Base V1 (pristine-derived; AppContainer preserved)..." -ForegroundColor Cyan
+Write-Host "Overlaying REX pristine base (pristine-derived; AppContainer preserved)..." -ForegroundColor Cyan
 Copy-Item -LiteralPath $cleanBaseAms -Destination (Join-Path $out "AMS.exe") -Force
 
 # This is now a loose development layout, not the original signed Store package.
@@ -190,7 +190,7 @@ $report = [ordered]@{
     AMS_SHA256 = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $out "AMS.exe")).Hash.ToLowerInvariant()
     AMS_DllCharacteristics = ("0x{0:X4}" -f (Get-PeDllCharacteristics (Join-Path $out "AMS.exe")))
     AMS_AppContainer = $true
-    AMSBase = "Clean AMS Base V1"
+    AMSBase = "REX pristine base"
     Phase2Used = $false
     OriginalGameplayPatchesApplied = $false
     UsedOriginalWCPToolkit = $true
