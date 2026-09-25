@@ -197,7 +197,7 @@ jobs:
           src\ams-host\RexAmsHost.cpp
           /I src\ams-host
           /Fe:AMS.exe
-          ole32.lib uuid.lib
+          ole32.lib uuid.lib user32.lib
           /link /SUBSYSTEM:WINDOWS
 
       - name: Verify new x86 AMS host
